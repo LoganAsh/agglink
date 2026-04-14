@@ -5,7 +5,7 @@ export default function ContractorView() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+      <aside className="w-64 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col">
           <div className="h-16 flex items-center px-6 border-b border-slate-800">
               <span className="text-xl font-bold text-white tracking-wide">AggLink<span className="text-orange-500">.</span></span>
           </div>
@@ -43,7 +43,7 @@ export default function ContractorView() {
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
           {/* Top Header */}
           <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-              <div className="relative w-96">
+              <div className="relative w-full md:w-96">
                   <input type="text" placeholder="Search estimates, pits, or materials..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors" />
               </div>
               <div className="flex items-center space-x-6">
@@ -66,7 +66,7 @@ export default function ContractorView() {
               </div>
 
               {/* KPI Cards */}
-              <div className="grid grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
                       <div className="flex justify-between items-start">
                           <div>
@@ -109,10 +109,10 @@ export default function ContractorView() {
               </div>
 
               {/* Two Column Layout */}
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
                   {/* Left Col: Live Routing Engine */}
-                  <div className="col-span-2 space-y-6">
+                  <div className="col-span-1 lg:col-span-2 space-y-6">
                       <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
                           <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
                               <h2 className="text-lg font-semibold text-white">Live Routing: Project Alpha</h2>
@@ -125,8 +125,8 @@ export default function ContractorView() {
                           </div>
 
                           {/* Results Table */}
-                          <div className="p-0 overflow-x-auto">
-                              <table className="w-full text-sm text-left">
+                          <div className="p-0 overflow-x-auto w-full">
+                              <table className="w-full min-w-[600px] text-sm text-left">
                                   <thead className="text-xs text-slate-400 uppercase bg-slate-900/80 border-y border-slate-700">
                                       <tr>
                                           <th className="px-5 py-3">Supplier</th>
