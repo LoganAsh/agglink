@@ -102,7 +102,7 @@ export default function LoginPage() {
             </div>
             
             <div className="mt-6 text-center text-sm text-slate-400">
-                Don't have an account? <a href="#" className="font-medium text-orange-500 hover:text-orange-400">Apply for access</a>
+                Don&apos;t have an account? <a href="#" className="font-medium text-orange-500 hover:text-orange-400">Apply for access</a>
             </div>
           </div>
         </div>

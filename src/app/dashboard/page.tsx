@@ -196,7 +196,7 @@ export default function Dashboard() {
                                       <div>
                                           <span className="px-2 py-0.5 bg-orange-500/20 text-orange-500 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">Material Supply</span>
                                           <h4 className="text-white font-medium text-sm">Concrete Recycling Inc.</h4>
-                                          <p className="text-xs text-slate-400 mt-1">1" Gravel (Recycled)</p>
+                                          <p className="text-xs text-slate-400 mt-1">1&quot; Gravel (Recycled)</p>
                                       </div>
                                       <div className="text-right">
                                           <div className="text-lg font-bold text-white">$12.00<span className="text-xs text-slate-400 font-normal">/Ton</span></div>
