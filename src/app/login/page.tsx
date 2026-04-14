@@ -11,9 +11,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   
   const router = useRouter();
-  const supabase = createClient();
+  // Don't instantiate the client until the component is mounted on the client-side
+  // Otherwise Next.js tries to run this during static build without environment variables
+  const supabase = typeof window !== 'undefined' ? createClient() : null;
 
   const handleLogin = async (e: React.FormEvent) => {
+    if (!supabase) return;
     e.preventDefault();
     setLoading(true);
     setError(null);
