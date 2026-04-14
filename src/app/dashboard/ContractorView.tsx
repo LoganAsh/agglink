@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
+"use client";
+import React, { useState } from 'react';
 import LogoutButton from '@/components/LogoutButton';
 
 export default function ContractorView({ 
@@ -9,6 +10,33 @@ export default function ContractorView({
   dumpsCount = 14,
   recentMaterials = []
 }: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[] }) {
+
+  const [address, setAddress] = useState("");
+  const [qty, setQty] = useState(1500);
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!address) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch('/api/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, qty, jobType: "Import (Delivery)", materials: [] })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResults(data.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
       {/* Sidebar */}
@@ -42,9 +70,18 @@ export default function ContractorView({
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
           {/* Top Header */}
           <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-              <div className="relative w-full md:w-96">
-                  <input type="text" placeholder="Search estimates, pits, or materials..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors" />
-              </div>
+              <form onSubmit={handleSearch} className="relative w-full md:w-96 flex space-x-2">
+                  <input 
+                    type="text" 
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter Job Site Address..." 
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors" 
+                  />
+                  <button type="submit" disabled={loading} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                    {loading ? 'Routing...' : 'Route'}
+                  </button>
+              </form>
               <div className="flex items-center space-x-6">
                   <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block">
                       + New Estimate
@@ -119,13 +156,19 @@ export default function ContractorView({
                                       </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-700">
-                                      <tr className="bg-orange-500/5 hover:bg-slate-900 transition-colors">
-                                          <td className="px-5 py-4 font-medium text-white">Geneva Rock (Black Rock)</td>
-                                          <td className="px-5 py-4 text-slate-400">10-Wheeler</td>
-                                          <td className="px-5 py-4 text-right">$10.70</td>
-                                          <td className="px-5 py-4 text-right">$8.70</td>
-                                          <td className="px-5 py-4 text-right font-bold text-orange-500">$19.40</td>
+                                    {results.length > 0 ? results.map((res: any, idx: number) => (
+                                      <tr key={idx} className={idx === 0 ? "bg-orange-500/5 hover:bg-slate-900 transition-colors" : "hover:bg-slate-900 transition-colors"}>
+                                          <td className="px-5 py-4 font-medium text-white">{res.supplier}</td>
+                                          <td className="px-5 py-4 text-slate-400">{res.truckFleet}</td>
+                                          <td className="px-5 py-4 text-right">${res.basePrice.toFixed(2)}</td>
+                                          <td className="px-5 py-4 text-right">${res.frtPerUnit.toFixed(2)}</td>
+                                          <td className="px-5 py-4 text-right font-bold text-orange-500">${res.totalPerUnit.toFixed(2)}</td>
                                       </tr>
+                                    )) : (
+                                      <tr>
+                                          <td colSpan={5} className="px-5 py-8 text-center text-slate-500 italic">Enter a job site address and hit Route to run the live logistics engine.</td>
+                                      </tr>
+                                    )}
                                   </tbody>
                               </table>
                           </div>
