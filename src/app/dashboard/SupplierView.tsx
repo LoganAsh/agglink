@@ -1,7 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
+import LogoutButton from '@/components/LogoutButton';
 
 
-export default function SupplierView() {
+
+export default function SupplierView({ 
+  profileName = "Black Rock Pit", 
+  companyName = "Geneva Rock",
+  totalVolume = 0,
+  pendingQuotes = 0,
+  topMaterial = "UDOT Spec Road Base",
+  materials = []
+}: { profileName?: string, companyName?: string, totalVolume?: number, pendingQuotes?: number, topMaterial?: string, materials?: any[] }) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
       
@@ -82,7 +92,7 @@ export default function SupplierView() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Today&apos;s Volume</p>
-                            <h3 className="text-3xl font-bold text-white mt-1">2,840<span className="text-sm font-normal text-slate-400"> Tons</span></h3>
+                            <h3 className="text-3xl font-bold text-white mt-1">{totalVolume.toLocaleString()}<span className="text-sm font-normal text-slate-400"> Tons</span></h3>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
                             <i className="fa-solid fa-scale-balanced text-lg"></i>
@@ -94,7 +104,7 @@ export default function SupplierView() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Pending Quotes</p>
-                            <h3 className="text-3xl font-bold text-white mt-1">3 <span className="text-sm font-normal text-brand">Requests</span></h3>
+                            <h3 className="text-3xl font-bold text-white mt-1">{pendingQuotes} <span className="text-sm font-normal text-brand">Requests</span></h3>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-brand/10 flex items-center justify-center text-brand">
                             <i className="fa-solid fa-hand-holding-dollar text-lg"></i>
@@ -106,7 +116,7 @@ export default function SupplierView() {
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Top Moving Mat.</p>
-                            <h3 className="text-xl font-bold text-white mt-2">UDOT Road Base</h3>
+                            <h3 className="text-xl font-bold text-white mt-2">{topMaterial}</h3>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
                             <i className="fa-solid fa-layer-group text-lg"></i>

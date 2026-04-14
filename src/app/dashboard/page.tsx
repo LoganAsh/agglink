@@ -52,7 +52,42 @@ export default async function DashboardPage() {
   }
 
   if (profile.role === 'supplier') {
-    return <SupplierView />
+    // Fetch their facility (assume they own one for the prototype)
+    const { data: myFacility } = await supabase
+      .from('facilities')
+      .select('id, name')
+      .limit(1)
+      .single()
+
+    let myMaterials = []
+    const totalVolume = 2840 // Mock KPI
+    const pendingQuotes = 3 // Mock KPI
+    let topMaterial = "UDOT Spec Road Base" // Mock KPI
+    
+    if (myFacility) {
+      const { data: mats } = await supabase
+        .from('materials')
+        .select('*')
+        .eq('facility_id', myFacility.id)
+      
+      if (mats) {
+        myMaterials = mats
+        if (mats.length > 0) {
+          topMaterial = mats[0].name
+        }
+      }
+    }
+
+    return (
+      <SupplierView 
+        profileName={myFacility?.name || "Your Pit"}
+        companyName={profile.company_name}
+        totalVolume={totalVolume}
+        pendingQuotes={pendingQuotes}
+        topMaterial={topMaterial}
+        materials={(myMaterials as any)}
+      />
+    )
   }
 
   // Default to contractor
