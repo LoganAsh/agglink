@@ -37,6 +37,33 @@ export default function ContractorView({
     setLoading(false);
   };
 
+
+  const [address, setAddress] = useState("");
+  const [qty, setQty] = useState(1500);
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!address) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch('/api/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, qty, jobType: "Import (Delivery)", materials: [] })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResults(data.data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
       {/* Sidebar */}
