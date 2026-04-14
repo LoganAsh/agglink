@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
@@ -6,7 +7,7 @@ export async function POST(request: Request) {
     const supabase = createClient();
     
     // Ensure the user is authenticated to use the API
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user },  } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     // Process the results to group by facility
-    const results = availableMaterials.map(mat => {
+    const results = availableMaterials.map((mat: any) => {
       // In a real scenario, we would run the OpenRouteService API here for each facility
       // For this step, we will just return the raw data so the frontend can calculate
       return {

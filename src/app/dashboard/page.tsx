@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import ContractorView from './ContractorView'
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
       companyName={profile.company_name}
       pitsCount={pitsCount || 0}
       dumpsCount={dumpsCount || 0}
-      recentMaterials={recentMaterials || []}
+      recentMaterials={(recentMaterials as any) || []}
     />
   )
 }

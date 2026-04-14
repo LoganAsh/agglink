@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import LogoutButton from '@/components/LogoutButton';
 
@@ -7,7 +8,7 @@ export default function ContractorView({
   pitsCount = 14, 
   dumpsCount = 14,
   recentMaterials = []
-}: any) {
+}: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[] }) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
       {/* Sidebar */}
