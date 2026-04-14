@@ -127,11 +127,21 @@ export async function POST(request: Request) {
         const totalTruckingCost = totalBilledHrs * truck.rate;
         
         let materialCost = 0;
+        let basePriceLabel = 0;
+
         if (isImport) {
           materialCost = mat.price_per_ton * qty;
+          basePriceLabel = mat.price_per_ton;
         } else {
-          // Simplification for prototype
-          materialCost = mat.price_per_cy * qty;
+          // Per-load pricing vs Per-CY pricing
+          const dumpFee = truck.type === '10-Wheeler' ? mat.price_10w_load : mat.price_sd_load;
+          if (dumpFee > 0) {
+            materialCost = trips * dumpFee;
+            basePriceLabel = dumpFee; // Store as raw number, front-end formats it
+          } else {
+            materialCost = mat.price_per_cy * qty;
+            basePriceLabel = mat.price_per_cy;
+          }
         }
 
         const totalCost = materialCost + totalTruckingCost;
@@ -140,7 +150,7 @@ export async function POST(request: Request) {
           supplier: fac.name,
           truckFleet: truck.type,
           cycle: Math.round(cycleTimeHr * 60),
-          basePrice: isImport ? mat.price_per_ton : mat.price_per_cy,
+          basePrice: basePriceLabel,
           frtPerUnit: totalTruckingCost / qty,
           totalPerUnit: totalCost / qty,
           totalCost: totalCost

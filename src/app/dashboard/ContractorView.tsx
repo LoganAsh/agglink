@@ -9,14 +9,16 @@ export default function ContractorView({
   pitsCount = 14, 
   dumpsCount = 14,
   recentMaterials = [],
-  allMaterials = []
-}: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[], allMaterials?: string[] }) {
+  importMaterials = [],
+  exportMaterials = []
+}: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[], importMaterials?: string[], exportMaterials?: string[] }) {
 
 
 
   const [address, setAddress] = useState("");
   const [qty, setQty] = useState(1500);
   const [selectedMaterial, setSelectedMaterial] = useState("");
+  const [jobType, setJobType] = useState("Import (Delivery)");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +31,7 @@ export default function ContractorView({
       const response = await fetch('/api/estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, qty, jobType: "Import (Delivery)", materials: selectedMaterial ? [selectedMaterial] : [] })
+        body: JSON.stringify({ address, qty, jobType, materials: selectedMaterial ? [selectedMaterial] : [] })
       });
       const data = await response.json();
       if (data.success) {
@@ -74,37 +76,63 @@ export default function ContractorView({
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
           {/* Top Header */}
           <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-              <form onSubmit={handleSearch} className="relative w-full flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                  <input 
-                    type="text" 
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Job Site Address..." 
-                    className="w-full md:w-64 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors" 
-                  />
-                  <select 
-                    value={selectedMaterial} 
-                    onChange={(e) => setSelectedMaterial(e.target.value)}
-                    className="w-full md:w-48 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 appearance-none"
-                  >
-                    <option value="">All Materials</option>
-                    {allMaterials?.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                  <div className="relative w-full md:w-32">
-                    <span className="absolute right-8 top-1/2 -translate-y-1/2 text-xs text-slate-400">Tons</span>
-                    <input 
-                      type="number" 
-                      value={qty}
-                      onChange={(e) => setQty(Number(e.target.value))}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-3 pr-12 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
-                    />
+              <div className="w-full space-y-3">
+                  <div className="flex space-x-4 mb-2">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                          <input 
+                              type="radio" 
+                              name="jobType" 
+                              value="Import (Delivery)" 
+                              checked={jobType === "Import (Delivery)"} 
+                              onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} 
+                              className="text-orange-500 focus:ring-orange-500"
+                          />
+                          <span className="text-sm font-medium text-slate-300">Import (Delivery)</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                          <input 
+                              type="radio" 
+                              name="jobType" 
+                              value="Export (Haul-Off)" 
+                              checked={jobType === "Export (Haul-Off)"} 
+                              onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} 
+                              className="text-blue-500 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium text-slate-300">Export (Haul-Off)</span>
+                      </label>
                   </div>
-                  <button type="submit" disabled={loading} className="w-full md:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap disabled:opacity-50">
-                    {loading ? 'Routing...' : 'Route'}
-                  </button>
-              </form>
+                  <form onSubmit={handleSearch} className="relative w-full flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                      <input 
+                        type="text" 
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="Job Site Address..." 
+                        className={`w-full md:w-64 bg-slate-800 border rounded-lg px-4 py-2 text-sm text-white focus:outline-none transition-colors ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} 
+                      />
+                      <select 
+                        value={selectedMaterial} 
+                        onChange={(e) => setSelectedMaterial(e.target.value)}
+                        className={`w-full md:w-48 bg-slate-800 border rounded-lg px-4 py-2 text-sm text-white focus:outline-none appearance-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}
+                      >
+                        <option value="">All Materials</option>
+                        {(jobType === "Import (Delivery)" ? importMaterials : exportMaterials)?.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <div className="relative w-full md:w-32">
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{jobType === 'Import (Delivery)' ? 'Tons' : 'CY'}</span>
+                        <input 
+                          type="number" 
+                          value={qty}
+                          onChange={(e) => setQty(Number(e.target.value))}
+                          className={`w-full bg-slate-800 border rounded-lg pl-3 pr-12 py-2 text-sm text-white focus:outline-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} 
+                        />
+                      </div>
+                      <button type="submit" disabled={loading} className={`w-full md:w-auto text-white px-6 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap disabled:opacity-50 ${jobType === 'Import (Delivery)' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                        {loading ? 'Routing...' : 'Route'}
+                      </button>
+                  </form>
+              </div>
               <div className="flex items-center space-x-6">
                   <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block">
                       + New Estimate
@@ -171,23 +199,23 @@ export default function ContractorView({
                               <table className="w-full min-w-[600px] text-sm text-left">
                                   <thead className="text-xs text-slate-400 uppercase bg-slate-900/80 border-y border-slate-700">
                                       <tr>
-                                          <th className="px-5 py-3">Supplier</th>
+                                          <th className="px-5 py-3">{jobType === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
                                           <th className="px-5 py-3">Material</th>
                                           <th className="px-5 py-3">Fleet</th>
-                                          <th className="px-5 py-3 text-right">Base $/T</th>
-                                          <th className="px-5 py-3 text-right">Frt $/T</th>
-                                          <th className="px-5 py-3 text-right text-orange-500">Total $/T</th>
+                                          <th className="px-5 py-3 text-right">{jobType === 'Import (Delivery)' ? 'Base $/T' : 'Base Fee'}</th>
+                                          <th className="px-5 py-3 text-right">{jobType === 'Import (Delivery)' ? 'Frt $/T' : 'Frt $/CY'}</th>
+                                          <th className={`px-5 py-3 text-right ${jobType === 'Import (Delivery)' ? 'text-orange-500' : 'text-blue-500'}`}>{jobType === 'Import (Delivery)' ? 'Total $/T' : 'Total $/CY'}</th>
                                       </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-700">
                                     {results.length > 0 ? results.map((res: any, idx: number) => (
-                                      <tr key={idx} className={idx === 0 ? "bg-orange-500/5 hover:bg-slate-900 transition-colors" : "hover:bg-slate-900 transition-colors"}>
+                                      <tr key={idx} className={idx === 0 ? (jobType === 'Import (Delivery)' ? "bg-orange-500/5 hover:bg-slate-900 transition-colors" : "bg-blue-500/5 hover:bg-slate-900 transition-colors") : "hover:bg-slate-900 transition-colors"}>
                                           <td className="px-5 py-4 font-medium text-white">{res.supplier}</td>
                                           <td className="px-5 py-4 text-slate-300 text-xs">{res.materialName}</td>
                                           <td className="px-5 py-4 text-slate-400 text-xs">{res.truckFleet}</td>
                                           <td className="px-5 py-4 text-right">${res.basePrice.toFixed(2)}</td>
                                           <td className="px-5 py-4 text-right">${res.frtPerUnit.toFixed(2)}</td>
-                                          <td className="px-5 py-4 text-right font-bold text-orange-500">${res.totalPerUnit.toFixed(2)}</td>
+                                          <td className={`px-5 py-4 text-right font-bold ${jobType === 'Import (Delivery)' ? 'text-orange-500' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
                                       </tr>
                                     )) : (
                                       <tr>

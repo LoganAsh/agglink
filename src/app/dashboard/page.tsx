@@ -37,14 +37,17 @@ export default async function DashboardPage() {
     .select('name, price_per_ton, price_per_cy, is_import, facility:facilities(name)')
     .limit(3)
 
-  // Fetch all unique import materials for the dropdown
+  // Fetch all unique materials for the dropdowns
   const { data: allMatsData } = await supabase
     .from('materials')
-    .select('name')
-    .eq('is_import', true)
+    .select('name, is_import')
     
-  const allMaterials = allMatsData 
-    ? Array.from(new Set(allMatsData.map(m => m.name))).sort() 
+  const importMaterials = allMatsData 
+    ? Array.from(new Set(allMatsData.filter(m => m.is_import).map(m => m.name))).sort() 
+    : []
+    
+  const exportMaterials = allMatsData 
+    ? Array.from(new Set(allMatsData.filter(m => !m.is_import).map(m => m.name))).sort() 
     : []
 
   if (error || !profile) {
@@ -98,7 +101,8 @@ export default async function DashboardPage() {
       pitsCount={pitsCount || 0}
       dumpsCount={dumpsCount || 0}
       recentMaterials={(recentMaterials as any) || []}
-      allMaterials={allMaterials}
+      importMaterials={importMaterials}
+      exportMaterials={exportMaterials}
     />
   )
 }
