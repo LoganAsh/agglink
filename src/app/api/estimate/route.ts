@@ -26,7 +26,12 @@ export async function POST(request: Request) {
     }
 
     // 1. Geocode Address
-    const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+    // Append Utah if not present to help Nominatim locate it accurately
+    let searchAddress = address;
+    if (!searchAddress.toLowerCase().includes('utah') && !searchAddress.toLowerCase().includes(', ut')) {
+      searchAddress += ', Utah';
+    }
+    const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddress)}&format=json&limit=1`;
     const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'AggLink/1.0' }});
     const geoData = await geoRes.json();
     if (!geoData || geoData.length === 0) {
