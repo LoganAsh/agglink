@@ -11,14 +11,31 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
+  // 1. Get user profile
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('role, company_name')
     .eq('id', user.id)
     .single()
 
+  // 2. Fetch live data for the dashboard
+  const { count: pitsCount } = await supabase
+    .from('facilities')
+    .select('*', { count: 'exact', head: true })
+    .in('type', ['pit', 'both'])
+
+  const { count: dumpsCount } = await supabase
+    .from('facilities')
+    .select('*', { count: 'exact', head: true })
+    .in('type', ['dump', 'both'])
+
+  // Fetch 3 random/recent materials
+  const { data: recentMaterials } = await supabase
+    .from('materials')
+    .select('name, price_per_ton, price_per_cy, is_import, facility:facilities(name)')
+    .limit(3)
+
   if (error || !profile) {
-    // Fallback if no profile is found
     return <ContractorView />
   }
 
@@ -27,5 +44,13 @@ export default async function DashboardPage() {
   }
 
   // Default to contractor
-  return <ContractorView />
+  return (
+    <ContractorView 
+      profileName={user.email?.split('@')[0]}
+      companyName={profile.company_name}
+      pitsCount={pitsCount || 0}
+      dumpsCount={dumpsCount || 0}
+      recentMaterials={recentMaterials || []}
+    />
+  )
 }
