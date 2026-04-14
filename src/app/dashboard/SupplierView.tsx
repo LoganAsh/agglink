@@ -1,5 +1,7 @@
+"use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
+import React, { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 
 
@@ -12,6 +14,38 @@ export default function SupplierView({
   topMaterial = "UDOT Spec Road Base",
   materials = []
 }: { profileName?: string, companyName?: string, totalVolume?: number, pendingQuotes?: number, topMaterial?: string, materials?: any[] }) {
+
+  const supabase = createClient();
+  const [mats, setMats] = useState<any[]>(materials);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState<number | string>("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const startEditing = (mat: any) => {
+    setEditingId(mat.id);
+    setEditPrice(mat.is_import ? mat.price_per_ton : mat.price_per_cy);
+  };
+
+  const savePrice = async (mat: any) => {
+    setIsSaving(true);
+    const priceField = mat.is_import ? 'price_per_ton' : 'price_per_cy';
+    const numPrice = parseFloat(editPrice as string);
+
+    const { error } = await supabase
+      .from('materials')
+      .update({ [priceField]: numPrice })
+      .eq('id', mat.id);
+
+    if (!error) {
+      setMats(mats.map(m => m.id === mat.id ? { ...m, [priceField]: numPrice } : m));
+      setEditingId(null);
+    } else {
+      alert("Error updating price. RLS might be blocking it if you don't own this facility!");
+      console.error(error);
+    }
+    setIsSaving(false);
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
       
@@ -162,7 +196,7 @@ export default function SupplierView({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-700">
-                                      {materials && materials.length > 0 ? materials.map((mat: any, idx: number) => (
+                                      {mats && mats.length > 0 ? mats.map((mat: any, idx: number) => (
                                           <tr key={idx} className="hover:bg-slate-800 transition-colors">
                                               <td className="px-5 py-4 font-medium text-white">{mat.name}</td>
                                               <td className="px-5 py-4">
@@ -173,8 +207,31 @@ export default function SupplierView({
                                               </td>
                                               <td className="px-5 py-4 text-right">
                                                   <div className="flex items-center justify-end">
-                                                      <span className="font-bold text-white">${mat.is_import ? mat.price_per_ton.toFixed(2) : mat.price_per_cy.toFixed(2)}</span>
-                                                      <i className="fa-solid fa-pen text-slate-500 hover:text-white cursor-pointer ml-3 text-xs"></i>
+                                                      {editingId === mat.id ? (
+                                                          <div className="flex items-center space-x-2">
+                                                              <span className="text-white">$</span>
+                                                              <input 
+                                                                  type="number" 
+                                                                  value={editPrice}
+                                                                  onChange={(e) => setEditPrice(e.target.value)}
+                                                                  className="w-20 bg-slate-900 border border-orange-500 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                                                                  step="0.01"
+                                                              />
+                                                              <button disabled={isSaving} onClick={() => savePrice(mat)} className="text-emerald-400 hover:text-emerald-300 disabled:opacity-50">
+                                                                  <i className="fa-solid fa-check"></i>
+                                                              </button>
+                                                              <button disabled={isSaving} onClick={() => setEditingId(null)} className="text-red-400 hover:text-red-300 disabled:opacity-50">
+                                                                  <i className="fa-solid fa-xmark"></i>
+                                                              </button>
+                                                          </div>
+                                                      ) : (
+                                                          <>
+                                                              <span className="font-bold text-white">${(mat.is_import ? mat.price_per_ton : mat.price_per_cy).toFixed(2)}</span>
+                                                              <button onClick={() => startEditing(mat)} className="text-slate-500 hover:text-white ml-3 text-xs focus:outline-none">
+                                                                  <i className="fa-solid fa-pen"></i>
+                                                              </button>
+                                                          </>
+                                                      )}
                                                   </div>
                                               </td>
                                               <td className="px-5 py-4 text-center">
