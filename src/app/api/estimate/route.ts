@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       if (rawDist <= 30.0 && apiKey) {
         try {
           const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${jobLon},${jobLat}&end=${fac.longitude},${fac.latitude}&radiuses=-1|-1`;
-          const orsRes = await fetch(orsUrl, { timeout: 5000 });
+          const orsRes = await fetch(orsUrl, {});
           if (orsRes.ok) {
             const orsData = await orsRes.json();
             const summary = orsData.features[0].properties.summary;

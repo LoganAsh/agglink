@@ -11,35 +11,10 @@ export default function ContractorView({
   recentMaterials = []
 }: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[] }) {
 
-  const [address, setAddress] = useState("");
-  const [qty, setQty] = useState(1500);
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address) return;
-    
-    setLoading(true);
-    try {
-      const response = await fetch('/api/estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, qty, jobType: "Import (Delivery)", materials: [] })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setResults(data.data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    setLoading(false);
-  };
 
 
   const [address, setAddress] = useState("");
-  const [qty, setQty] = useState(1500);
+  const [qty] = useState(1500);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
