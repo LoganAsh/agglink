@@ -251,8 +251,11 @@ export default function ContractorView({
           facility: { name: res.supplier }
         }]);
         setActiveTab('pending');
+      } else {
+        const errorData = await response.json();
+        alert("Database Error: " + errorData.error);
       }
-    } catch (e) {
+    } catch (e: any) {
       alert("Error: " + e.message); console.error(e);
     }
     setRequestingId(null);

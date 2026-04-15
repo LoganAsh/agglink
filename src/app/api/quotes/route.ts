@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('Insert error:', error);
-      return NextResponse.json({ error: 'Failed to send quote request' }, { status: 500 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
