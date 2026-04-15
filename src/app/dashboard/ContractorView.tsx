@@ -31,6 +31,7 @@ export default function ContractorView({
   const [requirements, setRequirements] = useState<any[]>([]);
   const [manifestResults, setManifestResults] = useState<any>({});
   const [isCalculating, setIsCalculating] = useState(false);
+  const [lastCalculated, setLastCalculated] = useState<Date | null>(null);
 
   // Requirement Form States
   const [jobType, setJobType] = useState("Import (Delivery)");
