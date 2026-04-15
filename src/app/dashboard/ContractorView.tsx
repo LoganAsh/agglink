@@ -218,7 +218,7 @@ export default function ContractorView({
         
       if (data && !error) {
         const filteredState = savedEstimates.filter(se => se.material_name !== req.material_name);
-        setSavedEstimates([...filteredState, data]);
+        setSavedEstimates([...filteredState, { ...data, facility: { name: res.supplier } }]);
       } else {
         alert("Failed to save estimate.");
       }
@@ -558,7 +558,7 @@ export default function ContractorView({
                                                   {est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}
                                                 </span>
                                                 <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
-                                                <p className="text-xs text-slate-400 mt-1">{est.quantity} Units | {est.truck_fleet}</p>
+                                                <p className="text-xs text-slate-400 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} Units | {est.truck_fleet}</p>
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-lg font-bold text-emerald-400">
