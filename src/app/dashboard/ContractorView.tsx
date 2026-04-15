@@ -19,6 +19,29 @@ export default function ContractorView({
   const [qty, setQty] = useState(1500);
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [jobType, setJobType] = useState("Import (Delivery)");
+  const [requestingId, setRequestingId] = useState<string | null>(null);
+
+  const requestQuote = async (res: any) => {
+    setRequestingId(res.facilityId);
+    try {
+      const response = await fetch('/api/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          facilityId: res.facilityId,
+          materialName: res.materialName,
+          quantity: qty,
+          address: address
+        })
+      });
+      if (response.ok) {
+        alert("Quote request sent directly to the supplier!");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setRequestingId(null);
+  };
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -216,10 +239,19 @@ export default function ContractorView({
                                           <td className="px-5 py-4 text-right">${res.basePrice.toFixed(2)}</td>
                                           <td className="px-5 py-4 text-right">${res.frtPerUnit.toFixed(2)}</td>
                                           <td className={`px-5 py-4 text-right font-bold ${jobType === 'Import (Delivery)' ? 'text-orange-500' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
+                                          <td className="px-5 py-4 text-center">
+                                            <button 
+                                              onClick={() => requestQuote(res)}
+                                              disabled={requestingId === res.facilityId}
+                                              className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${jobType === 'Import (Delivery)' ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'}`}
+                                            >
+                                              {requestingId === res.facilityId ? 'Sending...' : 'Request Quote'}
+                                            </button>
+                                          </td>
                                       </tr>
                                     )) : (
                                       <tr>
-                                          <td colSpan={5} className="px-5 py-8 text-center text-slate-500 italic">Enter a job site address and hit Route to run the live logistics engine.</td>
+                                          <td colSpan={6} className="px-5 py-8 text-center text-slate-500 italic">Enter a job site address and hit Route to run the live logistics engine.</td>
                                       </tr>
                                     )}
                                   </tbody>

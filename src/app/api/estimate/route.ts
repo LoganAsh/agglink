@@ -147,7 +147,9 @@ export async function POST(request: Request) {
         const totalCost = materialCost + totalTruckingCost;
 
         results.push({
+          facilityId: fac.id,
           supplier: fac.name,
+          materialName: mat.name,
           truckFleet: truck.type,
           cycle: Math.round(cycleTimeHr * 60),
           basePrice: basePriceLabel,
