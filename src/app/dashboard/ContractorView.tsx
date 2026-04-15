@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 
 export default function ContractorView({ 
@@ -13,14 +15,7 @@ export default function ContractorView({
   exportMaterials = []
 }: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[], importMaterials?: string[], exportMaterials?: string[] }) {
 
-
-
-  const [address, setAddress] = useState("");
-  const [qty, setQty] = useState(1500);
-  const [selectedMaterial, setSelectedMaterial] = useState("");
-  const [jobType, setJobType] = useState("Import (Delivery)");
-  const [requestingId, setRequestingId] = useState<string | null>(null);
-  
+  const supabase = createClient();
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProject, setActiveProject] = useState<any | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -28,14 +23,23 @@ export default function ContractorView({
   const [newProjAddr, setNewProjAddr] = useState("");
   const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
   const [savedEstimates, setSavedEstimates] = useState<any[]>([]);
+  const [requestingId, setRequestingId] = useState<string | null>(null);
 
-  React.useEffect(() => {
+  // Manifest States
+  const [requirements, setRequirements] = useState<any[]>([]);
+  const [manifestResults, setManifestResults] = useState<any>({});
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  // Requirement Form States
+  const [jobType, setJobType] = useState("Import (Delivery)");
+  const [selectedMaterial, setSelectedMaterial] = useState("");
+  const [qty, setQty] = useState(1500);
+
+  useEffect(() => {
     fetchProjects();
   }, []);
 
   const fetchProjects = async () => {
-    const { createClient } = await import('@/utils/supabase/client');
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     
@@ -52,8 +56,6 @@ export default function ContractorView({
     e.preventDefault();
     if (!newProjName || !newProjAddr) return;
     
-    const { createClient } = await import('@/utils/supabase/client');
-    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -70,11 +72,12 @@ export default function ContractorView({
     if (data && !error) {
       setProjects([data, ...projects]);
       setActiveProject(data);
-      setAddress(data.address);
       setShowProjectModal(false);
       setNewProjName("");
       setNewProjAddr("");
       setSavedEstimates([]);
+      setRequirements([]);
+      setManifestResults({});
     } else {
       alert("Failed to create project");
     }
@@ -82,33 +85,108 @@ export default function ContractorView({
 
   const selectProject = async (proj: any) => {
     setActiveProject(proj);
-    setAddress(proj.address);
-    const { createClient } = await import('@/utils/supabase/client');
-    const supabase = createClient();
-    const { data } = await supabase
+    
+    // Fetch saved estimates
+    const { data: estData } = await supabase
       .from('project_estimates')
       .select('*')
       .eq('project_id', proj.id);
-    if (data) setSavedEstimates(data);
+    if (estData) setSavedEstimates(estData);
+
+    // Fetch project requirements (manifest)
+    const { data: reqData } = await supabase
+      .from('project_requirements')
+      .select('*')
+      .eq('project_id', proj.id)
+      .order('created_at', { ascending: true });
+    if (reqData) setRequirements(reqData);
+    
+    setManifestResults({});
   };
 
-  const saveEstimate = async (res: any) => {
-    if (!activeProject) {
-      alert("Please create or select an active project first!");
+  const addRequirement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeProject || !selectedMaterial || !qty) {
+      alert("Please select a project and fill out all fields.");
       return;
     }
+
+    const { data, error } = await supabase
+      .from('project_requirements')
+      .insert([{
+        project_id: activeProject.id,
+        job_type: jobType,
+        material_name: selectedMaterial,
+        quantity: qty
+      }])
+      .select()
+      .single();
+
+    if (data && !error) {
+      setRequirements([...requirements, data]);
+      setSelectedMaterial("");
+    } else {
+      alert("Failed to add requirement.");
+      console.error(error);
+    }
+  };
+
+  const removeRequirement = async (reqId: string) => {
+    const { error } = await supabase.from('project_requirements').delete().eq('id', reqId);
+    if (!error) {
+      setRequirements(requirements.filter(r => r.id !== reqId));
+      const newResults = { ...manifestResults };
+      delete newResults[reqId];
+      setManifestResults(newResults);
+    }
+  };
+
+  const calculateManifest = async () => {
+    if (!activeProject || requirements.length === 0) return;
+    setIsCalculating(true);
     
-    setSavingEstimateId(res.facilityId + res.truckFleet);
-    const { createClient } = await import('@/utils/supabase/client');
-    const supabase = createClient();
+    const newResults: any = { ...manifestResults };
+
+    for (const req of requirements) {
+      try {
+        const response = await fetch('/api/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            address: activeProject.address, 
+            qty: req.quantity, 
+            jobType: req.job_type, 
+            materials: [req.material_name] 
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Store top 5 options for this requirement
+          newResults[req.id] = data.data.slice(0, 5);
+        } else {
+          newResults[req.id] = [];
+        }
+      } catch (err) {
+        console.error(err);
+        newResults[req.id] = [];
+      }
+    }
+    
+    setManifestResults(newResults);
+    setIsCalculating(false);
+  };
+
+  const saveEstimate = async (res: any, req: any) => {
+    if (!activeProject) return;
+    setSavingEstimateId(res.facilityId + res.truckFleet + req.id);
     
     const { data, error } = await supabase
       .from('project_estimates')
       .insert([{
         project_id: activeProject.id,
         facility_id: res.facilityId,
-        material_name: res.materialName,
-        quantity: qty,
+        material_name: req.material_name,
+        quantity: req.quantity,
         truck_fleet: res.truckFleet,
         base_price: res.basePrice,
         freight_price: res.frtPerUnit,
@@ -119,26 +197,23 @@ export default function ContractorView({
       
     if (data && !error) {
       setSavedEstimates([...savedEstimates, data]);
-      alert("Estimate Saved to Project!");
     } else {
       alert("Failed to save estimate.");
     }
     setSavingEstimateId(null);
   };
 
-
-
-  const requestQuote = async (res: any) => {
-    setRequestingId(res.facilityId);
+  const requestQuote = async (res: any, req: any) => {
+    setRequestingId(res.facilityId + req.id);
     try {
       const response = await fetch('/api/quotes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           facilityId: res.facilityId,
-          materialName: res.materialName,
-          quantity: qty,
-          address: address
+          materialName: req.material_name,
+          quantity: req.quantity,
+          address: activeProject.address
         })
       });
       if (response.ok) {
@@ -148,29 +223,6 @@ export default function ContractorView({
       console.error(e);
     }
     setRequestingId(null);
-  };
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address) return;
-    
-    setLoading(true);
-    try {
-      const response = await fetch('/api/estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, qty, jobType, materials: selectedMaterial ? [selectedMaterial] : [] })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setResults(data.data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-    setLoading(false);
   };
 
   return (
@@ -206,65 +258,42 @@ export default function ContractorView({
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
           {/* Top Header */}
           <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-              <div className="w-full space-y-3">
-                  <div className="flex space-x-4 mb-2">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                          <input 
-                              type="radio" 
-                              name="jobType" 
-                              value="Import (Delivery)" 
-                              checked={jobType === "Import (Delivery)"} 
-                              onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} 
-                              className="text-orange-500 focus:ring-orange-500"
-                          />
-                          <span className="text-sm font-medium text-slate-300">Import (Delivery)</span>
-                      </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                          <input 
-                              type="radio" 
-                              name="jobType" 
-                              value="Export (Haul-Off)" 
-                              checked={jobType === "Export (Haul-Off)"} 
-                              onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} 
-                              className="text-blue-500 focus:ring-blue-500"
-                          />
-                          <span className="text-sm font-medium text-slate-300">Export (Haul-Off)</span>
-                      </label>
-                  </div>
-                  <form onSubmit={handleSearch} className="relative w-full flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                      <input 
-                        type="text" 
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Job Site Address..." 
-                        className={`w-full md:w-64 bg-slate-800 border rounded-lg px-4 py-2 text-sm text-white focus:outline-none transition-colors ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} 
-                      />
-                      <select 
-                        value={selectedMaterial} 
-                        onChange={(e) => setSelectedMaterial(e.target.value)}
-                        className={`w-full md:w-48 bg-slate-800 border rounded-lg px-4 py-2 text-sm text-white focus:outline-none appearance-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}
-                      >
-                        <option value="">All Materials</option>
-                        {(jobType === "Import (Delivery)" ? importMaterials : exportMaterials)?.map(m => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                      <div className="relative w-full md:w-32">
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{jobType === 'Import (Delivery)' ? 'Tons' : 'CY'}</span>
-                        <input 
-                          type="number" 
-                          value={qty}
-                          onChange={(e) => setQty(Number(e.target.value))}
-                          className={`w-full bg-slate-800 border rounded-lg pl-3 pr-12 py-2 text-sm text-white focus:outline-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} 
-                        />
-                      </div>
-                      <button type="submit" disabled={loading} className={`w-full md:w-auto text-white px-6 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap disabled:opacity-50 ${jobType === 'Import (Delivery)' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
-                        {loading ? 'Routing...' : 'Route'}
-                      </button>
-                  </form>
+              <div className="relative w-full md:w-96 flex items-center">
+                  {activeProject ? (
+                    <div className="flex items-center space-x-3">
+                      <h2 className="text-lg font-semibold text-white">{activeProject.name}</h2>
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">
+                        Active Project
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400 italic">Select a project to begin...</span>
+                  )}
               </div>
-              <div className="flex items-center space-x-6">
-                  <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block">
+              <div className="flex items-center space-x-4">
+                  {projects.length > 0 && (
+                    <select 
+                      className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
+                      onChange={(e) => {
+                        if (e.target.value === "") {
+                          setActiveProject(null);
+                          setSavedEstimates([]);
+                          setRequirements([]);
+                          setManifestResults({});
+                        } else {
+                          const p = projects.find(proj => proj.id === e.target.value);
+                          if (p) selectProject(p);
+                        }
+                      }}
+                      value={activeProject ? activeProject.id : ""}
+                    >
+                      <option value="">-- Switch Project --</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">
                       + New Project
                   </button>
               </div>
@@ -272,16 +301,6 @@ export default function ContractorView({
 
           {/* Dashboard Content */}
           <div className="p-4 md:p-8 space-y-6">
-              <div className="flex justify-between items-end">
-                  <div>
-                      <h1 className="text-2xl font-bold text-white">Marketplace Overview</h1>
-                      <p className="text-slate-400 text-sm mt-1">Real-time aggregate logistics across the Salt Lake Valley.</p>
-                  </div>
-                  <div className="flex space-x-2">
-                      <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-medium">Live DB Connected</span>
-                  </div>
-              </div>
-
               {/* KPI Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
@@ -289,19 +308,16 @@ export default function ContractorView({
                       <h3 className="text-3xl font-bold text-white mt-1">14.2%</h3>
                       <p className="text-xs text-emerald-400 mt-3">2.1% from last month</p>
                   </div>
-                  
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
                       <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Network</p>
                       <h3 className="text-3xl font-bold text-white mt-1">{pitsCount + dumpsCount}</h3>
                       <p className="text-xs text-slate-400 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
                   </div>
-
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
                       <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Est. Value</p>
                       <h3 className="text-3xl font-bold text-white mt-1">$1.4M</h3>
                       <p className="text-xs text-slate-400 mt-3">Across 12 active bids</p>
                   </div>
-
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
                       <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Market Price</p>
                       <h3 className="text-3xl font-bold text-white mt-1">$10.20<span className="text-sm text-slate-400 font-normal">/ton</span></h3>
@@ -312,99 +328,143 @@ export default function ContractorView({
               {/* Two Column Layout */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
-                  {/* Left Col: Live Routing Engine */}
+                  {/* Left Col: Project Manifest & Routing */}
                   <div className="col-span-1 lg:col-span-2 space-y-6">
                       <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+                          
+                          {/* Manifest Header */}
                           <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                              <div className="flex items-center space-x-3">
-                                <h2 className="text-lg font-semibold text-white">
-                                  {activeProject ? activeProject.name : "Live Routing Preview"}
-                                </h2>
-                                {activeProject && (
-                                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider">
-                                    Active Project
-                                  </span>
-                                )}
-                              </div>
-                              {projects.length > 0 && (
-                                <select 
-                                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-orange-500"
-                                  onChange={(e) => {
-                                    if (e.target.value === "") {
-                                      setActiveProject(null);
-                                      setAddress("");
-                                      setSavedEstimates([]);
-                                    } else {
-                                      const p = projects.find(proj => proj.id === e.target.value);
-                                      if (p) selectProject(p);
-                                    }
-                                  }}
-                                  value={activeProject ? activeProject.id : ""}
+                              <h2 className="text-lg font-semibold text-white">Project Manifest (Bill of Materials)</h2>
+                              {requirements.length > 0 && (
+                                <button 
+                                  onClick={calculateManifest} 
+                                  disabled={isCalculating}
+                                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50"
                                 >
-                                  <option value="">-- Switch Project --</option>
-                                  {projects.map((p) => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                  ))}
-                                </select>
+                                  {isCalculating ? 'Routing All Items...' : 'Optimize Logistics'}
+                                </button>
                               )}
                           </div>
-                          
-                          <div className="h-64 bg-slate-800 w-full relative border-b border-slate-700 flex items-center justify-center">
-                              <span className="text-slate-500">[Interactive Map Component Coming Next]</span>
-                          </div>
 
-                          {/* Results Table (Static Placeholder for now) */}
-                          <div className="p-0 overflow-x-auto w-full">
-                              <table className="w-full min-w-[600px] text-sm text-left">
-                                  <thead className="text-xs text-slate-400 uppercase bg-slate-900/80 border-y border-slate-700">
-                                      <tr>
-                                          <th className="px-5 py-3">{jobType === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
-                                          <th className="px-5 py-3">Material</th>
-                                          <th className="px-5 py-3">Fleet</th>
-                                          <th className="px-5 py-3 text-right">{jobType === 'Import (Delivery)' ? 'Base $/T' : 'Base Fee'}</th>
-                                          <th className="px-5 py-3 text-right">{jobType === 'Import (Delivery)' ? 'Frt $/T' : 'Frt $/CY'}</th>
-                                          <th className={`px-5 py-3 text-right ${jobType === 'Import (Delivery)' ? 'text-orange-500' : 'text-blue-500'}`}>{jobType === 'Import (Delivery)' ? 'Total $/T' : 'Total $/CY'}</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-700">
-                                    {results.length > 0 ? results.map((res: any, idx: number) => (
-                                      <tr key={idx} className={idx === 0 ? (jobType === 'Import (Delivery)' ? "bg-orange-500/5 hover:bg-slate-900 transition-colors" : "bg-blue-500/5 hover:bg-slate-900 transition-colors") : "hover:bg-slate-900 transition-colors"}>
-                                          <td className="px-5 py-4 font-medium text-white">{res.supplier}</td>
-                                          <td className="px-5 py-4 text-slate-300 text-xs">{res.materialName}</td>
-                                          <td className="px-5 py-4 text-slate-400 text-xs">{res.truckFleet}</td>
-                                          <td className="px-5 py-4 text-right">${res.basePrice.toFixed(2)}</td>
-                                          <td className="px-5 py-4 text-right">${res.frtPerUnit.toFixed(2)}</td>
-                                          <td className={`px-5 py-4 text-right font-bold ${jobType === 'Import (Delivery)' ? 'text-orange-500' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
-                                          <td className="px-5 py-4 text-center">
-                                            <div className="flex space-x-2 justify-center">
-                                              {activeProject && (
-                                                <button 
-                                                  onClick={() => saveEstimate(res)}
-                                                  disabled={savingEstimateId === res.facilityId + res.truckFleet}
-                                                  className="text-xs font-bold px-3 py-1.5 rounded transition-colors bg-slate-800 hover:bg-emerald-600 text-white disabled:opacity-50 border border-slate-700 hover:border-emerald-600"
-                                                  title="Save to Project"
-                                                >
-                                                  {savingEstimateId === res.facilityId + res.truckFleet ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
-                                                </button>
-                                              )}
-                                              <button 
-                                                onClick={() => requestQuote(res)}
-                                                disabled={requestingId === res.facilityId}
-                                                className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${jobType === 'Import (Delivery)' ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'}`}
-                                              >
-                                                {requestingId === res.facilityId ? 'Sending...' : 'Request Quote'}
+                          {!activeProject ? (
+                            <div className="p-12 text-center text-slate-500">
+                                <i className="fa-solid fa-folder-open text-4xl mb-3 opacity-50"></i>
+                                <p>Select or create a project to build your logistics manifest.</p>
+                            </div>
+                          ) : (
+                            <div className="p-5 space-y-6">
+                                {/* Add Requirement Form */}
+                                <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
+                                    <h3 className="text-sm font-semibold text-white mb-3">Add Requirement</h3>
+                                    <div className="flex space-x-4 mb-3">
+                                        <label className="flex items-center space-x-2 cursor-pointer">
+                                            <input type="radio" name="jobType" value="Import (Delivery)" checked={jobType === "Import (Delivery)"} onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} className="text-orange-500 focus:ring-orange-500"/>
+                                            <span className="text-sm font-medium text-slate-300">Import</span>
+                                        </label>
+                                        <label className="flex items-center space-x-2 cursor-pointer">
+                                            <input type="radio" name="jobType" value="Export (Haul-Off)" checked={jobType === "Export (Haul-Off)"} onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} className="text-blue-500 focus:ring-blue-500"/>
+                                            <span className="text-sm font-medium text-slate-300">Export</span>
+                                        </label>
+                                    </div>
+                                    <form onSubmit={addRequirement} className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                                        <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)} required className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                                            <option value="">-- Select Material --</option>
+                                            {(jobType === "Import (Delivery)" ? importMaterials : exportMaterials)?.map(m => (
+                                              <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </select>
+                                        <div className="relative w-full md:w-32">
+                                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{jobType === 'Import (Delivery)' ? 'Tons' : 'CY'}</span>
+                                            <input type="number" required value={qty} onChange={(e) => setQty(Number(e.target.value))} className={`w-full bg-slate-800 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
+                                        </div>
+                                        <button type="submit" className={`px-4 py-2 rounded-lg text-sm font-bold transition-all text-white ${jobType === 'Import (Delivery)' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                                            + Add
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* List of Requirements & Results */}
+                                <div className="space-y-6">
+                                    {requirements.map((req: any) => (
+                                      <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
+                                          {/* Requirement Header */}
+                                          <div className={`px-4 py-3 flex justify-between items-center ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
+                                              <div className="flex items-center space-x-3">
+                                                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-400'}`}>
+                                                      {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
+                                                  </span>
+                                                  <span className="font-semibold text-white">{req.material_name}</span>
+                                                  <span className="text-slate-400 text-sm">({req.quantity.toLocaleString()} {req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY'})</span>
+                                              </div>
+                                              <button onClick={() => removeRequirement(req.id)} className="text-slate-500 hover:text-red-500 transition-colors">
+                                                  <i className="fa-solid fa-trash"></i>
                                               </button>
+                                          </div>
+                                          
+                                          {/* Render Results if calculated */}
+                                          {manifestResults[req.id] && (
+                                            <div className="bg-slate-900 w-full overflow-x-auto border-t border-slate-700">
+                                                {manifestResults[req.id].length > 0 ? (
+                                                  <table className="w-full min-w-[500px] text-xs text-left">
+                                                      <thead className="text-slate-500 bg-slate-800/50">
+                                                          <tr>
+                                                              <th className="px-4 py-2 font-medium">{req.job_type === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
+                                                              <th className="px-4 py-2 font-medium">Fleet</th>
+                                                              <th className="px-4 py-2 font-medium text-right">Base</th>
+                                                              <th className="px-4 py-2 font-medium text-right">Frt</th>
+                                                              <th className="px-4 py-2 font-bold text-right text-white">Total</th>
+                                                              <th className="px-4 py-2 text-center">Action</th>
+                                                          </tr>
+                                                      </thead>
+                                                      <tbody className="divide-y divide-slate-800">
+                                                          {manifestResults[req.id].map((res: any, idx: number) => {
+                                                            const isSaved = savedEstimates.some(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
+                                                            return (
+                                                              <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
+                                                                  <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
+                                                                  <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
+                                                                  <td className="px-4 py-2 text-right text-slate-400">${res.basePrice.toFixed(2)}</td>
+                                                                  <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}</td>
+                                                                  <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
+                                                                  <td className="px-4 py-2">
+                                                                    <div className="flex space-x-1 justify-center">
+                                                                        <button 
+                                                                          onClick={() => saveEstimate(res, req)}
+                                                                          disabled={isSaved || savingEstimateId === res.facilityId + res.truckFleet + req.id}
+                                                                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${isSaved ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'}`}
+                                                                          title="Lock in this price"
+                                                                        >
+                                                                          {isSaved ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-floppy-disk"></i>}
+                                                                        </button>
+                                                                        <button 
+                                                                          onClick={() => requestQuote(res, req)}
+                                                                          disabled={requestingId === res.facilityId + req.id}
+                                                                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}
+                                                                        >
+                                                                          {requestingId === res.facilityId + req.id ? '...' : 'Quote'}
+                                                                        </button>
+                                                                    </div>
+                                                                  </td>
+                                                              </tr>
+                                                            );
+                                                          })}
+                                                      </tbody>
+                                                  </table>
+                                                ) : (
+                                                  <p className="p-3 text-center text-xs text-red-400">No facilities found or routing failed.</p>
+                                                )}
                                             </div>
-                                          </td>
-                                      </tr>
-                                    )) : (
-                                      <tr>
-                                          <td colSpan={6} className="px-5 py-8 text-center text-slate-500 italic">Enter a job site address and hit Route to run the live logistics engine.</td>
-                                      </tr>
+                                          )}
+                                      </div>
+                                    ))}
+                                    {requirements.length === 0 && (
+                                      <div className="text-center py-6 border-2 border-dashed border-slate-700 rounded-lg">
+                                          <p className="text-slate-500 text-sm">No materials added to manifest yet.</p>
+                                      </div>
                                     )}
-                                  </tbody>
-                              </table>
-                          </div>
+                                </div>
+                            </div>
+                          )}
                       </div>
                   </div>
 
@@ -414,7 +474,6 @@ export default function ContractorView({
                           <div className="p-5 border-b border-slate-700 flex justify-between items-center">
                               <h2 className="text-lg font-semibold text-white">Live Supplier Feed</h2>
                           </div>
-                          
                           <div className="p-5 flex-1 space-y-4">
                               {recentMaterials.length > 0 ? (
                                 recentMaterials.map((mat: any, idx: number) => (
@@ -446,48 +505,6 @@ export default function ContractorView({
               </div>
           </div>
       </main>
-
-      {/* Project Creation Modal */}
-      {showProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-white">Create New Project</h2>
-              <button onClick={() => setShowProjectModal(false)} className="text-slate-400 hover:text-white">
-                <i className="fa-solid fa-xmark text-lg"></i>
-              </button>
-            </div>
-            <form onSubmit={createProject} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
-                <input 
-                  type="text" 
-                  required
-                  value={newProjName}
-                  onChange={(e) => setNewProjName(e.target.value)}
-                  placeholder="e.g., Redwood Subdivision" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address</label>
-                <input 
-                  type="text"
-                  required
-                  value={newProjAddr}
-                  onChange={(e) => setNewProjAddr(e.target.value)}
-                  placeholder="e.g., 5600 W 8600 S, West Jordan, UT" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
-                />
-              </div>
-              <div className="flex space-x-3 pt-4">
-                <button type="button" onClick={() => setShowProjectModal(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-700 transition-all">Cancel</button>
-                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Project Creation Modal */}
       {showProjectModal && (
