@@ -20,6 +20,113 @@ export default function ContractorView({
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [jobType, setJobType] = useState("Import (Delivery)");
   const [requestingId, setRequestingId] = useState<string | null>(null);
+  
+  const [projects, setProjects] = useState<any[]>([]);
+  const [activeProject, setActiveProject] = useState<any | null>(null);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [newProjName, setNewProjName] = useState("");
+  const [newProjAddr, setNewProjAddr] = useState("");
+  const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
+  const [savedEstimates, setSavedEstimates] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('contractor_id', user.id)
+      .order('created_at', { ascending: false });
+      
+    if (data) setProjects(data);
+  };
+
+  const createProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjName || !newProjAddr) return;
+    
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([{
+        contractor_id: user.id,
+        name: newProjName,
+        address: newProjAddr
+      }])
+      .select()
+      .single();
+
+    if (data && !error) {
+      setProjects([data, ...projects]);
+      setActiveProject(data);
+      setAddress(data.address);
+      setShowProjectModal(false);
+      setNewProjName("");
+      setNewProjAddr("");
+      setSavedEstimates([]);
+    } else {
+      alert("Failed to create project");
+    }
+  };
+
+  const selectProject = async (proj: any) => {
+    setActiveProject(proj);
+    setAddress(proj.address);
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('project_estimates')
+      .select('*')
+      .eq('project_id', proj.id);
+    if (data) setSavedEstimates(data);
+  };
+
+  const saveEstimate = async (res: any) => {
+    if (!activeProject) {
+      alert("Please create or select an active project first!");
+      return;
+    }
+    
+    setSavingEstimateId(res.facilityId + res.truckFleet);
+    const { createClient } = await import('@/utils/supabase/client');
+    const supabase = createClient();
+    
+    const { data, error } = await supabase
+      .from('project_estimates')
+      .insert([{
+        project_id: activeProject.id,
+        facility_id: res.facilityId,
+        material_name: res.materialName,
+        quantity: qty,
+        truck_fleet: res.truckFleet,
+        base_price: res.basePrice,
+        freight_price: res.frtPerUnit,
+        total_price: res.totalPerUnit
+      }])
+      .select()
+      .single();
+      
+    if (data && !error) {
+      setSavedEstimates([...savedEstimates, data]);
+      alert("Estimate Saved to Project!");
+    } else {
+      alert("Failed to save estimate.");
+    }
+    setSavingEstimateId(null);
+  };
+
+
 
   const requestQuote = async (res: any) => {
     setRequestingId(res.facilityId);
@@ -157,8 +264,8 @@ export default function ContractorView({
                   </form>
               </div>
               <div className="flex items-center space-x-6">
-                  <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block">
-                      + New Estimate
+                  <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block">
+                      + New Project
                   </button>
               </div>
           </header>
@@ -209,8 +316,37 @@ export default function ContractorView({
                   <div className="col-span-1 lg:col-span-2 space-y-6">
                       <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
                           <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                              <h2 className="text-lg font-semibold text-white">Live Routing Preview</h2>
-                              <span className="px-3 py-1 bg-slate-700 text-slate-300 rounded-lg text-xs font-medium">Req: 1,500 Tons</span>
+                              <div className="flex items-center space-x-3">
+                                <h2 className="text-lg font-semibold text-white">
+                                  {activeProject ? activeProject.name : "Live Routing Preview"}
+                                </h2>
+                                {activeProject && (
+                                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    Active Project
+                                  </span>
+                                )}
+                              </div>
+                              {projects.length > 0 && (
+                                <select 
+                                  className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-orange-500"
+                                  onChange={(e) => {
+                                    if (e.target.value === "") {
+                                      setActiveProject(null);
+                                      setAddress("");
+                                      setSavedEstimates([]);
+                                    } else {
+                                      const p = projects.find(proj => proj.id === e.target.value);
+                                      if (p) selectProject(p);
+                                    }
+                                  }}
+                                  value={activeProject ? activeProject.id : ""}
+                                >
+                                  <option value="">-- Switch Project --</option>
+                                  {projects.map((p) => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                  ))}
+                                </select>
+                              )}
                           </div>
                           
                           <div className="h-64 bg-slate-800 w-full relative border-b border-slate-700 flex items-center justify-center">
@@ -240,13 +376,25 @@ export default function ContractorView({
                                           <td className="px-5 py-4 text-right">${res.frtPerUnit.toFixed(2)}</td>
                                           <td className={`px-5 py-4 text-right font-bold ${jobType === 'Import (Delivery)' ? 'text-orange-500' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
                                           <td className="px-5 py-4 text-center">
-                                            <button 
-                                              onClick={() => requestQuote(res)}
-                                              disabled={requestingId === res.facilityId}
-                                              className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${jobType === 'Import (Delivery)' ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'}`}
-                                            >
-                                              {requestingId === res.facilityId ? 'Sending...' : 'Request Quote'}
-                                            </button>
+                                            <div className="flex space-x-2 justify-center">
+                                              {activeProject && (
+                                                <button 
+                                                  onClick={() => saveEstimate(res)}
+                                                  disabled={savingEstimateId === res.facilityId + res.truckFleet}
+                                                  className="text-xs font-bold px-3 py-1.5 rounded transition-colors bg-slate-800 hover:bg-emerald-600 text-white disabled:opacity-50 border border-slate-700 hover:border-emerald-600"
+                                                  title="Save to Project"
+                                                >
+                                                  {savingEstimateId === res.facilityId + res.truckFleet ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-floppy-disk"></i>}
+                                                </button>
+                                              )}
+                                              <button 
+                                                onClick={() => requestQuote(res)}
+                                                disabled={requestingId === res.facilityId}
+                                                className={`text-xs font-bold px-3 py-1.5 rounded transition-colors ${jobType === 'Import (Delivery)' ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500/20' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'}`}
+                                              >
+                                                {requestingId === res.facilityId ? 'Sending...' : 'Request Quote'}
+                                              </button>
+                                            </div>
                                           </td>
                                       </tr>
                                     )) : (
@@ -298,6 +446,89 @@ export default function ContractorView({
               </div>
           </div>
       </main>
+
+      {/* Project Creation Modal */}
+      {showProjectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">Create New Project</h2>
+              <button onClick={() => setShowProjectModal(false)} className="text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+            <form onSubmit={createProject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newProjName}
+                  onChange={(e) => setNewProjName(e.target.value)}
+                  placeholder="e.g., Redwood Subdivision" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address</label>
+                <input 
+                  type="text"
+                  required
+                  value={newProjAddr}
+                  onChange={(e) => setNewProjAddr(e.target.value)}
+                  placeholder="e.g., 5600 W 8600 S, West Jordan, UT" 
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
+                />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button type="button" onClick={() => setShowProjectModal(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-700 transition-all">Cancel</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Project Creation Modal */}
+      {showProjectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">Create New Project</h2>
+              <button onClick={() => setShowProjectModal(false)} className="text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark text-lg"></i>
+              </button>
+            </div>
+            <form onSubmit={createProject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={newProjName}
+                  onChange={(e) => setNewProjName(e.target.value)}
+                  placeholder="e.g., Redwood Subdivision" 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address</label>
+                <textarea 
+                  required
+                  value={newProjAddr}
+                  onChange={(e) => setNewProjAddr(e.target.value)}
+                  placeholder="e.g., 5600 W 8600 S, West Jordan, UT" 
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-24" 
+                />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button type="button" onClick={() => setShowProjectModal(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
