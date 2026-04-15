@@ -10,10 +10,10 @@ export default function ContractorView({
   companyName = "Ash Excavation", 
   pitsCount = 14, 
   dumpsCount = 14,
-  recentMaterials = [],
+  // recentMaterials removed for Project Feed
   importMaterials = [],
   exportMaterials = []
-}: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, recentMaterials?: any[], importMaterials?: string[], exportMaterials?: string[] }) {
+}: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, importMaterials?: string[], exportMaterials?: string[] }) {
 
   const supabase = createClient();
   const [projects, setProjects] = useState<any[]>([]);
@@ -23,6 +23,8 @@ export default function ContractorView({
   const [newProjAddr, setNewProjAddr] = useState("");
   const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
   const [savedEstimates, setSavedEstimates] = useState<any[]>([]);
+  const [projectQuotes, setProjectQuotes] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'locked' | 'pending'>('locked');
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
   // Manifest States
@@ -233,11 +235,22 @@ export default function ContractorView({
           facilityId: res.facilityId,
           materialName: req.material_name,
           quantity: req.quantity,
-          address: activeProject.address
+          address: activeProject.address,
+          projectId: activeProject.id
         })
       });
       if (response.ok) {
         alert("Quote request sent directly to the supplier!");
+        // Optimistically add to state
+        setProjectQuotes([...projectQuotes, {
+          id: Math.random().toString(),
+          facility_id: res.facilityId,
+          material_name: req.material_name,
+          quantity: req.quantity,
+          status: 'pending',
+          facility: { name: res.supplier }
+        }]);
+        setActiveTab('pending');
       }
     } catch (e) {
       console.error(e);
@@ -494,35 +507,80 @@ export default function ContractorView({
                       </div>
                   </div>
 
-                  {/* Right Col: Supplier Marketplace */}
+                  {/* Right Col: Project Dashboard Feed */}
                   <div className="col-span-1 space-y-6">
                       <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm h-full flex flex-col">
-                          <div className="p-5 border-b border-slate-700 flex justify-between items-center">
-                              <h2 className="text-lg font-semibold text-white">Live Supplier Feed</h2>
+                          <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+                              <h2 className="text-lg font-semibold text-white mb-4">Project Feed</h2>
+                              
+                              {/* Tabs */}
+                              <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700">
+                                  <button 
+                                    onClick={() => setActiveTab('locked')}
+                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'locked' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
+                                  >
+                                      Locked Pricing
+                                  </button>
+                                  <button 
+                                    onClick={() => setActiveTab('pending')}
+                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center ${activeTab === 'pending' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
+                                  >
+                                      Pending Quotes
+                                      {projectQuotes.filter(q => q.status === 'pending').length > 0 && (
+                                        <span className="ml-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
+                                      )}
+                                  </button>
+                              </div>
                           </div>
-                          <div className="p-5 flex-1 space-y-4">
-                              {recentMaterials.length > 0 ? (
-                                recentMaterials.map((mat: any, idx: number) => (
-                                  <div key={idx} className={`border rounded-lg p-4 ${mat.is_import ? 'border-orange-500/30 bg-orange-500/5' : 'border-blue-500/30 bg-blue-500/5'}`}>
-                                      <div className="flex justify-between items-start">
-                                          <div>
-                                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${mat.is_import ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-400'}`}>
-                                                  {mat.is_import ? 'Material Supply' : 'Accepting Export'}
-                                              </span>
-                                              <h4 className="text-white font-medium text-sm">{mat.facility?.name}</h4>
-                                              <p className="text-xs text-slate-400 mt-1">{mat.name}</p>
-                                          </div>
-                                          <div className="text-right">
-                                              <div className="text-lg font-bold text-white">
-                                                  ${mat.is_import ? mat.price_per_ton.toFixed(2) : mat.price_per_cy.toFixed(2)}
-                                                  <span className="text-xs text-slate-400 font-normal">/{mat.is_import ? 'Ton' : 'CY'}</span>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </div>
-                                ))
+                          
+                          <div className="p-5 flex-1 space-y-4 max-h-[600px] overflow-y-auto">
+                              {!activeProject ? (
+                                <p className="text-slate-500 text-sm text-center py-4">Select a project to view the feed.</p>
+                              ) : activeTab === 'locked' ? (
+                                savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => {
+                                  // Reconstruct supplier name if we can, or just display the data we have. We saved facility_id but not the name. 
+                                  // Ideally we'd fetch facility name in selectProject. For the prototype, we show what we have.
+                                  return (
+                                    <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">Locked</span>
+                                                <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
+                                                <p className="text-xs text-slate-400 mt-1">{est.quantity} Units | {est.truck_fleet}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-lg font-bold text-emerald-400">
+                                                    ${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/Unit</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                  )
+                                }) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
                               ) : (
-                                <p className="text-slate-500 text-sm text-center py-4">No live data yet.</p>
+                                projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => (
+                                    <div key={idx} className={`border rounded-lg p-4 ${q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                    {q.status === 'pending' ? 'Awaiting Response' : 'Quote Received'}
+                                                </span>
+                                                <h4 className="text-white font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
+                                                <p className="text-xs text-slate-400 mt-1">{q.material_name}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-sm font-bold text-slate-300">
+                                                    {q.quantity} <span className="text-xs font-normal">Units</span>
+                                                </div>
+                                                {q.offered_price && (
+                                                  <div className="text-lg font-bold text-emerald-400 mt-1">
+                                                      ${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/Unit</span>
+                                                  </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )) : <p className="text-slate-500 text-sm text-center py-4">No pending quotes.</p>
                               )}
                           </div>
                       </div>

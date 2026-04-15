@@ -99,7 +99,7 @@ export default async function DashboardPage() {
       companyName={profile.company_name}
       pitsCount={pitsCount || 0}
       dumpsCount={dumpsCount || 0}
-      recentMaterials={(recentMaterials as any) || []}
+      
       importMaterials={importMaterials}
       exportMaterials={exportMaterials}
     />

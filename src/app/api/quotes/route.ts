@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { facilityId, materialName, quantity, address } = body;
+    const { facilityId, materialName, quantity, address, projectId } = body;
 
     const { error } = await supabase
       .from('quote_requests')
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
           material_name: materialName,
           quantity: quantity,
           job_site_address: address,
+          project_id: projectId,
           status: 'pending'
         }
       ]);
