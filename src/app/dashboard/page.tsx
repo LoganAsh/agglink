@@ -64,7 +64,7 @@ export default async function DashboardPage() {
 
     let myMaterials = []
     const totalVolume = 2840 // Mock KPI
-    const pendingQuotes = 3 // Mock KPI
+    
     let topMaterial = "UDOT Spec Road Base" // Mock KPI
     
     if (myFacility) {
