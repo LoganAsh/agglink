@@ -91,7 +91,7 @@ export default function ContractorView({
     // Fetch saved estimates
     const { data: estData } = await supabase
       .from('project_estimates')
-      .select('*')
+      .select('*, facility:facilities(name)')
       .eq('project_id', proj.id);
     if (estData) setSavedEstimates(estData);
 
