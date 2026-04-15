@@ -558,11 +558,11 @@ export default function ContractorView({
                                                   {est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}
                                                 </span>
                                                 <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
-                                                <p className="text-xs text-slate-400 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} Units | {est.truck_fleet}</p>
+                                                <p className="text-xs text-slate-400 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} {importMaterials?.includes(est.material_name) ? "Tons" : "CY"} | {est.truck_fleet}</p>
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-lg font-bold text-emerald-400">
-                                                    ${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/Unit</span>
+                                                    ${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -582,11 +582,11 @@ export default function ContractorView({
                                             </div>
                                             <div className="text-right">
                                                 <div className="text-sm font-bold text-slate-300">
-                                                    {q.quantity} <span className="text-xs font-normal">Units</span>
+                                                    {q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span>
                                                 </div>
                                                 {q.offered_price && (
                                                   <div className="text-lg font-bold text-emerald-400 mt-1">
-                                                      ${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/Unit</span>
+                                                      ${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(q.material_name) ? "Ton" : "CY"}</span>
                                                   </div>
                                                 )}
                                             </div>
