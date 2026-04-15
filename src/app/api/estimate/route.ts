@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { jobType = "Import (Delivery)", address, qty = 1500, materials = [] } = body;
+    const { jobType = "Import (Delivery)", address, qty = 1500, materials = [], projectId } = body;
 
     if (!address || !qty) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -70,6 +70,17 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.ORS_API_KEY;
     const results: any[] = [];
+
+    // Fetch custom quotes if projectId is provided
+    let customQuotes: any[] = [];
+    if (projectId) {
+      const { data: quotes } = await supabase
+        .from('quote_requests')
+        .select('*')
+        .eq('project_id', projectId)
+        .eq('status', 'responded');
+      if (quotes) customQuotes = quotes;
+    }
 
     // 3. Process Routing & Costs
     for (const mat of availableMaterials) {
@@ -128,8 +139,16 @@ export async function POST(request: Request) {
         
         let materialCost = 0;
         let basePriceLabel = 0;
+        let isCustomQuote = false;
 
-        if (isImport) {
+        // Check for custom quote
+        const customQuote = customQuotes.find(q => q.facility_id === fac.id && q.material_name === mat.name);
+
+        if (customQuote && customQuote.offered_price) {
+          materialCost = customQuote.offered_price * qty;
+          basePriceLabel = customQuote.offered_price;
+          isCustomQuote = true;
+        } else if (isImport) {
           materialCost = mat.price_per_ton * qty;
           basePriceLabel = mat.price_per_ton;
         } else {
@@ -137,7 +156,7 @@ export async function POST(request: Request) {
           const dumpFee = truck.type === '10-Wheeler' ? mat.price_10w_load : mat.price_sd_load;
           if (dumpFee > 0) {
             materialCost = trips * dumpFee;
-            basePriceLabel = dumpFee; // Store as raw number, front-end formats it
+            basePriceLabel = dumpFee; 
           } else {
             materialCost = mat.price_per_cy * qty;
             basePriceLabel = mat.price_per_cy;
@@ -155,7 +174,8 @@ export async function POST(request: Request) {
           basePrice: basePriceLabel,
           frtPerUnit: totalTruckingCost / qty,
           totalPerUnit: totalCost / qty,
-          totalCost: totalCost
+          totalCost: totalCost,
+          isCustomQuote: isCustomQuote
         });
       }
     }

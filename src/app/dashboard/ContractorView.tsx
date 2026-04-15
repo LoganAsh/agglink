@@ -158,7 +158,8 @@ export default function ContractorView({
             address: activeProject.address, 
             qty: req.quantity, 
             jobType: req.job_type, 
-            materials: [req.material_name] 
+            materials: [req.material_name],
+            projectId: activeProject.id
           })
         });
         const data = await response.json();
@@ -306,7 +307,10 @@ export default function ContractorView({
                     <span className="text-slate-400 italic">Select a project to begin...</span>
                   )}
               </div>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2 md:space-x-4">
+                  <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700">
+                    <LogoutButton />
+                  </div>
                   {projects.length > 0 && (
                     <select 
                       className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
@@ -459,7 +463,10 @@ export default function ContractorView({
                                                               <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
                                                                   <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
                                                                   <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
-                                                                  <td className="px-4 py-2 text-right text-slate-400">${res.basePrice.toFixed(2)}</td>
+                                                                  <td className="px-4 py-2 text-right text-slate-400">
+                                                                    ${res.basePrice.toFixed(2)}
+                                                                    {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Special Pricing Applied">★</span>}
+                                                                  </td>
                                                                   <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}</td>
                                                                   <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
                                                                   <td className="px-4 py-2">
