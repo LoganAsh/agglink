@@ -86,7 +86,6 @@ export default async function DashboardPage() {
         profileName={myFacility?.name || "Your Pit"}
         companyName={profile.company_name}
         totalVolume={totalVolume}
-        pendingQuotes={pendingQuotes}
         topMaterial={topMaterial}
         materials={(myMaterials as any)}
       />
