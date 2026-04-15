@@ -55,6 +55,29 @@ export default function SupplierView({
         .eq('id', quote.id);
         
       if (!error) {
+        // Automatically update any saved project estimates for this contractor/project/material
+        // We calculate the new total price based on the new base price
+        const { data: existingEstimates } = await supabase
+          .from('project_estimates')
+          .select('*')
+          .eq('project_id', quote.project_id)
+          .eq('facility_id', quote.facility_id)
+          .eq('material_name', quote.material_name);
+          
+        if (existingEstimates && existingEstimates.length > 0) {
+          for (const est of existingEstimates) {
+            const newTotal = (price * est.quantity) + (est.freight_price * est.quantity);
+            await supabase
+              .from('project_estimates')
+              .update({
+                base_price: price,
+                total_price: newTotal,
+                is_custom_quote: true
+              })
+              .eq('id', est.id);
+          }
+        }
+
         setQuotes(quotes.filter(q => q.id !== quote.id));
         setRespondingTo(null);
       } else {
