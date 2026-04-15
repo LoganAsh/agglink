@@ -554,7 +554,9 @@ export default function ContractorView({
                                     <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">Locked</span>
+                                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">
+                                                  {est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}
+                                                </span>
                                                 <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
                                                 <p className="text-xs text-slate-400 mt-1">{est.quantity} Units | {est.truck_fleet}</p>
                                             </div>
