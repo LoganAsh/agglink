@@ -87,6 +87,8 @@ export default function ContractorView({
 
   const selectProject = async (proj: any) => {
     setActiveProject(proj);
+    setManifestResults(proj.cached_results || {});
+    setLastCalculated(proj.last_calculated ? new Date(proj.last_calculated) : null);
     
     // Fetch saved estimates
     const { data: estData } = await supabase
@@ -176,6 +178,16 @@ export default function ContractorView({
     }
     
     setManifestResults(newResults);
+    
+    const now = new Date();
+    setLastCalculated(now);
+    
+    // Save these results permanently to the project
+    await supabase.from('projects').update({
+      cached_results: newResults,
+      last_calculated: now.toISOString()
+    }).eq('id', activeProject.id);
+
     setIsCalculating(false);
   };
 
@@ -374,14 +386,21 @@ export default function ContractorView({
                           
                           {/* Manifest Header */}
                           <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
-                              <h2 className="text-lg font-semibold text-white">Project Manifest (Bill of Materials)</h2>
+                              <div>
+                                <h2 className="text-lg font-semibold text-white">Project Manifest (Bill of Materials)</h2>
+                                {lastCalculated && (
+                                  <p className="text-xs text-slate-400 mt-0.5">
+                                    <i className="fa-solid fa-clock mr-1"></i> Last Routed: {lastCalculated.toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'})}
+                                  </p>
+                                )}
+                              </div>
                               {requirements.length > 0 && (
                                 <button 
                                   onClick={calculateManifest} 
                                   disabled={isCalculating}
                                   className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50"
                                 >
-                                  {isCalculating ? 'Routing All Items...' : 'Optimize Logistics'}
+                                  {isCalculating ? 'Routing...' : (lastCalculated ? 'Re-Route Logistics' : 'Optimize Logistics')}
                                 </button>
                               )}
                           </div>
