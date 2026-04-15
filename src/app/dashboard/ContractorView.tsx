@@ -176,29 +176,49 @@ export default function ContractorView({
     setIsCalculating(false);
   };
 
-  const saveEstimate = async (res: any, req: any) => {
+  const toggleEstimate = async (res: any, req: any) => {
     if (!activeProject) return;
     setSavingEstimateId(res.facilityId + res.truckFleet + req.id);
     
-    const { data, error } = await supabase
-      .from('project_estimates')
-      .insert([{
-        project_id: activeProject.id,
-        facility_id: res.facilityId,
-        material_name: req.material_name,
-        quantity: req.quantity,
-        truck_fleet: res.truckFleet,
-        base_price: res.basePrice,
-        freight_price: res.frtPerUnit,
-        total_price: res.totalPerUnit
-      }])
-      .select()
-      .single();
-      
-    if (data && !error) {
-      setSavedEstimates([...savedEstimates, data]);
+    // Check if this exact option is already saved
+    const existingExact = savedEstimates.find(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
+
+    if (existingExact) {
+      // Toggle OFF: Remove it
+      const { error } = await supabase.from('project_estimates').delete().eq('id', existingExact.id);
+      if (!error) {
+        setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id));
+      } else {
+        alert("Failed to remove saved estimate.");
+      }
     } else {
-      alert("Failed to save estimate.");
+      // Toggle ON: Remove any existing for this material, then insert new
+      const existingForMat = savedEstimates.find(se => se.material_name === req.material_name);
+      if (existingForMat) {
+        await supabase.from('project_estimates').delete().eq('id', existingForMat.id);
+      }
+
+      const { data, error } = await supabase
+        .from('project_estimates')
+        .insert([{
+          project_id: activeProject.id,
+          facility_id: res.facilityId,
+          material_name: req.material_name,
+          quantity: req.quantity,
+          truck_fleet: res.truckFleet,
+          base_price: res.basePrice,
+          freight_price: res.frtPerUnit,
+          total_price: res.totalPerUnit
+        }])
+        .select()
+        .single();
+        
+      if (data && !error) {
+        const filteredState = savedEstimates.filter(se => se.material_name !== req.material_name);
+        setSavedEstimates([...filteredState, data]);
+      } else {
+        alert("Failed to save estimate.");
+      }
     }
     setSavingEstimateId(null);
   };
@@ -429,12 +449,18 @@ export default function ContractorView({
                                                                   <td className="px-4 py-2">
                                                                     <div className="flex space-x-1 justify-center">
                                                                         <button 
-                                                                          onClick={() => saveEstimate(res, req)}
-                                                                          disabled={isSaved || savingEstimateId === res.facilityId + res.truckFleet + req.id}
-                                                                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${isSaved ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'}`}
-                                                                          title="Lock in this price"
+                                                                          onClick={() => toggleEstimate(res, req)}
+                                                                          disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
+                                                                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-white hover:bg-red-500 hover:border-red-500' : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'}`}
+                                                                          title={isSaved ? "Remove saved estimate" : "Lock in this price"}
                                                                         >
-                                                                          {isSaved ? <i className="fa-solid fa-check"></i> : <i className="fa-solid fa-floppy-disk"></i>}
+                                                                          {savingEstimateId === res.facilityId + res.truckFleet + req.id ? (
+                                                                            <i className="fa-solid fa-spinner fa-spin"></i>
+                                                                          ) : isSaved ? (
+                                                                            <i className="fa-solid fa-xmark"></i>
+                                                                          ) : (
+                                                                            <i className="fa-solid fa-floppy-disk"></i>
+                                                                          )}
                                                                         </button>
                                                                         <button 
                                                                           onClick={() => requestQuote(res, req)}
