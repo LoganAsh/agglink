@@ -31,11 +31,7 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .in('type', ['dump', 'both'])
 
-  // Fetch 3 random/recent materials
-  const { data: recentMaterials } = await supabase
-    .from('materials')
-    .select('name, price_per_ton, price_per_cy, is_import, facility:facilities(name)')
-    .limit(3)
+
 
   // Fetch all unique materials for the dropdowns
   const { data: allMatsData } = await supabase
