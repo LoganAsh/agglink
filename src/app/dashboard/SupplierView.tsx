@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
@@ -10,16 +11,58 @@ export default function SupplierView({
   profileName = "Black Rock Pit", 
   companyName = "Geneva Rock",
   totalVolume = 0,
-  pendingQuotes = 0,
+  
   topMaterial = "UDOT Spec Road Base",
   materials = []
-}: { profileName?: string, companyName?: string, totalVolume?: number, pendingQuotes?: number, topMaterial?: string, materials?: any[] }) {
+}: { profileName?: string, companyName?: string, totalVolume?: number,  topMaterial?: string, materials?: any[] }) {
 
   const supabase = createClient();
   const [mats, setMats] = useState<any[]>(materials);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<number | string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [quotes, setQuotes] = useState<any[]>([]);
+  const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [offerPrice, setOfferPrice] = useState<number | string>("");
+
+  React.useEffect(() => {
+    fetchQuotes();
+  }, []);
+
+  const fetchQuotes = async () => {
+    setLoadingQuotes(true);
+    // Fetch quotes meant for facilities owned by this user
+    const { data, error } = await supabase
+      .from('quote_requests')
+      .select('*, contractor:profiles(company_name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+      
+    if (!error && data) {
+      setQuotes(data);
+    }
+    setLoadingQuotes(false);
+  };
+
+  const submitQuote = async (quote: any) => {
+    setIsSaving(true);
+    const price = parseFloat(offerPrice as string);
+    if (!isNaN(price)) {
+      const { error } = await supabase
+        .from('quote_requests')
+        .update({ status: 'responded', offered_price: price })
+        .eq('id', quote.id);
+        
+      if (!error) {
+        setQuotes(quotes.filter(q => q.id !== quote.id));
+        setRespondingTo(null);
+      } else {
+        alert("Failed to submit quote. Check RLS policies.");
+      }
+    }
+    setIsSaving(false);
+  };
 
   const startEditing = (mat: any) => {
     setEditingId(mat.id);
@@ -139,7 +182,7 @@ export default function SupplierView({
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Pending Quotes</p>
-                            <h3 className="text-3xl font-bold text-white mt-1">{pendingQuotes} <span className="text-sm font-normal text-orange-500">Requests</span></h3>
+                            <h3 className="text-3xl font-bold text-white mt-1">{quotes.length} <span className="text-sm font-normal text-orange-500">Requests</span></h3>
                         </div>
                         <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
                             <i className="fa-solid fa-hand-holding-dollar text-lg"></i>
@@ -266,45 +309,56 @@ export default function SupplierView({
                             </span>
                         </div>
                         
-                        <div className="p-5 space-y-4">
-                            {/*  Request 1  */}
-                            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className="text-white font-semibold">Ash Excavation</h4>
-                                    <span className="text-xs text-slate-400">10 mins ago</span>
-                                </div>
-                                <p className="text-sm text-slate-300">Project Alpha: <span className="font-bold text-white">1,500 Tons</span></p>
-                                <p className="text-sm text-slate-400 mt-1">Material: UDOT Spec Road Base</p>
-                                <div className="mt-4 pt-3 border-t border-slate-700 flex items-center justify-between">
-                                    <div className="flex items-center">
-                                        <span className="text-xs text-slate-500 mr-2">Set Price:</span>
-                                        <div className="relative">
-                                            <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white text-sm">$</span>
-                                            <input type="text" value="9.50" className="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 pl-5 text-sm text-white focus:border-orange-500 focus:outline-none" />
-                                        </div>
-                                    </div>
-                                    <button className="bg-orange-500 hover:bg-orange-500Hover text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">
-                                        Send Quote
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/*  Request 2  */}
-                            <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 opacity-75">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h4 className="text-white font-semibold">Salt Lake Utilities</h4>
-                                    <span className="text-xs text-slate-400">2 hours ago</span>
-                                </div>
-                                <p className="text-sm text-slate-300">City Water Main: <span className="font-bold text-white">800 Tons</span></p>
-                                <p className="text-sm text-slate-400 mt-1">Material: Bedding Sand</p>
-                                <div className="mt-4 pt-3 border-t border-slate-700 flex justify-end">
-                                    <button className="text-slate-400 hover:text-white text-xs font-semibold mr-4">Decline</button>
-                                    <button className="text-orange-500 hover:text-orange-500Hover text-xs font-bold transition-colors">
-                                        Review Request <i className="fa-solid fa-arrow-right ml-1"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <div className="p-5 space-y-4 max-h-[500px] overflow-y-auto">
+                              {loadingQuotes ? (
+                                <p className="text-slate-500 text-sm text-center py-4">Checking for requests...</p>
+                              ) : quotes.length > 0 ? (
+                                quotes.map((q: any) => (
+                                  <div key={q.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 transition-all">
+                                      <div className="flex justify-between items-start mb-2">
+                                          <h4 className="text-white font-semibold">{q.contractor?.company_name || "Unknown Contractor"}</h4>
+                                          <span className="text-xs text-slate-400">New</span>
+                                      </div>
+                                      <p className="text-sm text-slate-300 truncate">Site: {q.job_site_address}</p>
+                                      <p className="text-sm text-slate-300 mt-2">Requested: <span className="font-bold text-white">{q.quantity.toLocaleString()} Units</span></p>
+                                      <p className="text-sm text-slate-400 mt-1">Material: {q.material_name}</p>
+                                      <div className="mt-4 pt-3 border-t border-slate-700 flex items-center justify-between">
+                                          {respondingTo === q.id ? (
+                                            <>
+                                              <div className="flex items-center">
+                                                  <span className="text-xs text-slate-500 mr-2">Set Price:</span>
+                                                  <div className="relative">
+                                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white text-sm">$</span>
+                                                      <input 
+                                                        type="number" 
+                                                        step="0.01"
+                                                        value={offerPrice}
+                                                        onChange={(e) => setOfferPrice(e.target.value)}
+                                                        className="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 pl-5 text-sm text-white focus:border-orange-500 focus:outline-none" 
+                                                      />
+                                                  </div>
+                                              </div>
+                                              <div className="flex space-x-2">
+                                                <button onClick={() => setRespondingTo(null)} className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
+                                                <button disabled={isSaving} onClick={() => submitQuote(q)} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50">
+                                                    Send Quote
+                                                </button>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="flex justify-end w-full">
+                                                <button onClick={() => { setRespondingTo(q.id); setOfferPrice(""); }} className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
+                                                    Draft Response <i className="fa-solid fa-arrow-right ml-1"></i>
+                                                </button>
+                                            </div>
+                                          )}
+                                      </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-slate-500 text-sm text-center py-4">No pending quote requests.</p>
+                              )}
+                          </div>
                     </div>
                 </div>
 
