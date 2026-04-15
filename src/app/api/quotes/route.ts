@@ -23,7 +23,6 @@ export async function POST(request: Request) {
           material_name: materialName,
           quantity: quantity,
           job_site_address: address,
-          project_id: projectId,
           status: 'pending'
         }
       ]);

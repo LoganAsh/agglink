@@ -253,7 +253,7 @@ export default function ContractorView({
         setActiveTab('pending');
       }
     } catch (e) {
-      console.error(e);
+      alert("Error: " + e.message); console.error(e);
     }
     setRequestingId(null);
   };
