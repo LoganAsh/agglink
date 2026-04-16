@@ -4,6 +4,9 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
+import dynamic from 'next/dynamic';
+
+const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
 export default function ContractorView({ 
   profileName = "Logan Ash", 
@@ -26,6 +29,10 @@ export default function ContractorView({
   const [projectQuotes, setProjectQuotes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'locked' | 'pending'>('locked');
   const [requestingId, setRequestingId] = useState<string | null>(null);
+
+  // Map States
+  const [jobLat, setJobLat] = useState<number | undefined>(undefined);
+  const [jobLon, setJobLon] = useState<number | undefined>(undefined);
 
   // Manifest States
   const [requirements, setRequirements] = useState<any[]>([]);
@@ -167,6 +174,11 @@ export default function ContractorView({
         });
         const data = await response.json();
         if (data.success) {
+          // Update map coordinates if returned
+          if (data.jobLat && data.jobLon) {
+            setJobLat(data.jobLat);
+            setJobLon(data.jobLon);
+          }
           // Store top 5 options for this requirement
           newResults[req.id] = data.data.slice(0, 5);
         } else {
@@ -383,6 +395,21 @@ export default function ContractorView({
                   
                   {/* Left Col: Project Manifest & Routing */}
                   <div className="col-span-1 lg:col-span-2 space-y-6">
+                      <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                          <div className="h-64 bg-slate-900 w-full relative border-b border-slate-700">
+                              <MapComponent 
+                                jobLat={jobLat} 
+                                jobLon={jobLon} 
+                                facilities={Object.values(manifestResults).flat().map((r: any) => ({
+                                  lat: r.lat,
+                                  lon: r.lon,
+                                  name: r.supplier,
+                                  isDump: r.basePrice === 0 || r.frtPerUnit > 0
+                                }))}
+                              />
+                          </div>
+                      </div>
+
                       <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
                           
                           {/* Manifest Header */}

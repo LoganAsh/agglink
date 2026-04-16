@@ -172,6 +172,8 @@ export async function POST(request: Request) {
           truckFleet: truck.type,
           cycle: Math.round(cycleTimeHr * 60),
           basePrice: basePriceLabel,
+          lat: fac.latitude,
+          lon: fac.longitude,
           frtPerUnit: totalTruckingCost / qty,
           totalPerUnit: totalCost / qty,
           totalCost: totalCost,
@@ -183,7 +185,12 @@ export async function POST(request: Request) {
     // Sort by cheapest total per unit
     results.sort((a, b) => a.totalPerUnit - b.totalPerUnit);
 
-    return NextResponse.json({ success: true, data: results.slice(0, 10) });
+    return NextResponse.json({ 
+      success: true, 
+      jobLat: jobLat,
+      jobLon: jobLon,
+      data: results.slice(0, 10) 
+    });
 
   } catch (error) {
     console.error('API Error:', error);
