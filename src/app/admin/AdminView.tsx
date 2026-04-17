@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any *//* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 “use client”;
 import React, { useState, useMemo } from ‘react’;
 import LogoutButton from ‘@/components/LogoutButton’;
@@ -24,7 +24,6 @@ materials: any[];
 }) {
 const [activeTab, setActiveTab] = useState<Tab>(‘overview’);
 
-// ── Derived stats ──────────────────────────────────────────────────────────
 const stats = useMemo(() => {
 const totalEstValue = estimates.reduce((sum, e) => sum + (e.total_price * e.quantity), 0);
 const avgEstPrice = estimates.length > 0
@@ -92,8 +91,10 @@ const tabs: { id: Tab; label: string; icon: string }[] = [
 { id: ‘quotes’,     label: ‘Quotes’,     icon: ‘fa-file-invoice-dollar’ },
 ];
 
-const fmtCurrency = (n: number) => ‘$’ + n.toLocaleString(‘en-US’, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = (d: string) => new Date(d).toLocaleDateString(‘en-US’, { month: ‘short’, day: ‘numeric’, year: ‘numeric’ });
+const fmtCurrency = (n: number) =>
+‘$’ + n.toLocaleString(‘en-US’, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtDate = (d: string) =>
+new Date(d).toLocaleDateString(‘en-US’, { month: ‘short’, day: ‘numeric’, year: ‘numeric’ });
 
 return (
 <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
@@ -135,51 +136,70 @@ return (
   <main className="flex-1 flex flex-col h-screen overflow-y-auto">
     <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10 flex-shrink-0">
       <div>
-        <h1 className="text-lg font-semibold text-white capitalize">{activeTab === 'overview' ? 'Admin Overview' : activeTab}</h1>
+        <h1 className="text-lg font-semibold text-white capitalize">
+          {activeTab === 'overview' ? 'Admin Overview' : activeTab}
+        </h1>
         <p className="text-xs text-slate-500">AggLink platform administration</p>
       </div>
       <a href="/dashboard" className="text-xs text-slate-400 hover:text-orange-400 transition-colors border border-slate-700 hover:border-orange-500/40 px-3 py-1.5 rounded-lg">
-        ← Contractor View
+        &larr; Contractor View
       </a>
     </header>
 
     <div className="p-6 space-y-6">
 
-      {/* ── OVERVIEW ── */}
+      {/* OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Total Users',         value: stats.totalUsers,                          sub: `${stats.contractors} contractors · ${stats.suppliers} suppliers`, color: 'text-white' },
-              { label: 'Active Projects',      value: stats.totalProjects,                       sub: `${stats.totalEstimates} estimates generated`,                    color: 'text-white' },
-              { label: 'Est. Platform Value',  value: fmtCurrency(stats.totalEstValue),          sub: 'across all project estimates',                                   color: 'text-emerald-400' },
-              { label: 'Avg Price / Unit',     value: fmtCurrency(stats.avgEstPrice),            sub: 'blended material + freight',                                     color: 'text-orange-400' },
-            ].map(k => (
-              <div key={k.label} className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{k.label}</p>
-                <h3 className={`text-2xl font-bold mt-1 ${k.color}`}>{k.value}</h3>
-                <p className="text-xs text-slate-500 mt-2">{k.sub}</p>
-              </div>
-            ))}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Users</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{stats.totalUsers}</h3>
+              <p className="text-xs text-slate-500 mt-2">{stats.contractors} contractors | {stats.suppliers} suppliers</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Projects</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{stats.totalProjects}</h3>
+              <p className="text-xs text-slate-500 mt-2">{stats.totalEstimates} estimates generated</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Est. Platform Value</p>
+              <h3 className="text-2xl font-bold text-emerald-400 mt-1">{fmtCurrency(stats.totalEstValue)}</h3>
+              <p className="text-xs text-slate-500 mt-2">across all project estimates</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Avg Price / Unit</p>
+              <h3 className="text-2xl font-bold text-orange-400 mt-1">{fmtCurrency(stats.avgEstPrice)}</h3>
+              <p className="text-xs text-slate-500 mt-2">blended material + freight</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Facilities',       value: stats.totalFacilities,                                                                      sub: `${stats.pits} pits · ${stats.dumps} dumps · ${stats.both} both`, color: 'text-white' },
-              { label: 'Materials Listed', value: stats.totalMaterials,                                                                       sub: 'across all facilities',                                          color: 'text-white' },
-              { label: 'Quote Requests',   value: stats.totalQuotes,                                                                          sub: `${stats.pendingQuotes} pending · ${stats.acceptedQuotes} accepted`, color: 'text-white' },
-              { label: 'Quote Conversion', value: stats.quoteConversionRate.toFixed(1) + '%',                                                 sub: 'accepted / total requests',                                      color: stats.quoteConversionRate > 30 ? 'text-emerald-400' : 'text-orange-400' },
-            ].map(k => (
-              <div key={k.label} className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{k.label}</p>
-                <h3 className={`text-2xl font-bold mt-1 ${k.color}`}>{k.value}</h3>
-                <p className="text-xs text-slate-500 mt-2">{k.sub}</p>
-              </div>
-            ))}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Facilities</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{stats.totalFacilities}</h3>
+              <p className="text-xs text-slate-500 mt-2">{stats.pits} pits | {stats.dumps} dumps | {stats.both} both</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Materials Listed</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{stats.totalMaterials}</h3>
+              <p className="text-xs text-slate-500 mt-2">across all facilities</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Quote Requests</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{stats.totalQuotes}</h3>
+              <p className="text-xs text-slate-500 mt-2">{stats.pendingQuotes} pending | {stats.acceptedQuotes} accepted</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Quote Conversion</p>
+              <h3 className={`text-2xl font-bold mt-1 ${stats.quoteConversionRate > 30 ? 'text-emerald-400' : 'text-orange-400'}`}>
+                {stats.quoteConversionRate.toFixed(1)}%
+              </h3>
+              <p className="text-xs text-slate-500 mt-2">accepted / total requests</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Materials */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
                 <h2 className="text-sm font-semibold text-white">Top Requested Materials</h2>
@@ -207,13 +227,14 @@ return (
               </div>
             </div>
 
-            {/* Top Facilities */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
                 <h2 className="text-sm font-semibold text-white">Most Used Facilities</h2>
               </div>
               <div className="p-4 space-y-3">
-                {stats.topFacilities.filter(f => f.usageCount > 0).length === 0 && <p className="text-slate-500 text-sm text-center py-4">No estimate data yet.</p>}
+                {stats.topFacilities.filter(f => f.usageCount > 0).length === 0 && (
+                  <p className="text-slate-500 text-sm text-center py-4">No estimate data yet.</p>
+                )}
                 {stats.topFacilities.filter(f => f.usageCount > 0).map((fac) => {
                   const maxCount = stats.topFacilities[0]?.usageCount || 1;
                   const pct = (fac.usageCount / maxCount) * 100;
@@ -240,7 +261,7 @@ return (
         </div>
       )}
 
-      {/* ── USERS ── */}
+      {/* USERS */}
       {activeTab === 'users' && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
@@ -259,11 +280,17 @@ return (
               <tbody className="divide-y divide-slate-700/50">
                 {profiles.map(p => {
                   const userProjects = projects.filter(pr => pr.contractor_id === p.id).length;
-                  const roleColor = p.role === 'admin' ? 'bg-orange-500/20 text-orange-400' : p.role === 'supplier' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400';
+                  const roleColor = p.role === 'admin'
+                    ? 'bg-orange-500/20 text-orange-400'
+                    : p.role === 'supplier'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-emerald-500/20 text-emerald-400';
                   return (
                     <tr key={p.id} className="hover:bg-slate-700/30 transition-colors">
                       <td className="px-5 py-3 font-medium text-white">{p.company_name || '—'}</td>
-                      <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleColor}`}>{p.role}</span></td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleColor}`}>{p.role}</span>
+                      </td>
                       <td className="px-5 py-3 text-slate-400">{userProjects}</td>
                       <td className="px-5 py-3 text-slate-400">{p.created_at ? fmtDate(p.created_at) : '—'}</td>
                     </tr>
@@ -275,7 +302,7 @@ return (
         </div>
       )}
 
-      {/* ── PROJECTS ── */}
+      {/* PROJECTS */}
       {activeTab === 'projects' && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
@@ -298,7 +325,11 @@ return (
                   const projEstimates = estimates.filter(e => e.project_id === p.id);
                   const projValue = projEstimates.reduce((sum, e) => sum + (e.total_price * e.quantity), 0);
                   const contractor = profiles.find(pr => pr.id === p.contractor_id);
-                  const statusColor = p.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : p.status === 'completed' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-600/50 text-slate-400';
+                  const statusColor = p.status === 'active'
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : p.status === 'completed'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-slate-600/50 text-slate-400';
                   return (
                     <tr key={p.id} className="hover:bg-slate-700/30 transition-colors">
                       <td className="px-5 py-3">
@@ -306,21 +337,27 @@ return (
                         <div className="text-xs text-slate-500 truncate max-w-[200px]">{p.address}</div>
                       </td>
                       <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '—'}</td>
-                      <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{p.status}</span></td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{p.status}</span>
+                      </td>
                       <td className="px-5 py-3 text-slate-400">{projEstimates.length}</td>
-                      <td className="px-5 py-3 text-right font-semibold text-emerald-400">{projValue > 0 ? fmtCurrency(projValue) : '—'}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-emerald-400">
+                        {projValue > 0 ? fmtCurrency(projValue) : '—'}
+                      </td>
                       <td className="px-5 py-3 text-slate-400">{fmtDate(p.created_at)}</td>
                     </tr>
                   );
                 })}
-                {projects.length === 0 && <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">No projects yet.</td></tr>}
+                {projects.length === 0 && (
+                  <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">No projects yet.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* ── FACILITIES ── */}
+      {/* FACILITIES */}
       {activeTab === 'facilities' && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
@@ -346,13 +383,21 @@ return (
                 {facilities.map(f => {
                   const facMaterials = materials.filter(m => m.facility_id === f.id).length;
                   const facEstimates = estimates.filter(e => e.facility_id === f.id).length;
-                  const typeColor = f.type === 'pit' ? 'bg-orange-500/20 text-orange-400' : f.type === 'dump' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400';
+                  const typeColor = f.type === 'pit'
+                    ? 'bg-orange-500/20 text-orange-400'
+                    : f.type === 'dump'
+                    ? 'bg-blue-500/20 text-blue-400'
+                    : 'bg-emerald-500/20 text-emerald-400';
                   return (
                     <tr key={f.id} className="hover:bg-slate-700/30 transition-colors">
                       <td className="px-5 py-3 font-medium text-white">{f.name}</td>
-                      <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span></td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span>
+                      </td>
                       <td className="px-5 py-3 text-slate-400">{facMaterials}</td>
-                      <td className="px-5 py-3"><span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span></td>
+                      <td className="px-5 py-3">
+                        <span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span>
+                      </td>
                       <td className="px-5 py-3 text-slate-400">{f.created_at ? fmtDate(f.created_at) : '—'}</td>
                     </tr>
                   );
@@ -363,21 +408,31 @@ return (
         </div>
       )}
 
-      {/* ── MATERIALS ── */}
+      {/* MATERIALS */}
       {activeTab === 'materials' && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Total Materials',  value: materials.length },
-              { label: 'Import Materials', value: materials.filter(m => m.is_import).length },
-              { label: 'Export Materials', value: materials.filter(m => !m.is_import).length },
-              { label: 'Avg Price / Ton',  value: fmtCurrency(materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) / (materials.filter(m => m.price_per_ton).length || 1)) },
-            ].map(k => (
-              <div key={k.label} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{k.label}</p>
-                <h3 className="text-2xl font-bold text-white mt-1">{k.value}</h3>
-              </div>
-            ))}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Materials</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{materials.length}</h3>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Import Materials</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{materials.filter(m => m.is_import).length}</h3>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Export Materials</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{materials.filter(m => !m.is_import).length}</h3>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Avg Price / Ton</p>
+              <h3 className="text-2xl font-bold text-white mt-1">
+                {fmtCurrency(
+                  materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) /
+                  (materials.filter(m => m.price_per_ton).length || 1)
+                )}
+              </h3>
+            </div>
           </div>
           <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
@@ -407,8 +462,12 @@ return (
                             {m.is_import ? 'Import' : 'Export'}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-right font-semibold text-slate-300">{m.price_per_ton ? fmtCurrency(m.price_per_ton) : '—'}</td>
-                        <td className="px-5 py-3"><span className={`font-semibold ${reqCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{reqCount}</span></td>
+                        <td className="px-5 py-3 text-right font-semibold text-slate-300">
+                          {m.price_per_ton ? fmtCurrency(m.price_per_ton) : '—'}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`font-semibold ${reqCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{reqCount}</span>
+                        </td>
                       </tr>
                     );
                   })}
@@ -419,21 +478,26 @@ return (
         </div>
       )}
 
-      {/* ── QUOTES ── */}
+      {/* QUOTES */}
       {activeTab === 'quotes' && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Total Requests', value: quotes.length,                                        color: 'text-white' },
-              { label: 'Pending',        value: quotes.filter(q => q.status === 'pending').length,    color: 'text-orange-400' },
-              { label: 'Responded',      value: quotes.filter(q => q.status === 'responded').length,  color: 'text-blue-400' },
-              { label: 'Accepted',       value: quotes.filter(q => q.status === 'accepted').length,   color: 'text-emerald-400' },
-            ].map(k => (
-              <div key={k.label} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{k.label}</p>
-                <h3 className={`text-2xl font-bold mt-1 ${k.color}`}>{k.value}</h3>
-              </div>
-            ))}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Requests</p>
+              <h3 className="text-2xl font-bold text-white mt-1">{quotes.length}</h3>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Pending</p>
+              <h3 className="text-2xl font-bold text-orange-400 mt-1">{quotes.filter(q => q.status === 'pending').length}</h3>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Responded</p>
+              <h3 className="text-2xl font-bold text-blue-400 mt-1">{quotes.filter(q => q.status === 'responded').length}</h3>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Accepted</p>
+              <h3 className="text-2xl font-bold text-emerald-400 mt-1">{quotes.filter(q => q.status === 'accepted').length}</h3>
+            </div>
           </div>
           <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
@@ -457,9 +521,9 @@ return (
                     const fac = facilities.find(f => f.id === q.facility_id);
                     const contractor = profiles.find(p => p.id === q.contractor_id);
                     const statusColor =
-                      q.status === 'accepted'  ? 'bg-emerald-500/20 text-emerald-400' :
-                      q.status === 'pending'   ? 'bg-orange-500/20 text-orange-400' :
-                      q.status === 'declined'  ? 'bg-red-500/20 text-red-400' :
+                      q.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-400' :
+                      q.status === 'pending'  ? 'bg-orange-500/20 text-orange-400' :
+                      q.status === 'declined' ? 'bg-red-500/20 text-red-400' :
                       'bg-blue-500/20 text-blue-400';
                     return (
                       <tr key={q.id} className="hover:bg-slate-700/30 transition-colors">
@@ -467,13 +531,19 @@ return (
                         <td className="px-5 py-3 text-slate-400 truncate max-w-[150px]">{fac?.name || '—'}</td>
                         <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '—'}</td>
                         <td className="px-5 py-3 text-right text-slate-400">{q.quantity?.toLocaleString()}</td>
-                        <td className="px-5 py-3 text-right font-semibold text-emerald-400">{q.offered_price ? fmtCurrency(q.offered_price) : '—'}</td>
-                        <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span></td>
+                        <td className="px-5 py-3 text-right font-semibold text-emerald-400">
+                          {q.offered_price ? fmtCurrency(q.offered_price) : '—'}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span>
+                        </td>
                         <td className="px-5 py-3 text-slate-400">{fmtDate(q.created_at)}</td>
                       </tr>
                     );
                   })}
-                  {quotes.length === 0 && <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">No quote requests yet.</td></tr>}
+                  {quotes.length === 0 && (
+                    <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">No quote requests yet.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
