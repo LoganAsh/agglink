@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import dynamic from 'next/dynamic';
@@ -13,7 +13,6 @@ export default function ContractorView({
   companyName = "Ash Excavation", 
   pitsCount = 14, 
   dumpsCount = 14,
-  // recentMaterials removed for Project Feed
   importMaterials = [],
   exportMaterials = []
 }: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, importMaterials?: string[], exportMaterials?: string[] }) {
@@ -30,9 +29,17 @@ export default function ContractorView({
   const [activeTab, setActiveTab] = useState<'locked' | 'pending'>('locked');
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
-  // Map States
+  // Map States (dashboard map)
   const [jobLat, setJobLat] = useState<number | undefined>(undefined);
   const [jobLon, setJobLon] = useState<number | undefined>(undefined);
+
+  // All facilities for map markers
+  const [allFacilities, setAllFacilities] = useState<any[]>([]);
+
+  // Modal map states
+  const [modalJobLat, setModalJobLat] = useState<number | undefined>(undefined);
+  const [modalJobLon, setModalJobLon] = useState<number | undefined>(undefined);
+  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
   // Manifest States
   const [requirements, setRequirements] = useState<any[]>([]);
@@ -47,19 +54,52 @@ export default function ContractorView({
 
   useEffect(() => {
     fetchProjects();
+    fetchAllFacilities();
   }, []);
 
   const fetchProjects = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    
     const { data } = await supabase
       .from('projects')
       .select('*')
       .eq('contractor_id', user.id)
       .order('created_at', { ascending: false });
-      
     if (data) setProjects(data);
+  };
+
+  const fetchAllFacilities = async () => {
+    const { data } = await supabase
+      .from('facilities')
+      .select('id, name, type, latitude, longitude');
+    if (data) setAllFacilities(data);
+  };
+
+  // Reverse geocode a lat/lon to a human-readable address using OpenStreetMap Nominatim
+  const handleMapClick = useCallback(async (lat: number, lon: number) => {
+    setModalJobLat(lat);
+    setModalJobLon(lon);
+    setIsReverseGeocoding(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+      );
+      const data = await res.json();
+      if (data.display_name) {
+        setNewProjAddr(data.display_name);
+      }
+    } catch {
+      setNewProjAddr(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
+    }
+    setIsReverseGeocoding(false);
+  }, []);
+
+  const closeModal = () => {
+    setShowProjectModal(false);
+    setNewProjName("");
+    setNewProjAddr("");
+    setModalJobLat(undefined);
+    setModalJobLon(undefined);
   };
 
   const createProject = async (e: React.FormEvent) => {
@@ -74,7 +114,9 @@ export default function ContractorView({
       .insert([{
         contractor_id: user.id,
         name: newProjName,
-        address: newProjAddr
+        address: newProjAddr,
+        latitude: modalJobLat ?? null,
+        longitude: modalJobLon ?? null,
       }])
       .select()
       .single();
@@ -82,9 +124,12 @@ export default function ContractorView({
     if (data && !error) {
       setProjects([data, ...projects]);
       setActiveProject(data);
-      setShowProjectModal(false);
-      setNewProjName("");
-      setNewProjAddr("");
+      // Set the dashboard map to the new project location
+      if (modalJobLat && modalJobLon) {
+        setJobLat(modalJobLat);
+        setJobLon(modalJobLon);
+      }
+      closeModal();
       setSavedEstimates([]);
       setRequirements([]);
       setManifestResults({});
@@ -97,15 +142,18 @@ export default function ContractorView({
     setActiveProject(proj);
     setManifestResults(proj.cached_results || {});
     setLastCalculated(proj.last_calculated ? new Date(proj.last_calculated) : null);
+    // Update dashboard map to this project's location if available
+    if (proj.latitude && proj.longitude) {
+      setJobLat(proj.latitude);
+      setJobLon(proj.longitude);
+    }
     
-    // Fetch saved estimates
     const { data: estData } = await supabase
       .from('project_estimates')
       .select('*, facility:facilities(name)')
       .eq('project_id', proj.id);
     if (estData) setSavedEstimates(estData);
 
-    // Fetch project requirements (manifest)
     const { data: reqData } = await supabase
       .from('project_requirements')
       .select('*')
@@ -174,12 +222,10 @@ export default function ContractorView({
         });
         const data = await response.json();
         if (data.success) {
-          // Update map coordinates if returned
           if (data.jobLat && data.jobLon) {
             setJobLat(data.jobLat);
             setJobLon(data.jobLon);
           }
-          // Store top 5 options for this requirement
           newResults[req.id] = data.data.slice(0, 5);
         } else {
           newResults[req.id] = [];
@@ -195,7 +241,6 @@ export default function ContractorView({
     const now = new Date();
     setLastCalculated(now);
     
-    // Save these results permanently to the project
     await supabase.from('projects').update({
       cached_results: newResults,
       last_calculated: now.toISOString()
@@ -208,11 +253,9 @@ export default function ContractorView({
     if (!activeProject) return;
     setSavingEstimateId(res.facilityId + res.truckFleet + req.id);
     
-    // Check if this exact option is already saved
     const existingExact = savedEstimates.find(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
 
     if (existingExact) {
-      // Toggle OFF: Remove it
       const { error } = await supabase.from('project_estimates').delete().eq('id', existingExact.id);
       if (!error) {
         setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id));
@@ -220,7 +263,6 @@ export default function ContractorView({
         alert("Failed to remove saved estimate.");
       }
     } else {
-      // Toggle ON: Remove any existing for this material, then insert new
       const existingForMat = savedEstimates.find(se => se.material_name === req.material_name);
       if (existingForMat) {
         await supabase.from('project_estimates').delete().eq('id', existingForMat.id);
@@ -267,7 +309,6 @@ export default function ContractorView({
       });
       if (response.ok) {
         alert("Quote request sent directly to the supplier!");
-        // Optimistically add to state
         setProjectQuotes([...projectQuotes, {
           id: Math.random().toString(),
           facility_id: res.facilityId,
@@ -400,12 +441,17 @@ export default function ContractorView({
                               <MapComponent 
                                 jobLat={jobLat} 
                                 jobLon={jobLon} 
-                                facilities={Object.values(manifestResults).flat().map((r: any) => ({
-                                  lat: r.lat,
-                                  lon: r.lon,
-                                  name: r.supplier,
-                                  isDump: r.basePrice === 0 || r.frtPerUnit > 0
-                                }))}
+                                facilities={
+                                  // Prefer manifest results facilities if available, else show all facilities
+                                  Object.values(manifestResults).flat().length > 0
+                                    ? Object.values(manifestResults).flat().map((r: any) => ({
+                                        lat: r.lat,
+                                        lon: r.lon,
+                                        name: r.supplier,
+                                        isDump: r.basePrice === 0 || r.frtPerUnit > 0
+                                      }))
+                                    : allFacilities
+                                }
                               />
                           </div>
                       </div>
@@ -474,7 +520,6 @@ export default function ContractorView({
                                 <div className="space-y-6">
                                     {requirements.map((req: any) => (
                                       <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
-                                          {/* Requirement Header */}
                                           <div className={`px-4 py-3 flex justify-between items-center ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
                                               <div className="flex items-center space-x-3">
                                                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-400'}`}>
@@ -488,7 +533,6 @@ export default function ContractorView({
                                               </button>
                                           </div>
                                           
-                                          {/* Render Results if calculated */}
                                           {manifestResults[req.id] && (
                                             <div className="bg-slate-900 w-full overflow-x-auto border-t border-slate-700">
                                                 {manifestResults[req.id].length > 0 ? (
@@ -569,8 +613,6 @@ export default function ContractorView({
                       <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm h-full flex flex-col">
                           <div className="p-5 border-b border-slate-700 bg-slate-900/50">
                               <h2 className="text-lg font-semibold text-white mb-4">Project Feed</h2>
-                              
-                              {/* Tabs */}
                               <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700">
                                   <button 
                                     onClick={() => setActiveTab('locked')}
@@ -594,10 +636,7 @@ export default function ContractorView({
                               {!activeProject ? (
                                 <p className="text-slate-500 text-sm text-center py-4">Select a project to view the feed.</p>
                               ) : activeTab === 'locked' ? (
-                                savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => {
-                                  // Reconstruct supplier name if we can, or just display the data we have. We saved facility_id but not the name. 
-                                  // Ideally we'd fetch facility name in selectProject. For the prototype, we show what we have.
-                                  return (
+                                savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => (
                                     <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
                                         <div className="flex justify-between items-start">
                                             <div>
@@ -614,8 +653,7 @@ export default function ContractorView({
                                             </div>
                                         </div>
                                     </div>
-                                  )
-                                }) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
+                                )) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
                               ) : (
                                 projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => (
                                     <div key={idx} className={`border rounded-lg p-4 ${q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
@@ -649,41 +687,83 @@ export default function ContractorView({
           </div>
       </main>
 
-      {/* Project Creation Modal */}
+      {/* ── Project Creation Modal with Interactive Map ── */}
       {showProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl p-6">
+            <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-bold text-white">Create New Project</h2>
-              <button onClick={() => setShowProjectModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={closeModal} className="text-slate-400 hover:text-white">
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
             </div>
+
             <form onSubmit={createProject} className="space-y-4">
+              {/* Project Name */}
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   value={newProjName}
                   onChange={(e) => setNewProjName(e.target.value)}
-                  placeholder="e.g., Redwood Subdivision" 
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" 
+                  placeholder="e.g., Redwood Subdivision"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
+
+              {/* Interactive Map */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address</label>
-                <textarea 
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Job Site Location
+                  <span className="ml-2 text-xs text-slate-500 font-normal">
+                    Click the map to drop your pin
+                  </span>
+                </label>
+                <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
+                  <MapComponent
+                    jobLat={modalJobLat}
+                    jobLon={modalJobLon}
+                    facilities={allFacilities}
+                    onMapClick={handleMapClick}
+                    interactive={true}
+                  />
+                </div>
+              </div>
+
+              {/* Address — auto-filled by reverse geocode, still manually editable */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Job Site Address
+                  {isReverseGeocoding && (
+                    <span className="ml-2 text-xs text-orange-400 animate-pulse">
+                      Looking up address...
+                    </span>
+                  )}
+                </label>
+                <textarea
                   required
                   value={newProjAddr}
                   onChange={(e) => setNewProjAddr(e.target.value)}
-                  placeholder="e.g., 5600 W 8600 S, West Jordan, UT" 
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-24" 
+                  placeholder="Click the map above, or type an address manually"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-16 resize-none"
                 />
               </div>
-              <div className="flex space-x-3 pt-4">
-                <button type="button" onClick={() => setShowProjectModal(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
-                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all"
+                >
+                  Create & Select
+                </button>
               </div>
             </form>
           </div>
