@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useMemo } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 
-type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes';
+type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes' | 'requests';
 
 export default function AdminView({
   adminName,
@@ -13,6 +14,7 @@ export default function AdminView({
   quotes,
   facilities,
   materials,
+  signupRequests: initialRequests,
 }: {
   adminName: string;
   profiles: any[];
@@ -21,17 +23,62 @@ export default function AdminView({
   quotes: any[];
   facilities: any[];
   materials: any[];
+  signupRequests: any[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [signupRequests, setSignupRequests] = useState<any[]>(initialRequests);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const supabase = createClient();
+
+  const pendingCount = signupRequests.filter(r => r.status === 'pending').length;
+
+  const handleRequest = async (req: any, action: 'approve' | 'reject') => {
+    setProcessingId(req.id);
+    setActionError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/approve-signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          requestId: req.id,
+          email: req.email,
+          fullName: req.full_name,
+          companyName: req.company_name,
+          role: req.requested_role,
+          action,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setActionError(data.error || 'Something went wrong.');
+      } else {
+        // Update local state
+        setSignupRequests(prev =>
+          prev.map(r => r.id === req.id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() } : r)
+        );
+        // If approved, show temp password if returned
+        if (action === 'approve' && data.tempPassword) {
+          alert(`Account created for ${req.email}.\n\nA password reset email has been sent so they can set their own password.\n\nTemp password (if needed): ${data.tempPassword}`);
+        }
+      }
+    } catch (e: any) {
+      setActionError(e.message);
+    }
+    setProcessingId(null);
+  };
 
   const stats = useMemo(() => {
     const totalEstValue = estimates.reduce((sum, e) => sum + (e.total_price * e.quantity), 0);
     const avgEstPrice = estimates.length > 0
-      ? estimates.reduce((sum, e) => sum + e.total_price, 0) / estimates.length
-      : 0;
+      ? estimates.reduce((sum, e) => sum + e.total_price, 0) / estimates.length : 0;
     const quoteConversionRate = quotes.length > 0
-      ? (quotes.filter(q => q.status === 'accepted').length / quotes.length) * 100
-      : 0;
+      ? (quotes.filter(q => q.status === 'accepted').length / quotes.length) * 100 : 0;
 
     const facilityUsage: Record<string, number> = {};
     estimates.forEach(e => {
@@ -48,14 +95,10 @@ export default function AdminView({
       materialFreq[k].avgPrice = materialFreq[k].totalPrice / materialFreq[k].count;
     });
 
-    const topMaterials = Object.entries(materialFreq)
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 8);
-
+    const topMaterials = Object.entries(materialFreq).sort((a, b) => b[1].count - a[1].count).slice(0, 8);
     const topFacilities = facilities
       .map(f => ({ ...f, usageCount: facilityUsage[f.id] || 0 }))
-      .sort((a, b) => b.usageCount - a.usageCount)
-      .slice(0, 8);
+      .sort((a, b) => b.usageCount - a.usageCount).slice(0, 8);
 
     return {
       totalUsers: profiles.length,
@@ -71,16 +114,13 @@ export default function AdminView({
       dumps: facilities.filter(f => f.type === 'dump').length,
       both: facilities.filter(f => f.type === 'both').length,
       totalMaterials: materials.length,
-      totalEstValue,
-      avgEstPrice,
-      quoteConversionRate,
-      topMaterials,
-      topFacilities,
+      totalEstValue, avgEstPrice, quoteConversionRate, topMaterials, topFacilities,
     };
   }, [profiles, projects, estimates, quotes, facilities, materials]);
 
   const tabs: { id: Tab; label: string; icon: string }[] = [
     { id: 'overview',   label: 'Overview',   icon: 'fa-chart-pie' },
+    { id: 'requests',   label: 'Requests',   icon: 'fa-user-clock' },
     { id: 'users',      label: 'Users',      icon: 'fa-users' },
     { id: 'projects',   label: 'Projects',   icon: 'fa-folder' },
     { id: 'facilities', label: 'Facilities', icon: 'fa-location-dot' },
@@ -88,14 +128,11 @@ export default function AdminView({
     { id: 'quotes',     label: 'Quotes',     icon: 'fa-file-invoice-dollar' },
   ];
 
-  const fmtCurrency = (n: number) =>
-    '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const fmtCurrency = (n: number) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
-
       {/* Sidebar */}
       <aside className="w-60 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col flex-shrink-0">
         <div className="h-16 flex items-center px-6 border-b border-slate-800 space-x-2">
@@ -104,13 +141,16 @@ export default function AdminView({
         </div>
         <nav className="flex-1 px-3 py-5 space-y-0.5">
           {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.id ? 'bg-orange-500/10 text-orange-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.id ? 'bg-orange-500/10 text-orange-400' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
             >
-              <i className={`fa-solid ${t.icon} w-4 text-center`}></i>
-              <span>{t.label}</span>
+              <div className="flex items-center space-x-3">
+                <i className={`fa-solid ${t.icon} w-4 text-center`}></i>
+                <span>{t.label}</span>
+              </div>
+              {t.id === 'requests' && pendingCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">{pendingCount}</span>
+              )}
             </button>
           ))}
         </nav>
@@ -133,7 +173,7 @@ export default function AdminView({
         <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10 flex-shrink-0">
           <div>
             <h1 className="text-lg font-semibold text-white capitalize">
-              {activeTab === 'overview' ? 'Admin Overview' : activeTab}
+              {activeTab === 'overview' ? 'Admin Overview' : activeTab === 'requests' ? 'Access Requests' : activeTab}
             </h1>
             <p className="text-xs text-slate-500">AggLink platform administration</p>
           </div>
@@ -169,7 +209,6 @@ export default function AdminView({
                   <p className="text-xs text-slate-500 mt-2">blended material + freight</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Facilities</p>
@@ -187,14 +226,11 @@ export default function AdminView({
                   <p className="text-xs text-slate-500 mt-2">{stats.pendingQuotes} pending | {stats.acceptedQuotes} accepted</p>
                 </div>
                 <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Quote Conversion</p>
-                  <h3 className={`text-2xl font-bold mt-1 ${stats.quoteConversionRate > 30 ? 'text-emerald-400' : 'text-orange-400'}`}>
-                    {stats.quoteConversionRate.toFixed(1)}%
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-2">accepted / total requests</p>
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Pending Access</p>
+                  <h3 className={`text-2xl font-bold mt-1 ${pendingCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{pendingCount}</h3>
+                  <p className="text-xs text-slate-500 mt-2">signup requests awaiting review</p>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
@@ -222,15 +258,12 @@ export default function AdminView({
                     })}
                   </div>
                 </div>
-
                 <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
                     <h2 className="text-sm font-semibold text-white">Most Used Facilities</h2>
                   </div>
                   <div className="p-4 space-y-3">
-                    {stats.topFacilities.filter(f => f.usageCount > 0).length === 0 && (
-                      <p className="text-slate-500 text-sm text-center py-4">No estimate data yet.</p>
-                    )}
+                    {stats.topFacilities.filter(f => f.usageCount > 0).length === 0 && <p className="text-slate-500 text-sm text-center py-4">No estimate data yet.</p>}
                     {stats.topFacilities.filter(f => f.usageCount > 0).map((fac) => {
                       const maxCount = stats.topFacilities[0]?.usageCount || 1;
                       const pct = (fac.usageCount / maxCount) * 100;
@@ -257,6 +290,94 @@ export default function AdminView({
             </div>
           )}
 
+          {/* REQUESTS */}
+          {activeTab === 'requests' && (
+            <div className="space-y-4">
+              {actionError && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">
+                  {actionError}
+                </div>
+              )}
+
+              {/* Pending */}
+              <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-white">Pending Requests</h2>
+                  {pendingCount > 0 && (
+                    <span className="bg-orange-500/20 text-orange-400 text-xs font-bold px-2 py-0.5 rounded-full border border-orange-500/30">{pendingCount} pending</span>
+                  )}
+                </div>
+                <div className="divide-y divide-slate-700/50">
+                  {signupRequests.filter(r => r.status === 'pending').length === 0 && (
+                    <p className="px-5 py-8 text-center text-slate-500 text-sm">No pending requests.</p>
+                  )}
+                  {signupRequests.filter(r => r.status === 'pending').map(req => (
+                    <div key={req.id} className="px-5 py-4">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-semibold text-white text-sm">{req.full_name}</span>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.requested_role === 'contractor' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                              {req.requested_role}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400">{req.email}</p>
+                          <p className="text-xs text-slate-400">{req.company_name}</p>
+                          {req.notes && <p className="text-xs text-slate-500 italic mt-1">&ldquo;{req.notes}&rdquo;</p>}
+                          <p className="text-xs text-slate-600 mt-1">Submitted {fmtDate(req.created_at)}</p>
+                        </div>
+                        <div className="flex space-x-2 md:flex-shrink-0">
+                          <button
+                            onClick={() => handleRequest(req, 'reject')}
+                            disabled={processingId === req.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-400 hover:border-red-500/50 hover:text-red-400 transition-all disabled:opacity-40"
+                          >
+                            {processingId === req.id ? '...' : 'Reject'}
+                          </button>
+                          <button
+                            onClick={() => handleRequest(req, 'approve')}
+                            disabled={processingId === req.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-40"
+                          >
+                            {processingId === req.id ? 'Processing...' : 'Approve'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Reviewed */}
+              {signupRequests.filter(r => r.status !== 'pending').length > 0 && (
+                <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
+                    <h2 className="text-sm font-semibold text-white">Reviewed</h2>
+                  </div>
+                  <div className="divide-y divide-slate-700/50">
+                    {signupRequests.filter(r => r.status !== 'pending').map(req => (
+                      <div key={req.id} className="px-5 py-3 flex items-center justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-slate-300 font-medium">{req.full_name}</span>
+                            <span className="text-xs text-slate-500">{req.company_name}</span>
+                          </div>
+                          <p className="text-xs text-slate-500">{req.email}</p>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {req.status}
+                          </span>
+                          {req.reviewed_at && <span className="text-xs text-slate-600">{fmtDate(req.reviewed_at)}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* USERS */}
           {activeTab === 'users' && (
             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
@@ -276,17 +397,11 @@ export default function AdminView({
                   <tbody className="divide-y divide-slate-700/50">
                     {profiles.map(p => {
                       const userProjects = projects.filter(pr => pr.contractor_id === p.id).length;
-                      const roleColor = p.role === 'admin'
-                        ? 'bg-orange-500/20 text-orange-400'
-                        : p.role === 'supplier'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'bg-emerald-500/20 text-emerald-400';
+                      const roleColor = p.role === 'admin' ? 'bg-orange-500/20 text-orange-400' : p.role === 'supplier' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400';
                       return (
                         <tr key={p.id} className="hover:bg-slate-700/30 transition-colors">
                           <td className="px-5 py-3 font-medium text-white">{p.company_name || '-'}</td>
-                          <td className="px-5 py-3">
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleColor}`}>{p.role}</span>
-                          </td>
+                          <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleColor}`}>{p.role}</span></td>
                           <td className="px-5 py-3 text-slate-400">{userProjects}</td>
                           <td className="px-5 py-3 text-slate-400">{p.created_at ? fmtDate(p.created_at) : '-'}</td>
                         </tr>
@@ -321,11 +436,7 @@ export default function AdminView({
                       const projEstimates = estimates.filter(e => e.project_id === p.id);
                       const projValue = projEstimates.reduce((sum, e) => sum + (e.total_price * e.quantity), 0);
                       const contractor = profiles.find(pr => pr.id === p.contractor_id);
-                      const statusColor = p.status === 'active'
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : p.status === 'completed'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'bg-slate-600/50 text-slate-400';
+                      const statusColor = p.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : p.status === 'completed' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-600/50 text-slate-400';
                       return (
                         <tr key={p.id} className="hover:bg-slate-700/30 transition-colors">
                           <td className="px-5 py-3">
@@ -333,20 +444,14 @@ export default function AdminView({
                             <div className="text-xs text-slate-500 truncate max-w-[200px]">{p.address}</div>
                           </td>
                           <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '-'}</td>
-                          <td className="px-5 py-3">
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{p.status}</span>
-                          </td>
+                          <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{p.status}</span></td>
                           <td className="px-5 py-3 text-slate-400">{projEstimates.length}</td>
-                          <td className="px-5 py-3 text-right font-semibold text-emerald-400">
-                            {projValue > 0 ? fmtCurrency(projValue) : '-'}
-                          </td>
+                          <td className="px-5 py-3 text-right font-semibold text-emerald-400">{projValue > 0 ? fmtCurrency(projValue) : '-'}</td>
                           <td className="px-5 py-3 text-slate-400">{fmtDate(p.created_at)}</td>
                         </tr>
                       );
                     })}
-                    {projects.length === 0 && (
-                      <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">No projects yet.</td></tr>
-                    )}
+                    {projects.length === 0 && <tr><td colSpan={6} className="px-5 py-8 text-center text-slate-500">No projects yet.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -379,21 +484,13 @@ export default function AdminView({
                     {facilities.map(f => {
                       const facMaterials = materials.filter(m => m.facility_id === f.id).length;
                       const facEstimates = estimates.filter(e => e.facility_id === f.id).length;
-                      const typeColor = f.type === 'pit'
-                        ? 'bg-orange-500/20 text-orange-400'
-                        : f.type === 'dump'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'bg-emerald-500/20 text-emerald-400';
+                      const typeColor = f.type === 'pit' ? 'bg-orange-500/20 text-orange-400' : f.type === 'dump' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400';
                       return (
                         <tr key={f.id} className="hover:bg-slate-700/30 transition-colors">
                           <td className="px-5 py-3 font-medium text-white">{f.name}</td>
-                          <td className="px-5 py-3">
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span>
-                          </td>
+                          <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span></td>
                           <td className="px-5 py-3 text-slate-400">{facMaterials}</td>
-                          <td className="px-5 py-3">
-                            <span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span>
-                          </td>
+                          <td className="px-5 py-3"><span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span></td>
                           <td className="px-5 py-3 text-slate-400">{f.created_at ? fmtDate(f.created_at) : '-'}</td>
                         </tr>
                       );
@@ -423,10 +520,7 @@ export default function AdminView({
                 <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
                   <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Avg Price / Ton</p>
                   <h3 className="text-2xl font-bold text-white mt-1">
-                    {fmtCurrency(
-                      materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) /
-                      (materials.filter(m => m.price_per_ton).length || 1)
-                    )}
+                    {fmtCurrency(materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) / (materials.filter(m => m.price_per_ton).length || 1))}
                   </h3>
                 </div>
               </div>
@@ -458,12 +552,8 @@ export default function AdminView({
                                 {m.is_import ? 'Import' : 'Export'}
                               </span>
                             </td>
-                            <td className="px-5 py-3 text-right font-semibold text-slate-300">
-                              {m.price_per_ton ? fmtCurrency(m.price_per_ton) : '-'}
-                            </td>
-                            <td className="px-5 py-3">
-                              <span className={`font-semibold ${reqCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{reqCount}</span>
-                            </td>
+                            <td className="px-5 py-3 text-right font-semibold text-slate-300">{m.price_per_ton ? fmtCurrency(m.price_per_ton) : '-'}</td>
+                            <td className="px-5 py-3"><span className={`font-semibold ${reqCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{reqCount}</span></td>
                           </tr>
                         );
                       })}
@@ -516,30 +606,20 @@ export default function AdminView({
                       {quotes.map(q => {
                         const fac = facilities.find(f => f.id === q.facility_id);
                         const contractor = profiles.find(p => p.id === q.contractor_id);
-                        const statusColor =
-                          q.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-400' :
-                          q.status === 'pending'  ? 'bg-orange-500/20 text-orange-400' :
-                          q.status === 'declined' ? 'bg-red-500/20 text-red-400' :
-                          'bg-blue-500/20 text-blue-400';
+                        const statusColor = q.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-400' : q.status === 'pending' ? 'bg-orange-500/20 text-orange-400' : q.status === 'declined' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400';
                         return (
                           <tr key={q.id} className="hover:bg-slate-700/30 transition-colors">
                             <td className="px-5 py-3 font-medium text-white">{q.material_name}</td>
                             <td className="px-5 py-3 text-slate-400 truncate max-w-[150px]">{fac?.name || '-'}</td>
                             <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '-'}</td>
                             <td className="px-5 py-3 text-right text-slate-400">{q.quantity?.toLocaleString()}</td>
-                            <td className="px-5 py-3 text-right font-semibold text-emerald-400">
-                              {q.offered_price ? fmtCurrency(q.offered_price) : '-'}
-                            </td>
-                            <td className="px-5 py-3">
-                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span>
-                            </td>
+                            <td className="px-5 py-3 text-right font-semibold text-emerald-400">{q.offered_price ? fmtCurrency(q.offered_price) : '-'}</td>
+                            <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span></td>
                             <td className="px-5 py-3 text-slate-400">{fmtDate(q.created_at)}</td>
                           </tr>
                         );
                       })}
-                      {quotes.length === 0 && (
-                        <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">No quote requests yet.</td></tr>
-                      )}
+                      {quotes.length === 0 && <tr><td colSpan={7} className="px-5 py-8 text-center text-slate-500">No quote requests yet.</td></tr>}
                     </tbody>
                   </table>
                 </div>
