@@ -5,10 +5,34 @@ import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 
 type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes' | 'requests';
+type Role = 'contractor' | 'supplier' | 'admin';
+
+// Returns Tailwind classes for a role badge, optionally considering facility type for suppliers
+function roleBadgeClasses(role: string, facilityType?: string) {
+  if (role === 'admin')      return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
+  if (role === 'contractor') return 'bg-red-500/20 text-red-400 border border-red-500/30';
+  if (role === 'supplier') {
+    if (facilityType === 'dump') return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
+    if (facilityType === 'both') return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+    return 'bg-orange-500/20 text-orange-400 border border-orange-500/30'; // pit or unknown
+  }
+  return 'bg-slate-600/50 text-slate-400';
+}
+
+function roleLabel(role: string, facilityType?: string) {
+  if (role === 'admin')      return 'Admin';
+  if (role === 'contractor') return 'Contractor';
+  if (role === 'supplier') {
+    if (facilityType === 'dump') return 'Supplier (Dump)';
+    if (facilityType === 'both') return 'Supplier (Pit & Dump)';
+    return 'Supplier (Pit)';
+  }
+  return role;
+}
 
 export default function AdminView({
   adminName,
-  profiles,
+  profiles: initialProfiles,
   projects,
   estimates,
   quotes,
@@ -26,13 +50,36 @@ export default function AdminView({
   signupRequests: any[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [profiles, setProfiles] = useState<any[]>(initialProfiles);
   const [signupRequests, setSignupRequests] = useState<any[]>(initialRequests);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
 
   const supabase = createClient();
-
   const pendingCount = signupRequests.filter(r => r.status === 'pending').length;
+
+  // Get facility type for a supplier profile
+  const getFacilityType = (profileId: string) => {
+    const fac = facilities.find(f => f.owner_id === profileId);
+    return fac?.type;
+  };
+
+  const handleRoleChange = async (profileId: string, newRole: Role) => {
+    setSavingRoleId(profileId);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', profileId);
+    if (!error) {
+      setProfiles(prev => prev.map(p => p.id === profileId ? { ...p, role: newRole } : p));
+    } else {
+      alert('Failed to update role: ' + error.message);
+    }
+    setSavingRoleId(null);
+    setEditingRoleId(null);
+  };
 
   const handleRequest = async (req: any, action: 'approve' | 'reject') => {
     setProcessingId(req.id);
@@ -58,11 +105,11 @@ export default function AdminView({
       if (!res.ok) {
         setActionError(data.error || 'Something went wrong.');
       } else {
-        // Update local state
         setSignupRequests(prev =>
-          prev.map(r => r.id === req.id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() } : r)
+          prev.map(r => r.id === req.id
+            ? { ...r, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() }
+            : r)
         );
-        // If approved, show temp password if returned
         if (action === 'approve' && data.tempPassword) {
           alert(`Account created for ${req.email}.\n\nA password reset email has been sent so they can set their own password.\n\nTemp password (if needed): ${data.tempPassword}`);
         }
@@ -156,12 +203,12 @@ export default function AdminView({
         </nav>
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center mb-3">
-            <div className="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 font-bold text-xs">
+            <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 font-bold text-xs">
               {adminName.substring(0, 2).toUpperCase()}
             </div>
             <div className="ml-2.5">
               <p className="text-xs font-semibold text-white">{adminName}</p>
-              <p className="text-[10px] text-orange-400 font-medium">Administrator</p>
+              <p className="text-[10px] text-purple-400 font-medium">Administrator</p>
             </div>
           </div>
           <LogoutButton />
@@ -294,12 +341,8 @@ export default function AdminView({
           {activeTab === 'requests' && (
             <div className="space-y-4">
               {actionError && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">
-                  {actionError}
-                </div>
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-4 py-3 rounded-lg">{actionError}</div>
               )}
-
-              {/* Pending */}
               <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
                   <h2 className="text-sm font-semibold text-white">Pending Requests</h2>
@@ -317,7 +360,7 @@ export default function AdminView({
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center space-x-2">
                             <span className="font-semibold text-white text-sm">{req.full_name}</span>
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.requested_role === 'contractor' ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.requested_role === 'contractor' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'}`}>
                               {req.requested_role}
                             </span>
                           </div>
@@ -327,18 +370,12 @@ export default function AdminView({
                           <p className="text-xs text-slate-600 mt-1">Submitted {fmtDate(req.created_at)}</p>
                         </div>
                         <div className="flex space-x-2 md:flex-shrink-0">
-                          <button
-                            onClick={() => handleRequest(req, 'reject')}
-                            disabled={processingId === req.id}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-400 hover:border-red-500/50 hover:text-red-400 transition-all disabled:opacity-40"
-                          >
+                          <button onClick={() => handleRequest(req, 'reject')} disabled={processingId === req.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-400 hover:border-red-500/50 hover:text-red-400 transition-all disabled:opacity-40">
                             {processingId === req.id ? '...' : 'Reject'}
                           </button>
-                          <button
-                            onClick={() => handleRequest(req, 'approve')}
-                            disabled={processingId === req.id}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-40"
-                          >
+                          <button onClick={() => handleRequest(req, 'approve')} disabled={processingId === req.id}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-40">
                             {processingId === req.id ? 'Processing...' : 'Approve'}
                           </button>
                         </div>
@@ -347,8 +384,6 @@ export default function AdminView({
                   ))}
                 </div>
               </div>
-
-              {/* Reviewed */}
               {signupRequests.filter(r => r.status !== 'pending').length > 0 && (
                 <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
@@ -381,8 +416,13 @@ export default function AdminView({
           {/* USERS */}
           {activeTab === 'users' && (
             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
+              <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">All Users ({profiles.length})</h2>
+                <div className="flex items-center space-x-3 text-xs text-slate-500">
+                  <span className="flex items-center space-x-1"><span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span><span>Admin</span></span>
+                  <span className="flex items-center space-x-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span><span>Contractor</span></span>
+                  <span className="flex items-center space-x-1"><span className="w-2 h-2 rounded-full bg-orange-500 inline-block"></span><span>Supplier</span></span>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -392,18 +432,55 @@ export default function AdminView({
                       <th className="px-5 py-3">Role</th>
                       <th className="px-5 py-3">Projects</th>
                       <th className="px-5 py-3">Joined</th>
+                      <th className="px-5 py-3">Change Role</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {profiles.map(p => {
                       const userProjects = projects.filter(pr => pr.contractor_id === p.id).length;
-                      const roleColor = p.role === 'admin' ? 'bg-orange-500/20 text-orange-400' : p.role === 'supplier' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400';
+                      const facType = getFacilityType(p.id);
+                      const isEditing = editingRoleId === p.id;
+                      const isSaving = savingRoleId === p.id;
                       return (
                         <tr key={p.id} className="hover:bg-slate-700/30 transition-colors">
                           <td className="px-5 py-3 font-medium text-white">{p.company_name || '-'}</td>
-                          <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleColor}`}>{p.role}</span></td>
+                          <td className="px-5 py-3">
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleBadgeClasses(p.role, facType)}`}>
+                              {roleLabel(p.role, facType)}
+                            </span>
+                          </td>
                           <td className="px-5 py-3 text-slate-400">{userProjects}</td>
                           <td className="px-5 py-3 text-slate-400">{p.created_at ? fmtDate(p.created_at) : '-'}</td>
+                          <td className="px-5 py-3">
+                            {isEditing ? (
+                              <div className="flex items-center space-x-2">
+                                <select
+                                  defaultValue={p.role}
+                                  disabled={isSaving}
+                                  onChange={(e) => handleRoleChange(p.id, e.target.value as Role)}
+                                  className="bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                                >
+                                  <option value="contractor">Contractor</option>
+                                  <option value="supplier">Supplier</option>
+                                  <option value="admin">Admin</option>
+                                </select>
+                                <button
+                                  onClick={() => setEditingRoleId(null)}
+                                  disabled={isSaving}
+                                  className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setEditingRoleId(p.id)}
+                                className="text-xs text-slate-500 hover:text-orange-400 transition-colors border border-slate-700 hover:border-orange-500/40 px-2 py-1 rounded-md"
+                              >
+                                {isSaving ? 'Saving...' : 'Change'}
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
