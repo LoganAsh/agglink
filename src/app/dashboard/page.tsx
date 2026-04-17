@@ -13,14 +13,17 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  // 1. Get user profile
   const { data: profile, error } = await supabase
     .from('profiles')
     .select('role, company_name')
     .eq('id', user.id)
     .single()
 
-  // 2. Fetch live data for the dashboard
+  // Redirect admins straight to the admin portal
+  if (profile?.role === 'admin') {
+    redirect('/admin')
+  }
+
   const { count: pitsCount } = await supabase
     .from('facilities')
     .select('*', { count: 'exact', head: true })
@@ -31,9 +34,6 @@ export default async function DashboardPage() {
     .select('*', { count: 'exact', head: true })
     .in('type', ['dump', 'both'])
 
-
-
-  // Fetch all unique materials for the dropdowns
   const { data: allMatsData } = await supabase
     .from('materials')
     .select('name, is_import')
@@ -51,7 +51,6 @@ export default async function DashboardPage() {
   }
 
   if (profile.role === 'supplier') {
-    // Fetch their facility (assume they own one for the prototype)
     const { data: myFacility } = await supabase
       .from('facilities')
       .select('id, name')
@@ -59,9 +58,8 @@ export default async function DashboardPage() {
       .single()
 
     let myMaterials = []
-    const totalVolume = 2840 // Mock KPI
-    
-    let topMaterial = "UDOT Spec Road Base" // Mock KPI
+    const totalVolume = 2840
+    let topMaterial = "UDOT Spec Road Base"
     
     if (myFacility) {
       const { data: mats } = await supabase
@@ -71,9 +69,7 @@ export default async function DashboardPage() {
       
       if (mats) {
         myMaterials = mats
-        if (mats.length > 0) {
-          topMaterial = mats[0].name
-        }
+        if (mats.length > 0) topMaterial = mats[0].name
       }
     }
 
@@ -88,14 +84,12 @@ export default async function DashboardPage() {
     )
   }
 
-  // Default to contractor
   return (
     <ContractorView 
       profileName={user.email?.split('@')[0]}
       companyName={profile.company_name}
       pitsCount={pitsCount || 0}
       dumpsCount={dumpsCount || 0}
-      
       importMaterials={importMaterials}
       exportMaterials={exportMaterials}
     />
