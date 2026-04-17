@@ -7,27 +7,27 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ── SVG DivIcon factory ───────────────────────────────────────────────────────
-// Clean teardrop pins using inline SVG — no external image dependencies
+// Slim teardrop: tall & narrow with a sharp point, small inner dot
 function makePinIcon(fill: string, stroke: string) {
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
-      <path d="M14 0C6.27 0 0 6.27 0 14c0 9.63 14 24 14 24S28 23.63 28 14C28 6.27 21.73 0 14 0z"
-        fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
-      <circle cx="14" cy="14" r="5.5" fill="white" opacity="0.95"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="26" viewBox="0 0 16 26">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 18 8 18S16 13.25 16 8C16 3.58 12.42 0 8 0z"
+        fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
+      <circle cx="8" cy="8" r="3" fill="white" opacity="0.92"/>
     </svg>`;
   return L.divIcon({
     html: svg,
     className: '',
-    iconSize: [28, 38],
-    iconAnchor: [14, 38],
-    popupAnchor: [0, -40],
+    iconSize: [16, 26],
+    iconAnchor: [8, 26],
+    popupAnchor: [0, -28],
   });
 }
 
-const jobSiteIcon = makePinIcon('#ef4444', '#b91c1c'); // red    — job site
-const pitIcon     = makePinIcon('#f97316', '#c2410c'); // orange — material pit
-const dumpIcon    = makePinIcon('#3b82f6', '#1d4ed8'); // blue   — dump site
-const bothIcon    = makePinIcon('#10b981', '#047857'); // green  — pit & dump
+const jobSiteIcon = makePinIcon('#ef4444', '#b91c1c');
+const pitIcon     = makePinIcon('#f97316', '#c2410c');
+const dumpIcon    = makePinIcon('#3b82f6', '#1d4ed8');
+const bothIcon    = makePinIcon('#10b981', '#047857');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
@@ -95,7 +95,6 @@ export default function MapComponent({
         <MapController center={center} zoom={zoom} />
         <ClickHandler onMapClick={onMapClick} />
 
-        {/* Job site pin */}
         {hasJob && (
           <Marker position={[jobLat!, jobLon!]} icon={jobSiteIcon}>
             <Popup>
@@ -109,7 +108,6 @@ export default function MapComponent({
           </Marker>
         )}
 
-        {/* Facility markers */}
         {facilities.map((fac, idx) => {
           const lat = fac.lat ?? fac.latitude;
           const lon = fac.lon ?? fac.longitude;
@@ -117,8 +115,7 @@ export default function MapComponent({
           const typeLabel =
             fac.type === 'dump' ? 'Dump / Recycle Site' :
             fac.type === 'both' ? 'Pit & Dump Site' :
-            fac.isDump ? 'Dump Site' :
-            'Material Pit';
+            fac.isDump ? 'Dump Site' : 'Material Pit';
           return (
             <Marker key={fac.id ?? idx} position={[lat, lon]} icon={getFacilityIcon(fac)}>
               <Popup>
