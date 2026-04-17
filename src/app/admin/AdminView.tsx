@@ -287,12 +287,12 @@ return (
                     : 'bg-emerald-500/20 text-emerald-400';
                   return (
                     <tr key={p.id} className="hover:bg-slate-700/30 transition-colors">
-                      <td className="px-5 py-3 font-medium text-white">{p.company_name || '—'}</td>
+                      <td className="px-5 py-3 font-medium text-white">{p.company_name || '-'}</td>
                       <td className="px-5 py-3">
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleColor}`}>{p.role}</span>
                       </td>
                       <td className="px-5 py-3 text-slate-400">{userProjects}</td>
-                      <td className="px-5 py-3 text-slate-400">{p.created_at ? fmtDate(p.created_at) : '—'}</td>
+                      <td className="px-5 py-3 text-slate-400">{p.created_at ? fmtDate(p.created_at) : '-'}</td>
                     </tr>
                   );
                 })}
@@ -336,13 +336,13 @@ return (
                         <div className="font-medium text-white">{p.name}</div>
                         <div className="text-xs text-slate-500 truncate max-w-[200px]">{p.address}</div>
                       </td>
-                      <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '—'}</td>
+                      <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '-'}</td>
                       <td className="px-5 py-3">
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{p.status}</span>
                       </td>
                       <td className="px-5 py-3 text-slate-400">{projEstimates.length}</td>
                       <td className="px-5 py-3 text-right font-semibold text-emerald-400">
-                        {projValue > 0 ? fmtCurrency(projValue) : '—'}
+                        {projValue > 0 ? fmtCurrency(projValue) : '-'}
                       </td>
                       <td className="px-5 py-3 text-slate-400">{fmtDate(p.created_at)}</td>
                     </tr>
@@ -398,7 +398,7 @@ return (
                       <td className="px-5 py-3">
                         <span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span>
                       </td>
-                      <td className="px-5 py-3 text-slate-400">{f.created_at ? fmtDate(f.created_at) : '—'}</td>
+                      <td className="px-5 py-3 text-slate-400">{f.created_at ? fmtDate(f.created_at) : '-'}</td>
                     </tr>
                   );
                 })}
@@ -456,14 +456,14 @@ return (
                     return (
                       <tr key={m.id} className="hover:bg-slate-700/30 transition-colors">
                         <td className="px-5 py-3 font-medium text-white">{m.name}</td>
-                        <td className="px-5 py-3 text-slate-400 truncate max-w-[180px]">{fac?.name || '—'}</td>
+                        <td className="px-5 py-3 text-slate-400 truncate max-w-[180px]">{fac?.name || '-'}</td>
                         <td className="px-5 py-3">
                           <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${m.is_import ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
                             {m.is_import ? 'Import' : 'Export'}
                           </span>
                         </td>
                         <td className="px-5 py-3 text-right font-semibold text-slate-300">
-                          {m.price_per_ton ? fmtCurrency(m.price_per_ton) : '—'}
+                          {m.price_per_ton ? fmtCurrency(m.price_per_ton) : '-'}
                         </td>
                         <td className="px-5 py-3">
                           <span className={`font-semibold ${reqCount > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{reqCount}</span>
@@ -528,11 +528,11 @@ return (
                     return (
                       <tr key={q.id} className="hover:bg-slate-700/30 transition-colors">
                         <td className="px-5 py-3 font-medium text-white">{q.material_name}</td>
-                        <td className="px-5 py-3 text-slate-400 truncate max-w-[150px]">{fac?.name || '—'}</td>
-                        <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '—'}</td>
+                        <td className="px-5 py-3 text-slate-400 truncate max-w-[150px]">{fac?.name || '-'}</td>
+                        <td className="px-5 py-3 text-slate-400">{contractor?.company_name || '-'}</td>
                         <td className="px-5 py-3 text-right text-slate-400">{q.quantity?.toLocaleString()}</td>
                         <td className="px-5 py-3 text-right font-semibold text-emerald-400">
-                          {q.offered_price ? fmtCurrency(q.offered_price) : '—'}
+                          {q.offered_price ? fmtCurrency(q.offered_price) : '-'}
                         </td>
                         <td className="px-5 py-3">
                           <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span>
