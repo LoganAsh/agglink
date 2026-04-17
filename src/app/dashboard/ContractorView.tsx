@@ -21,6 +21,8 @@ export default function ContractorView({
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProject, setActiveProject] = useState<any | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [newProjName, setNewProjName] = useState("");
   const [newProjAddr, setNewProjAddr] = useState("");
   const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
@@ -70,37 +72,25 @@ export default function ContractorView({
   };
 
   const fetchAllFacilities = async () => {
-    const { data } = await supabase
-      .from('facilities')
-      .select('id, name, type, latitude, longitude');
+    const { data } = await supabase.from('facilities').select('id, name, type, latitude, longitude');
     if (data) setAllFacilities(data);
   };
 
-  // Forward geocode an address to lat/lon using Nominatim (for older projects without saved coords)
   const geocodeAddress = useCallback(async (address: string): Promise<{ lat: number; lon: number } | null> => {
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
-      );
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
       const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      }
-    } catch {
-      // silently fail — map just stays at default center
-    }
+      if (data && data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    } catch { /* silently fail */ }
     return null;
   }, []);
 
-  // Reverse geocode lat/lon → address (for modal map click)
   const handleMapClick = useCallback(async (lat: number, lon: number) => {
     setModalJobLat(lat);
     setModalJobLon(lon);
     setIsReverseGeocoding(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
-      );
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
       const data = await res.json();
       if (data.display_name) setNewProjAddr(data.display_name);
     } catch {
@@ -122,27 +112,14 @@ export default function ContractorView({
     if (!newProjName || !newProjAddr) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
     const { data, error } = await supabase
       .from('projects')
-      .insert([{
-        contractor_id: user.id,
-        name: newProjName,
-        address: newProjAddr,
-        latitude: modalJobLat ?? null,
-        longitude: modalJobLon ?? null,
-      }])
-      .select()
-      .single();
-
+      .insert([{ contractor_id: user.id, name: newProjName, address: newProjAddr, latitude: modalJobLat ?? null, longitude: modalJobLon ?? null }])
+      .select().single();
     if (data && !error) {
       setProjects([data, ...projects]);
       setActiveProject(data);
-      if (modalJobLat && modalJobLon) {
-        setJobLat(modalJobLat);
-        setJobLon(modalJobLon);
-        setJobAddress(newProjAddr);
-      }
+      if (modalJobLat && modalJobLon) { setJobLat(modalJobLat); setJobLon(modalJobLon); setJobAddress(newProjAddr); }
       closeModal();
       setSavedEstimates([]);
       setRequirements([]);
@@ -152,13 +129,36 @@ export default function ContractorView({
     }
   };
 
+  const deleteProject = async () => {
+    if (!activeProject) return;
+    setIsDeletingProject(true);
+    // Delete child records first to respect FK constraints
+    await supabase.from('project_requirements').delete().eq('project_id', activeProject.id);
+    await supabase.from('project_estimates').delete().eq('project_id', activeProject.id);
+    await supabase.from('quote_requests').delete().eq('project_id', activeProject.id);
+    const { error } = await supabase.from('projects').delete().eq('id', activeProject.id);
+    if (!error) {
+      const remaining = projects.filter(p => p.id !== activeProject.id);
+      setProjects(remaining);
+      setActiveProject(null);
+      setSavedEstimates([]);
+      setRequirements([]);
+      setManifestResults({});
+      setJobLat(undefined);
+      setJobLon(undefined);
+      setJobAddress(undefined);
+    } else {
+      alert("Failed to delete project.");
+    }
+    setIsDeletingProject(false);
+    setShowDeleteConfirm(false);
+  };
+
   const selectProject = async (proj: any) => {
     setActiveProject(proj);
     setManifestResults(proj.cached_results || {});
     setLastCalculated(proj.last_calculated ? new Date(proj.last_calculated) : null);
     setJobAddress(proj.address);
-
-    // Use saved coords if available, otherwise forward-geocode the address
     if (proj.latitude && proj.longitude) {
       setJobLat(proj.latitude);
       setJobLon(proj.longitude);
@@ -167,41 +167,20 @@ export default function ContractorView({
       if (coords) {
         setJobLat(coords.lat);
         setJobLon(coords.lon);
-        // Persist coords back to DB so we don't need to geocode again
-        await supabase
-          .from('projects')
-          .update({ latitude: coords.lat, longitude: coords.lon })
-          .eq('id', proj.id);
-      } else {
-        setJobLat(undefined);
-        setJobLon(undefined);
-      }
+        await supabase.from('projects').update({ latitude: coords.lat, longitude: coords.lon }).eq('id', proj.id);
+      } else { setJobLat(undefined); setJobLon(undefined); }
     }
-
-    const { data: estData } = await supabase
-      .from('project_estimates')
-      .select('*, facility:facilities(name)')
-      .eq('project_id', proj.id);
+    const { data: estData } = await supabase.from('project_estimates').select('*, facility:facilities(name)').eq('project_id', proj.id);
     if (estData) setSavedEstimates(estData);
-
-    const { data: reqData } = await supabase
-      .from('project_requirements')
-      .select('*')
-      .eq('project_id', proj.id)
-      .order('created_at', { ascending: true });
+    const { data: reqData } = await supabase.from('project_requirements').select('*').eq('project_id', proj.id).order('created_at', { ascending: true });
     if (reqData) setRequirements(reqData);
-
     setManifestResults({});
   };
 
   const addRequirement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeProject || !selectedMaterial || !qty) {
-      alert("Please select a project and fill out all fields.");
-      return;
-    }
-    const { data, error } = await supabase
-      .from('project_requirements')
+    if (!activeProject || !selectedMaterial || !qty) { alert("Please select a project and fill out all fields."); return; }
+    const { data, error } = await supabase.from('project_requirements')
       .insert([{ project_id: activeProject.id, job_type: jobType, material_name: selectedMaterial, quantity: qty }])
       .select().single();
     if (data && !error) { setRequirements([...requirements, data]); setSelectedMaterial(""); }
@@ -225,15 +204,8 @@ export default function ContractorView({
     for (const req of requirements) {
       try {
         const response = await fetch('/api/estimate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: activeProject.address,
-            qty: req.quantity,
-            jobType: req.job_type,
-            materials: [req.material_name],
-            projectId: activeProject.id
-          })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: activeProject.address, qty: req.quantity, jobType: req.job_type, materials: [req.material_name], projectId: activeProject.id })
         });
         const data = await response.json();
         if (data.success) {
@@ -265,9 +237,8 @@ export default function ContractorView({
         quantity: req.quantity, truck_fleet: res.truckFleet, base_price: res.basePrice,
         freight_price: res.frtPerUnit, total_price: res.totalPerUnit
       }]).select().single();
-      if (data && !error) {
-        setSavedEstimates([...savedEstimates.filter(se => se.material_name !== req.material_name), { ...data, facility: { name: res.supplier } }]);
-      } else alert("Failed to save estimate.");
+      if (data && !error) setSavedEstimates([...savedEstimates.filter(se => se.material_name !== req.material_name), { ...data, facility: { name: res.supplier } }]);
+      else alert("Failed to save estimate.");
     }
     setSavingEstimateId(null);
   };
@@ -287,6 +258,8 @@ export default function ContractorView({
     } catch (e: any) { alert("Error: " + e.message); console.error(e); }
     setRequestingId(null);
   };
+
+  const isImport = jobType === "Import (Delivery)";
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
@@ -317,12 +290,20 @@ export default function ContractorView({
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
         {/* Header */}
         <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
-          <div className="relative w-full md:w-96 flex items-center">
+          <div className="relative w-full md:w-96 flex items-center space-x-3">
             {activeProject ? (
-              <div className="flex items-center space-x-3">
+              <>
                 <h2 className="text-lg font-semibold text-white">{activeProject.name}</h2>
                 <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
-              </div>
+                {/* Delete button */}
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="ml-1 p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"
+                  title="Delete project"
+                >
+                  <i className="fa-solid fa-trash-can text-xs"></i>
+                </button>
+              </>
             ) : (
               <span className="text-slate-400 italic">Select a project to begin...</span>
             )}
@@ -389,29 +370,19 @@ export default function ContractorView({
                     jobAddress={jobAddress}
                     facilities={
                       Object.values(manifestResults).flat().length > 0
-                        ? Object.values(manifestResults).flat().map((r: any) => ({
-                            lat: r.lat, lon: r.lon, name: r.supplier,
-                            isDump: r.basePrice === 0 || r.frtPerUnit > 0
-                          }))
+                        ? Object.values(manifestResults).flat().map((r: any) => ({ lat: r.lat, lon: r.lon, name: r.supplier, isDump: r.basePrice === 0 || r.frtPerUnit > 0 }))
                         : allFacilities
                     }
                   />
                 </div>
-                {/* Inline legend below map */}
+                {/* Inline legend */}
                 <div className="px-4 py-2 border-t border-slate-700 flex items-center space-x-5">
                   <span className="text-xs text-slate-500 font-medium uppercase tracking-wider mr-1">Legend</span>
-                  <span className="flex items-center space-x-1.5 text-xs text-slate-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500"></span><span>Job Site</span>
-                  </span>
-                  <span className="flex items-center space-x-1.5 text-xs text-slate-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-orange-500"></span><span>Material Pit</span>
-                  </span>
-                  <span className="flex items-center space-x-1.5 text-xs text-slate-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-blue-500"></span><span>Dump Site</span>
-                  </span>
-                  <span className="flex items-center space-x-1.5 text-xs text-slate-400">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span>Pit &amp; Dump</span>
-                  </span>
+                  {[['bg-red-500','Job Site'],['bg-orange-500','Material Pit'],['bg-blue-500','Dump Site'],['bg-emerald-500','Pit & Dump']].map(([color, label]) => (
+                    <span key={label} className="flex items-center space-x-1.5 text-xs text-slate-400">
+                      <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`}></span><span>{label}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
 
@@ -442,26 +413,43 @@ export default function ContractorView({
                   <div className="p-5 space-y-6">
                     <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
                       <h3 className="text-sm font-semibold text-white mb-3">Add Requirement</h3>
-                      <div className="flex space-x-4 mb-3">
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input type="radio" name="jobType" value="Import (Delivery)" checked={jobType === "Import (Delivery)"} onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} className="text-orange-500 focus:ring-orange-500" />
-                          <span className="text-sm font-medium text-slate-300">Import</span>
-                        </label>
-                        <label className="flex items-center space-x-2 cursor-pointer">
-                          <input type="radio" name="jobType" value="Export (Haul-Off)" checked={jobType === "Export (Haul-Off)"} onChange={(e) => { setJobType(e.target.value); setSelectedMaterial(""); }} className="text-blue-500 focus:ring-blue-500" />
-                          <span className="text-sm font-medium text-slate-300">Export</span>
-                        </label>
+
+                      {/* ── Custom Import / Export toggle ── */}
+                      <div className="inline-flex relative bg-slate-800 border border-slate-700 rounded-lg p-0.5 mb-4">
+                        {/* Sliding pill indicator */}
+                        <span
+                          className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ease-in-out ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterial(""); }}
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                          ↓ Import
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterial(""); }}
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                          ↑ Export
+                        </button>
                       </div>
+
                       <form onSubmit={addRequirement} className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                        <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)} required className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                        <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)} required
+                          className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
                           <option value="">-- Select Material --</option>
-                          {(jobType === "Import (Delivery)" ? importMaterials : exportMaterials)?.map(m => <option key={m} value={m}>{m}</option>)}
+                          {(isImport ? importMaterials : exportMaterials)?.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         <div className="relative w-full md:w-32">
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{jobType === 'Import (Delivery)' ? 'Tons' : 'CY'}</span>
-                          <input type="number" required value={qty} onChange={(e) => setQty(Number(e.target.value))} className={`w-full bg-slate-800 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${jobType === 'Import (Delivery)' ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{isImport ? 'Tons' : 'CY'}</span>
+                          <input type="number" required value={qty} onChange={(e) => setQty(Number(e.target.value))}
+                            className={`w-full bg-slate-800 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
                         </div>
-                        <button type="submit" className={`px-4 py-2 rounded-lg text-sm font-bold transition-all text-white ${jobType === 'Import (Delivery)' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>+ Add</button>
+                        <button type="submit" className={`px-4 py-2 rounded-lg text-sm font-bold transition-all text-white ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                          + Add
+                        </button>
                       </form>
                     </div>
 
@@ -480,7 +468,6 @@ export default function ContractorView({
                               <i className="fa-solid fa-trash"></i>
                             </button>
                           </div>
-
                           {manifestResults[req.id] && (
                             <div className="bg-slate-900 w-full overflow-x-auto border-t border-slate-700">
                               {manifestResults[req.id].length > 0 ? (
@@ -601,7 +588,42 @@ export default function ContractorView({
         </div>
       </main>
 
-      {/* ── Project Creation Modal with Interactive Map ── */}
+      {/* ── Delete Confirmation Modal ── */}
+      {showDeleteConfirm && activeProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                <i className="fa-solid fa-triangle-exclamation text-red-500"></i>
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">Delete Project</h2>
+                <p className="text-xs text-slate-400">This cannot be undone.</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-300 mb-6">
+              Are you sure you want to delete <span className="font-semibold text-white">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteProject}
+                disabled={isDeletingProject}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all"
+              >
+                {isDeletingProject ? 'Deleting...' : 'Delete Project'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Project Modal ── */}
       {showProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl p-6">
@@ -623,13 +645,7 @@ export default function ContractorView({
                   <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span>
                 </label>
                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
-                  <MapComponent
-                    jobLat={modalJobLat}
-                    jobLon={modalJobLon}
-                    facilities={allFacilities}
-                    onMapClick={handleMapClick}
-                    interactive={true}
-                  />
+                  <MapComponent jobLat={modalJobLat} jobLon={modalJobLon} facilities={allFacilities} onMapClick={handleMapClick} interactive={true} />
                 </div>
               </div>
               <div>
