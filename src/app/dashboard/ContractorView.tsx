@@ -27,6 +27,12 @@ export default function ContractorView({
   const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [newProjName, setNewProjName] = useState("");
   const [newProjAddr, setNewProjAddr] = useState("");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editProjName, setEditProjName] = useState("");
+  const [editProjAddr, setEditProjAddr] = useState("");
+  const [editJobLat, setEditJobLat] = useState<number | undefined>(undefined);
+  const [editJobLon, setEditJobLon] = useState<number | undefined>(undefined);
+  const [isEditReverseGeocoding, setIsEditReverseGeocoding] = useState(false);
   const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
   const [savedEstimates, setSavedEstimates] = useState<any[]>([]);
   const [allSavedEstimates, setAllSavedEstimates] = useState<any[]>([]);
@@ -193,8 +199,75 @@ export default function ContractorView({
     setIsReverseGeocoding(false);
   }, []);
 
+  const handleEditMapClick = useCallback(async (lat: number, lon: number) => {
+    setEditJobLat(lat); setEditJobLon(lon); setIsEditReverseGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const data = await res.json();
+      if (data.display_name) setEditProjAddr(data.display_name);
+    } catch { setEditProjAddr(`${lat.toFixed(5)}, ${lon.toFixed(5)}`); }
+    setIsEditReverseGeocoding(false);
+  }, []);
+
   //        Project CRUD
   const closeModal = () => { setShowProjectModal(false); setNewProjName(""); setNewProjAddr(""); setModalJobLat(undefined); setModalJobLon(undefined); };
+
+  const openEditModal = () => {
+    if (!activeProject) return;
+    setEditProjName(activeProject.name || "");
+    setEditProjAddr(activeProject.address || "");
+    setEditJobLat(activeProject.latitude ?? undefined);
+    setEditJobLon(activeProject.longitude ?? undefined);
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditProjName("");
+    setEditProjAddr("");
+    setEditJobLat(undefined);
+    setEditJobLon(undefined);
+    setIsEditReverseGeocoding(false);
+  };
+
+  const saveProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeProject || !editProjName || !editProjAddr) return;
+    const locationChanged =
+      editJobLat !== activeProject.latitude ||
+      editJobLon !== activeProject.longitude ||
+      editProjAddr !== activeProject.address;
+
+    const updatePayload: any = {
+      name: editProjName,
+      address: editProjAddr,
+      latitude: editJobLat ?? null,
+      longitude: editJobLon ?? null,
+    };
+    if (locationChanged) {
+      updatePayload.cached_results = {};
+      updatePayload.last_calculated = null;
+      await supabase.from('project_estimates').delete().eq('project_id', activeProject.id);
+      await supabase.from('project_requirements').delete().eq('project_id', activeProject.id);
+      setSavedEstimates([]);
+      setRequirements([]);
+      setManifestResults({});
+      setLastCalculated(null);
+    }
+
+    const { data, error } = await supabase.from('projects').update(updatePayload).eq('id', activeProject.id).select().single();
+    if (data && !error) {
+      setActiveProject(data);
+      setProjects(projects.map(p => p.id === data.id ? data : p));
+      if (locationChanged) {
+        setJobLat(editJobLat);
+        setJobLon(editJobLon);
+        setJobAddress(editProjAddr);
+        await fetchAllSavedEstimates();
+      }
+      closeEditModal();
+    } else alert("Failed to save project.");
+  };
 
   const createProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,6 +525,9 @@ export default function ContractorView({
               <>
                 <h2 className="text-lg font-semibold text-white">{activeProject.name}</h2>
                 <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
+                <button onClick={openEditModal} className="ml-1 p-1.5 text-slate-600 hover:text-orange-400 hover:bg-orange-500/10 rounded-md transition-all" title="Edit project">
+                  <i className="fa-solid fa-pen-to-square text-xs"></i>
+                </button>
                 <button onClick={() => setShowDeleteConfirm(true)} className="ml-1 p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all" title="Delete project">
                   <i className="fa-solid fa-trash-can text-xs"></i>
                 </button>
@@ -778,6 +854,40 @@ export default function ContractorView({
               <div className="flex space-x-3 pt-2">
                 <button type="button" onClick={closeModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
                 <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {showEditModal && activeProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl p-6">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-bold text-white">Edit Project</h2>
+              <button onClick={closeEditModal} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onSubmit={saveProject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
+                <input type="text" required value={editProjName} onChange={(e) => setEditProjName(e.target.value)} placeholder="e.g., Redwood Subdivision"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span></label>
+                <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
+                  <MapComponent jobLat={editJobLat} jobLon={editJobLon} facilities={allFacilities} onMapClick={handleEditMapClick} interactive={true} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address {isEditReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}</label>
+                <textarea required value={editProjAddr} onChange={(e) => setEditProjAddr(e.target.value)} placeholder="Click the map above, or type an address manually"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-16 resize-none" />
+              </div>
+              <div className="flex space-x-3 pt-2">
+                <button type="button" onClick={closeEditModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Save Changes</button>
               </div>
             </form>
           </div>
