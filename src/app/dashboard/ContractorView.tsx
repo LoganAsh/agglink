@@ -581,6 +581,9 @@ export default function ContractorView({
                                       const allFrts = manifestResults[req.id].map((o: any) => o.frtPerUnit);
                                       const avgFrt = allFrts.reduce((a: number, b: number) => a + b, 0) / allFrts.length;
                                       const frtSavingsPct = avgFrt > 0 ? ((avgFrt - res.frtPerUnit) / avgFrt) * 100 : null;
+                                      const allBases = manifestResults[req.id].map((o: any) => o.basePrice);
+                                      const avgBase = allBases.reduce((a: number, b: number) => a + b, 0) / allBases.length;
+                                      const baseSavingsPct = avgBase > 0 ? ((avgBase - res.basePrice) / avgBase) * 100 : null;
                                       return (
                                         <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
                                           <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
@@ -588,6 +591,11 @@ export default function ContractorView({
                                           <td className="px-4 py-2 text-right text-slate-400">
                                             ${res.basePrice.toFixed(2)}
                                             {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Special Pricing Applied">*</span>}
+                                            {baseSavingsPct !== null && (
+                                              <span className={`ml-1 text-[10px] font-semibold ${baseSavingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {baseSavingsPct >= 0 ? '+' : ''}{baseSavingsPct.toFixed(0)}%
+                                              </span>
+                                            )}
                                           </td>
                                           <td className="px-4 py-2 text-right text-slate-400">
                                             ${res.frtPerUnit.toFixed(2)}
