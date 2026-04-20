@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import dynamic from 'next/dynamic';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
-export default function ContractorView({ 
-  profileName = "Logan Ash", 
-  companyName = "Ash Excavation", 
-  pitsCount = 14, 
+export default function ContractorView({
+  profileName = "Logan Ash",
+  companyName = "Ash Excavation",
+  pitsCount = 14,
   dumpsCount = 14,
   importMaterials = [],
   exportMaterials = []
@@ -27,6 +27,7 @@ export default function ContractorView({
   const [newProjAddr, setNewProjAddr] = useState("");
   const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
   const [savedEstimates, setSavedEstimates] = useState<any[]>([]);
+  const [allSavedEstimates, setAllSavedEstimates] = useState<any[]>([]); // across all projects
   const [projectQuotes, setProjectQuotes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'locked' | 'pending'>('locked');
   const [requestingId, setRequestingId] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export default function ContractorView({
   useEffect(() => {
     fetchProjects();
     fetchAllFacilities();
+    fetchAllSavedEstimates();
   }, []);
 
   const fetchProjects = async () => {
@@ -75,6 +77,113 @@ export default function ContractorView({
     const { data } = await supabase.from('facilities').select('id, name, type, latitude, longitude');
     if (data) setAllFacilities(data);
   };
+
+  // Fetch all saved estimates across all projects for the account-level KPI
+  const fetchAllSavedEstimates = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Get all project ids for this user
+    const { data: userProjects } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('contractor_id', user.id);
+    if (!userProjects || userProjects.length === 0) return;
+    const projectIds = userProjects.map(p => p.id);
+    const { data: estimates } = await supabase
+      .from('project_estimates')
+      .select('*')
+      .in('project_id', projectIds);
+    if (estimates) setAllSavedEstimates(estimates);
+  };
+
+  //        Freight savings calculation
+  // For a set of saved estimates and manifest results, compute avg savings %
+  // manifestResults: { [reqId]: [ { frtPerUnit, ... }, ... ] } (top 5 options)
+  // estimates: saved estimates with freight_price field
+  const calcFreightSavings = useCallback((
+    estimates: any[],
+    results: any[],
+    reqs: any[]
+  ): number | null => {
+    const savingsPcts: number[] = [];
+    for (const est of estimates) {
+      // Find the requirement this estimate corresponds to
+      const req = reqs.find(r => r.material_name === est.material_name);
+      if (!req) continue;
+      // Find the top-5 results for this requirement
+      const options: any[] = results[req.id];
+      if (!options || options.length === 0) continue;
+      const avgFrt = options.reduce((s: number, o: any) => s + o.frtPerUnit, 0) / options.length;
+      if (avgFrt === 0) continue;
+      const selectedFrt = est.freight_price;
+      const savingsPct = ((avgFrt - selectedFrt) / avgFrt) * 100;
+      savingsPcts.push(savingsPct);
+    }
+    if (savingsPcts.length === 0) return null;
+    return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
+  }, []);
+
+  // Account-level freight savings: uses cached_results from all projects
+  const accountFreightSavings = useMemo(() => {
+    if (allSavedEstimates.length === 0 || projects.length === 0) return null;
+    const savingsPcts: number[] = [];
+    for (const proj of projects) {
+      const cachedResults = proj.cached_results || {};
+      if (Object.keys(cachedResults).length === 0) continue;
+      // Get saved estimates for this project
+      const projEstimates = allSavedEstimates.filter(e => e.project_id === proj.id);
+      if (projEstimates.length === 0) continue;
+      // cached_results keys are requirement IDs
+      for (const est of projEstimates) {
+        // Find matching req result - match by material name across all req keys
+        for (const [, options] of Object.entries(cachedResults) as [string, any[]][]) {
+          if (!options || options.length === 0) continue;
+          // Check if any option in this result set matches this estimate's material
+          const matchingOption = options.find((o: any) => o.supplier && est.material_name);
+          if (!matchingOption) continue;
+          const avgFrt = options.reduce((s: number, o: any) => s + (o.frtPerUnit || 0), 0) / options.length;
+          if (avgFrt === 0) continue;
+          const savingsPct = ((avgFrt - est.freight_price) / avgFrt) * 100;
+          savingsPcts.push(savingsPct);
+          break; // found match, move to next estimate
+        }
+      }
+    }
+    if (savingsPcts.length === 0) return null;
+    return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
+  }, [allSavedEstimates, projects]);
+
+  // Project-level freight savings: uses current manifestResults + savedEstimates
+  const projectFreightSavings = useMemo(() => {
+    if (savedEstimates.length === 0 || Object.keys(manifestResults).length === 0) return null;
+    const savingsPcts: number[] = [];
+    for (const est of savedEstimates) {
+      // Find result set for this estimate's material
+      for (const options of Object.values(manifestResults) as any[][]) {
+        if (!options || options.length === 0) continue;
+        const avgFrt = options.reduce((s: number, o: any) => s + (o.frtPerUnit || 0), 0) / options.length;
+        if (avgFrt === 0) continue;
+        const savingsPct = ((avgFrt - est.freight_price) / avgFrt) * 100;
+        savingsPcts.push(savingsPct);
+        break;
+      }
+    }
+    if (savingsPcts.length === 0) return null;
+    return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
+  }, [savedEstimates, manifestResults]);
+
+  const fmtSavings = (val: number | null) => {
+    if (val === null) return { display: '--', sub: 'No estimates yet', positive: true };
+    const sign = val >= 0 ? '+' : '';
+    return {
+      display: `${sign}${val.toFixed(1)}%`,
+      sub: val >= 0 ? 'below avg market freight' : 'above avg market freight',
+      positive: val >= 0
+    };
+  };
+
+  const accountSavingsFmt = fmtSavings(accountFreightSavings);
+  const projectSavingsFmt = fmtSavings(projectFreightSavings);
 
   const geocodeAddress = useCallback(async (address: string): Promise<{ lat: number; lon: number } | null> => {
     try {
@@ -132,7 +241,6 @@ export default function ContractorView({
   const deleteProject = async () => {
     if (!activeProject) return;
     setIsDeletingProject(true);
-    // Delete child records first to respect FK constraints
     await supabase.from('project_requirements').delete().eq('project_id', activeProject.id);
     await supabase.from('project_estimates').delete().eq('project_id', activeProject.id);
     await supabase.from('quote_requests').delete().eq('project_id', activeProject.id);
@@ -147,6 +255,7 @@ export default function ContractorView({
       setJobLat(undefined);
       setJobLon(undefined);
       setJobAddress(undefined);
+      await fetchAllSavedEstimates();
     } else {
       alert("Failed to delete project.");
     }
@@ -174,7 +283,7 @@ export default function ContractorView({
     if (estData) setSavedEstimates(estData);
     const { data: reqData } = await supabase.from('project_requirements').select('*').eq('project_id', proj.id).order('created_at', { ascending: true });
     if (reqData) setRequirements(reqData);
-    setManifestResults({});
+    setManifestResults(proj.cached_results || {});
   };
 
   const addRequirement = async (e: React.FormEvent) => {
@@ -218,6 +327,8 @@ export default function ContractorView({
     const now = new Date();
     setLastCalculated(now);
     await supabase.from('projects').update({ cached_results: newResults, last_calculated: now.toISOString() }).eq('id', activeProject.id);
+    // Refresh account-level estimates after recalculating
+    await fetchAllSavedEstimates();
     setIsCalculating(false);
   };
 
@@ -227,8 +338,10 @@ export default function ContractorView({
     const existingExact = savedEstimates.find(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
     if (existingExact) {
       const { error } = await supabase.from('project_estimates').delete().eq('id', existingExact.id);
-      if (!error) setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id));
-      else alert("Failed to remove saved estimate.");
+      if (!error) {
+        setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id));
+        await fetchAllSavedEstimates();
+      } else alert("Failed to remove saved estimate.");
     } else {
       const existingForMat = savedEstimates.find(se => se.material_name === req.material_name);
       if (existingForMat) await supabase.from('project_estimates').delete().eq('id', existingForMat.id);
@@ -237,8 +350,10 @@ export default function ContractorView({
         quantity: req.quantity, truck_fleet: res.truckFleet, base_price: res.basePrice,
         freight_price: res.frtPerUnit, total_price: res.totalPerUnit
       }]).select().single();
-      if (data && !error) setSavedEstimates([...savedEstimates.filter(se => se.material_name !== req.material_name), { ...data, facility: { name: res.supplier } }]);
-      else alert("Failed to save estimate.");
+      if (data && !error) {
+        setSavedEstimates([...savedEstimates.filter(se => se.material_name !== req.material_name), { ...data, facility: { name: res.supplier } }]);
+        await fetchAllSavedEstimates();
+      } else alert("Failed to save estimate.");
     }
     setSavingEstimateId(null);
   };
@@ -295,12 +410,7 @@ export default function ContractorView({
               <>
                 <h2 className="text-lg font-semibold text-white">{activeProject.name}</h2>
                 <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
-                {/* Delete button */}
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="ml-1 p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all"
-                  title="Delete project"
-                >
+                <button onClick={() => setShowDeleteConfirm(true)} className="ml-1 p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all" title="Delete project">
                   <i className="fa-solid fa-trash-can text-xs"></i>
                 </button>
               </>
@@ -333,23 +443,34 @@ export default function ContractorView({
 
         {/* Dashboard Content */}
         <div className="p-4 md:p-8 space-y-6">
+
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            {/* Card 1: Account-level freight savings */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
-              <h3 className="text-3xl font-bold text-white mt-1">14.2%</h3>
-              <p className="text-xs text-emerald-400 mt-3">2.1% from last month</p>
+              <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-slate-500' : accountSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}>
+                {accountSavingsFmt.display}
+              </h3>
+              <p className="text-xs text-slate-400 mt-3">{accountSavingsFmt.sub}</p>
             </div>
+
+            {/* Card 2: Active Network */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Network</p>
               <h3 className="text-3xl font-bold text-white mt-1">{pitsCount + dumpsCount}</h3>
               <p className="text-xs text-slate-400 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
             </div>
+
+            {/* Card 3: Total Est. Value */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Est. Value</p>
               <h3 className="text-3xl font-bold text-white mt-1">$1.4M</h3>
               <p className="text-xs text-slate-400 mt-3">Across 12 active bids</p>
             </div>
+
+            {/* Card 4: Market Price */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Market Price</p>
               <h3 className="text-3xl font-bold text-white mt-1">$10.20<span className="text-sm text-slate-400 font-normal">/ton</span></h3>
@@ -361,13 +482,12 @@ export default function ContractorView({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Col */}
             <div className="col-span-1 lg:col-span-2 space-y-6">
+
               {/* Map Card */}
               <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden">
                 <div className="h-64 bg-slate-900 w-full relative">
                   <MapComponent
-                    jobLat={jobLat}
-                    jobLon={jobLon}
-                    jobAddress={jobAddress}
+                    jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
                     facilities={
                       Object.values(manifestResults).flat().length > 0
                         ? Object.values(manifestResults).flat().map((r: any) => ({ lat: r.lat, lon: r.lon, name: r.supplier, isDump: r.basePrice === 0 || r.frtPerUnit > 0 }))
@@ -375,7 +495,6 @@ export default function ContractorView({
                     }
                   />
                 </div>
-                {/* Inline legend */}
                 <div className="px-4 py-2 border-t border-slate-700 flex items-center space-x-5">
                   <span className="text-xs text-slate-500 font-medium uppercase tracking-wider mr-1">Legend</span>
                   {[['bg-red-500','Job Site'],['bg-orange-500','Material Pit'],['bg-blue-500','Dump Site'],['bg-emerald-500','Pit & Dump']].map(([color, label]) => (
@@ -411,31 +530,32 @@ export default function ContractorView({
                   </div>
                 ) : (
                   <div className="p-5 space-y-6">
+
+                    {/* Project-level freight savings inline banner */}
+                    {projectFreightSavings !== null && (
+                      <div className={`flex items-center space-x-3 px-4 py-2.5 rounded-lg border ${projectSavingsFmt.positive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                        <i className={`fa-solid fa-truck text-sm ${projectSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}></i>
+                        <div>
+                          <span className={`text-sm font-bold ${projectSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}>{projectSavingsFmt.display}</span>
+                          <span className="text-xs text-slate-400 ml-2">freight savings on this project vs. top-5 avg</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Add Requirement Form */}
                     <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
                       <h3 className="text-sm font-semibold text-white mb-3">Add Requirement</h3>
-
-                      {/* ── Custom Import / Export toggle ── */}
                       <div className="inline-flex relative bg-slate-800 border border-slate-700 rounded-lg p-0.5 mb-4">
-                        {/* Sliding pill indicator */}
-                        <span
-                          className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ease-in-out ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterial(""); }}
-                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}
-                        >
-                          ↓ Import
+                        <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ease-in-out ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
+                        <button type="button" onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterial(""); }}
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                          Down Import
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterial(""); }}
-                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
-                        >
-                          ↑ Export
+                        <button type="button" onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterial(""); }}
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                          Up Export
                         </button>
                       </div>
-
                       <form onSubmit={addRequirement} className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
                         <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)} required
                           className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
@@ -447,12 +567,11 @@ export default function ContractorView({
                           <input type="number" required value={qty} onChange={(e) => setQty(Number(e.target.value))}
                             className={`w-full bg-slate-800 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
                         </div>
-                        <button type="submit" className={`px-4 py-2 rounded-lg text-sm font-bold transition-all text-white ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
-                          + Add
-                        </button>
+                        <button type="submit" className={`px-4 py-2 rounded-lg text-sm font-bold transition-all text-white ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>+ Add</button>
                       </form>
                     </div>
 
+                    {/* Requirements & Results */}
                     <div className="space-y-6">
                       {requirements.map((req: any) => (
                         <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
@@ -485,15 +604,26 @@ export default function ContractorView({
                                   <tbody className="divide-y divide-slate-800">
                                     {manifestResults[req.id].map((res: any, idx: number) => {
                                       const isSaved = savedEstimates.some(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
+                                      // Per-row freight savings vs avg of all 5
+                                      const allFrts = manifestResults[req.id].map((o: any) => o.frtPerUnit);
+                                      const avgFrt = allFrts.reduce((a: number, b: number) => a + b, 0) / allFrts.length;
+                                      const frtSavingsPct = avgFrt > 0 ? ((avgFrt - res.frtPerUnit) / avgFrt) * 100 : null;
                                       return (
                                         <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
                                           <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
                                           <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
                                           <td className="px-4 py-2 text-right text-slate-400">
                                             ${res.basePrice.toFixed(2)}
-                                            {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Special Pricing Applied">★</span>}
+                                            {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Special Pricing Applied">*</span>}
                                           </td>
-                                          <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}</td>
+                                          <td className="px-4 py-2 text-right text-slate-400">
+                                            ${res.frtPerUnit.toFixed(2)}
+                                            {frtSavingsPct !== null && (
+                                              <span className={`ml-1 text-[10px] font-semibold ${frtSavingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {frtSavingsPct >= 0 ? '+' : ''}{frtSavingsPct.toFixed(0)}%
+                                              </span>
+                                            )}
+                                          </td>
                                           <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
                                           <td className="px-4 py-2">
                                             <div className="flex space-x-1 justify-center">
@@ -588,7 +718,7 @@ export default function ContractorView({
         </div>
       </main>
 
-      {/* ── Delete Confirmation Modal ── */}
+      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && activeProject && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6">
@@ -605,17 +735,8 @@ export default function ContractorView({
               Are you sure you want to delete <span className="font-semibold text-white">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.
             </p>
             <div className="flex space-x-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={deleteProject}
-                disabled={isDeletingProject}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all"
-              >
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
+              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                 {isDeletingProject ? 'Deleting...' : 'Delete Project'}
               </button>
             </div>
@@ -623,15 +744,13 @@ export default function ContractorView({
         </div>
       )}
 
-      {/* ── Create Project Modal ── */}
+      {/* Create Project Modal */}
       {showProjectModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl p-6">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-bold text-white">Create New Project</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-white">
-                <i className="fa-solid fa-xmark text-lg"></i>
-              </button>
+              <button onClick={closeModal} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onSubmit={createProject} className="space-y-4">
               <div>
@@ -641,8 +760,7 @@ export default function ContractorView({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Job Site Location
-                  <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span>
+                  Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span>
                 </label>
                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
                   <MapComponent jobLat={modalJobLat} jobLon={modalJobLon} facilities={allFacilities} onMapClick={handleMapClick} interactive={true} />
@@ -650,8 +768,7 @@ export default function ContractorView({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Job Site Address
-                  {isReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}
+                  Job Site Address {isReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}
                 </label>
                 <textarea required value={newProjAddr} onChange={(e) => setNewProjAddr(e.target.value)}
                   placeholder="Click the map above, or type an address manually"
