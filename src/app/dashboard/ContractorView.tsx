@@ -96,33 +96,6 @@ export default function ContractorView({
     if (estimates) setAllSavedEstimates(estimates);
   };
 
-  //        Freight savings calculation
-  // For a set of saved estimates and manifest results, compute avg savings %
-  // manifestResults: { [reqId]: [ { frtPerUnit, ... }, ... ] } (top 5 options)
-  // estimates: saved estimates with freight_price field
-  const calcFreightSavings = useCallback((
-    estimates: any[],
-    results: any[],
-    reqs: any[]
-  ): number | null => {
-    const savingsPcts: number[] = [];
-    for (const est of estimates) {
-      // Find the requirement this estimate corresponds to
-      const req = reqs.find(r => r.material_name === est.material_name);
-      if (!req) continue;
-      // Find the top-5 results for this requirement
-      const options: any[] = results[req.id];
-      if (!options || options.length === 0) continue;
-      const avgFrt = options.reduce((s: number, o: any) => s + o.frtPerUnit, 0) / options.length;
-      if (avgFrt === 0) continue;
-      const selectedFrt = est.freight_price;
-      const savingsPct = ((avgFrt - selectedFrt) / avgFrt) * 100;
-      savingsPcts.push(savingsPct);
-    }
-    if (savingsPcts.length === 0) return null;
-    return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
-  }, []);
-
   // Account-level freight savings: uses cached_results from all projects
   const accountFreightSavings = useMemo(() => {
     if (allSavedEstimates.length === 0 || projects.length === 0) return null;
