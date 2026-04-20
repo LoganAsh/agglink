@@ -365,7 +365,8 @@ export default function ContractorView({
           continue;
         }
         const response = await fetch('/api/estimate', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             address: activeProject.address,
             qty: req.quantity,
@@ -375,6 +376,16 @@ export default function ContractorView({
             projectId: activeProject.id,
           })
         });
+
+        console.log('Estimate response status:', response.status, 'for materials:', materialsToFetch);
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error('Estimate failed:', response.status, text, 'materials:', JSON.stringify(materialsToFetch));
+          newResults[req.id] = [];
+          continue;
+        }
+
         const data = await response.json();
         if (data.success) {
           if (data.jobLat && data.jobLon) { setJobLat(data.jobLat); setJobLon(data.jobLon); }
