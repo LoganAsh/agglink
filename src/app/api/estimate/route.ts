@@ -174,6 +174,11 @@ export async function POST(request: Request) {
         }
 
         const totalCost = materialCost + totalTruckingCost;
+        console.log('Material calc:', mat.name, truck.type, { basePriceLabel, materialCost, totalTruckingCost, totalCost });
+        if (!isFinite(totalCost) || !isFinite(basePriceLabel) || basePriceLabel === 0) {
+          console.log('Skipping invalid result:', mat.name, truck.type, { basePriceLabel, totalCost });
+          continue;
+        }
         const entry = {
           facilityId:   fac.id,
           supplier:     fac.name,
