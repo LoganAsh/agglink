@@ -299,12 +299,7 @@ export default function ContractorView({
         const data = await response.json();
         if (data.success) {
           if (data.jobLat && data.jobLon) { setJobLat(data.jobLat); setJobLon(data.jobLon); }
-          // Store grouped results if multi-material, else flat top-5
-          if (data.grouped && Object.keys(data.grouped).length > 1) {
-            newResults[req.id] = { grouped: data.grouped };
-          } else {
-            newResults[req.id] = data.data.slice(0, 5);
-          }
+          newResults[req.id] = data.data.slice(0, 5);
         } else { newResults[req.id] = []; }
       } catch (err) { console.error(err); newResults[req.id] = []; }
     }
@@ -687,7 +682,6 @@ export default function ContractorView({
                     <div className="space-y-6">
                       {requirements.map((req: any) => {
                         const result = manifestResults[req.id];
-                        const isGrouped = result && !Array.isArray(result) && result.grouped;
                         const comparedMats = req.compared_materials || [req.material_name];
                         return (
                           <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
@@ -717,14 +711,7 @@ export default function ContractorView({
                             {/* Results */}
                             {result && (
                               <div className="bg-slate-900 border-t border-slate-700">
-                                {isGrouped ? (
-                                  // Multi-material: side by side sections
-                                  <div className="divide-y divide-slate-800">
-                                    {Object.entries(result.grouped).map(([matName, options]: [string, any]) => (
-                                      <ResultsTable key={matName} options={options} req={req} label={matName} />
-                                    ))}
-                                  </div>
-                                ) : Array.isArray(result) && result.length > 0 ? (
+                                {Array.isArray(result) && result.length > 0 ? (
                                   <ResultsTable options={result} req={req} />
                                 ) : (
                                   <p className="p-3 text-center text-xs text-red-400">No facilities found or routing failed.</p>

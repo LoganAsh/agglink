@@ -190,24 +190,15 @@ export async function POST(request: Request) {
       }
     }
 
-    // Sort each material group by cheapest total, take top 5
-    const groupedResults: Record<string, any[]> = {};
-    for (const [matName, entries] of Object.entries(resultsByMaterial)) {
-      groupedResults[matName] = entries
-        .sort((a, b) => a.totalPerUnit - b.totalPerUnit)
-        .slice(0, 5);
-    }
-
-    // Flat results for backwards compatibility (single-material requests)
-    const flatResults = Object.values(groupedResults).flat()
-      .sort((a, b) => a.totalPerUnit - b.totalPerUnit);
+    const flatResults = Object.values(resultsByMaterial).flat()
+      .sort((a, b) => a.totalPerUnit - b.totalPerUnit)
+      .slice(0, 5);
 
     return NextResponse.json({
       success:  true,
       jobLat,
       jobLon,
-      data:     flatResults.slice(0, 10),   // legacy flat list
-      grouped:  groupedResults,             // new: keyed by material name
+      data:     flatResults,
     });
 
   } catch (error) {
