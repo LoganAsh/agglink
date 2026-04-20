@@ -18,6 +18,8 @@ export default function ContractorView({
 }: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, importMaterials?: string[], exportMaterials?: string[] }) {
 
   const supabase = createClient();
+
+  // Core state
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProject, setActiveProject] = useState<any | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -27,49 +29,51 @@ export default function ContractorView({
   const [newProjAddr, setNewProjAddr] = useState("");
   const [savingEstimateId, setSavingEstimateId] = useState<string | null>(null);
   const [savedEstimates, setSavedEstimates] = useState<any[]>([]);
-  const [allSavedEstimates, setAllSavedEstimates] = useState<any[]>([]); // across all projects
+  const [allSavedEstimates, setAllSavedEstimates] = useState<any[]>([]);
   const [projectQuotes, setProjectQuotes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'locked' | 'pending'>('locked');
   const [requestingId, setRequestingId] = useState<string | null>(null);
 
-  // Dashboard map states
+  // Map state
   const [jobLat, setJobLat] = useState<number | undefined>(undefined);
   const [jobLon, setJobLon] = useState<number | undefined>(undefined);
   const [jobAddress, setJobAddress] = useState<string | undefined>(undefined);
-
-  // All facilities for map markers
   const [allFacilities, setAllFacilities] = useState<any[]>([]);
-
-  // Modal map states
   const [modalJobLat, setModalJobLat] = useState<number | undefined>(undefined);
   const [modalJobLon, setModalJobLon] = useState<number | undefined>(undefined);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
 
-  // Manifest states
+  // Manifest state
   const [requirements, setRequirements] = useState<any[]>([]);
   const [manifestResults, setManifestResults] = useState<any>({});
   const [isCalculating, setIsCalculating] = useState(false);
   const [lastCalculated, setLastCalculated] = useState<Date | null>(null);
 
-  // Requirement form states
+  // Categories & truck types
+  const [categories, setCategories] = useState<any[]>([]);
+  const [categoryMap, setCategoryMap] = useState<any[]>([]);
+  const [truckTypes, setTruckTypes] = useState<any[]>([]);
+
+  // Requirement form state
   const [jobType, setJobType] = useState("Import (Delivery)");
-  const [selectedMaterial, setSelectedMaterial] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [selectedTruckType, setSelectedTruckType] = useState("");
   const [qty, setQty] = useState(1500);
+
+  const isImport = jobType === "Import (Delivery)";
 
   useEffect(() => {
     fetchProjects();
     fetchAllFacilities();
     fetchAllSavedEstimates();
+    fetchCategoriesAndTrucks();
   }, []);
 
   const fetchProjects = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('contractor_id', user.id)
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.from('projects').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false });
     if (data) setProjects(data);
   };
 
@@ -78,47 +82,66 @@ export default function ContractorView({
     if (data) setAllFacilities(data);
   };
 
-  // Fetch all saved estimates across all projects for the account-level KPI
   const fetchAllSavedEstimates = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    // Get all project ids for this user
-    const { data: userProjects } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('contractor_id', user.id);
+    const { data: userProjects } = await supabase.from('projects').select('id').eq('contractor_id', user.id);
     if (!userProjects || userProjects.length === 0) return;
     const projectIds = userProjects.map(p => p.id);
-    const { data: estimates } = await supabase
-      .from('project_estimates')
-      .select('*')
-      .in('project_id', projectIds);
+    const { data: estimates } = await supabase.from('project_estimates').select('*').in('project_id', projectIds);
     if (estimates) setAllSavedEstimates(estimates);
   };
 
-  // Account-level freight savings: uses cached_results from all projects
+  const fetchCategoriesAndTrucks = async () => {
+    const [{ data: cats }, { data: map }, { data: trucks }] = await Promise.all([
+      supabase.from('material_categories').select('*').order('name'),
+      supabase.from('material_category_map').select('*'),
+      supabase.from('truck_types').select('*').eq('active', true).order('name'),
+    ]);
+    if (cats) setCategories(cats);
+    if (map) setCategoryMap(map);
+    if (trucks) setTruckTypes(trucks);
+  };
+
+  // Materials available for selected category
+  const filteredMaterials = useMemo(() => {
+    const allMats = isImport ? importMaterials : exportMaterials;
+    if (!selectedCategory) return allMats;
+    const cat = categories.find(c => c.id === selectedCategory);
+    if (!cat) return allMats;
+    const mapped = categoryMap.filter(m => m.category_id === selectedCategory).map(m => m.material_name);
+    return allMats.filter(m => mapped.includes(m));
+  }, [selectedCategory, isImport, importMaterials, exportMaterials, categories, categoryMap]);
+
+  // Categories for current job type
+  const filteredCategories = useMemo(() =>
+    categories.filter(c => c.type === (isImport ? 'import' : 'export')),
+    [categories, isImport]
+  );
+
+  // Toggle a material in the multi-select list
+  const toggleMaterial = (mat: string) => {
+    setSelectedMaterials(prev =>
+      prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
+    );
+  };
+
+  //        Freight savings calculations
   const accountFreightSavings = useMemo(() => {
     if (allSavedEstimates.length === 0 || projects.length === 0) return null;
     const savingsPcts: number[] = [];
     for (const proj of projects) {
       const cachedResults = proj.cached_results || {};
       if (Object.keys(cachedResults).length === 0) continue;
-      // Get saved estimates for this project
       const projEstimates = allSavedEstimates.filter(e => e.project_id === proj.id);
-      if (projEstimates.length === 0) continue;
-      // cached_results keys are requirement IDs
       for (const est of projEstimates) {
-        // Find matching req result - match by material name across all req keys
         for (const [, options] of Object.entries(cachedResults) as [string, any[]][]) {
           if (!options || options.length === 0) continue;
-          // Check if any option in this result set matches this estimate's material
-          const matchingOption = options.find((o: any) => o.supplier && est.material_name);
-          if (!matchingOption) continue;
           const avgFrt = options.reduce((s: number, o: any) => s + (o.frtPerUnit || 0), 0) / options.length;
           if (avgFrt === 0) continue;
           const savingsPct = ((avgFrt - est.freight_price) / avgFrt) * 100;
           savingsPcts.push(savingsPct);
-          break; // found match, move to next estimate
+          break;
         }
       }
     }
@@ -126,18 +149,15 @@ export default function ContractorView({
     return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
   }, [allSavedEstimates, projects]);
 
-  // Project-level freight savings: uses current manifestResults + savedEstimates
   const projectFreightSavings = useMemo(() => {
     if (savedEstimates.length === 0 || Object.keys(manifestResults).length === 0) return null;
     const savingsPcts: number[] = [];
     for (const est of savedEstimates) {
-      // Find result set for this estimate's material
       for (const options of Object.values(manifestResults) as any[][]) {
         if (!options || options.length === 0) continue;
         const avgFrt = options.reduce((s: number, o: any) => s + (o.frtPerUnit || 0), 0) / options.length;
         if (avgFrt === 0) continue;
-        const savingsPct = ((avgFrt - est.freight_price) / avgFrt) * 100;
-        savingsPcts.push(savingsPct);
+        savingsPcts.push(((avgFrt - est.freight_price) / avgFrt) * 100);
         break;
       }
     }
@@ -148,67 +168,45 @@ export default function ContractorView({
   const fmtSavings = (val: number | null) => {
     if (val === null) return { display: '--', sub: 'No estimates yet', positive: true };
     const sign = val >= 0 ? '+' : '';
-    return {
-      display: `${sign}${val.toFixed(1)}%`,
-      sub: val >= 0 ? 'below avg market freight' : 'above avg market freight',
-      positive: val >= 0
-    };
+    return { display: `${sign}${val.toFixed(1)}%`, sub: val >= 0 ? 'below avg market freight' : 'above avg market freight', positive: val >= 0 };
   };
-
   const accountSavingsFmt = fmtSavings(accountFreightSavings);
   const projectSavingsFmt = fmtSavings(projectFreightSavings);
 
-  const geocodeAddress = useCallback(async (address: string): Promise<{ lat: number; lon: number } | null> => {
+  //        Geocoding
+  const geocodeAddress = useCallback(async (address: string) => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
       const data = await res.json();
-      if (data && data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-    } catch { /* silently fail */ }
+      if (data?.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    } catch { /* silent */ }
     return null;
   }, []);
 
   const handleMapClick = useCallback(async (lat: number, lon: number) => {
-    setModalJobLat(lat);
-    setModalJobLon(lon);
-    setIsReverseGeocoding(true);
+    setModalJobLat(lat); setModalJobLon(lon); setIsReverseGeocoding(true);
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
       const data = await res.json();
       if (data.display_name) setNewProjAddr(data.display_name);
-    } catch {
-      setNewProjAddr(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
-    }
+    } catch { setNewProjAddr(`${lat.toFixed(5)}, ${lon.toFixed(5)}`); }
     setIsReverseGeocoding(false);
   }, []);
 
-  const closeModal = () => {
-    setShowProjectModal(false);
-    setNewProjName("");
-    setNewProjAddr("");
-    setModalJobLat(undefined);
-    setModalJobLon(undefined);
-  };
+  //        Project CRUD
+  const closeModal = () => { setShowProjectModal(false); setNewProjName(""); setNewProjAddr(""); setModalJobLat(undefined); setModalJobLon(undefined); };
 
   const createProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjName || !newProjAddr) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data, error } = await supabase
-      .from('projects')
-      .insert([{ contractor_id: user.id, name: newProjName, address: newProjAddr, latitude: modalJobLat ?? null, longitude: modalJobLon ?? null }])
-      .select().single();
+    const { data, error } = await supabase.from('projects').insert([{ contractor_id: user.id, name: newProjName, address: newProjAddr, latitude: modalJobLat ?? null, longitude: modalJobLon ?? null }]).select().single();
     if (data && !error) {
-      setProjects([data, ...projects]);
-      setActiveProject(data);
+      setProjects([data, ...projects]); setActiveProject(data);
       if (modalJobLat && modalJobLon) { setJobLat(modalJobLat); setJobLon(modalJobLon); setJobAddress(newProjAddr); }
-      closeModal();
-      setSavedEstimates([]);
-      setRequirements([]);
-      setManifestResults({});
-    } else {
-      alert("Failed to create project");
-    }
+      closeModal(); setSavedEstimates([]); setRequirements([]); setManifestResults({});
+    } else alert("Failed to create project");
   };
 
   const deleteProject = async () => {
@@ -219,21 +217,12 @@ export default function ContractorView({
     await supabase.from('quote_requests').delete().eq('project_id', activeProject.id);
     const { error } = await supabase.from('projects').delete().eq('id', activeProject.id);
     if (!error) {
-      const remaining = projects.filter(p => p.id !== activeProject.id);
-      setProjects(remaining);
-      setActiveProject(null);
-      setSavedEstimates([]);
-      setRequirements([]);
-      setManifestResults({});
-      setJobLat(undefined);
-      setJobLon(undefined);
-      setJobAddress(undefined);
+      setProjects(projects.filter(p => p.id !== activeProject.id));
+      setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({});
+      setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
       await fetchAllSavedEstimates();
-    } else {
-      alert("Failed to delete project.");
-    }
-    setIsDeletingProject(false);
-    setShowDeleteConfirm(false);
+    } else alert("Failed to delete project.");
+    setIsDeletingProject(false); setShowDeleteConfirm(false);
   };
 
   const selectProject = async (proj: any) => {
@@ -241,16 +230,11 @@ export default function ContractorView({
     setManifestResults(proj.cached_results || {});
     setLastCalculated(proj.last_calculated ? new Date(proj.last_calculated) : null);
     setJobAddress(proj.address);
-    if (proj.latitude && proj.longitude) {
-      setJobLat(proj.latitude);
-      setJobLon(proj.longitude);
-    } else if (proj.address) {
+    if (proj.latitude && proj.longitude) { setJobLat(proj.latitude); setJobLon(proj.longitude); }
+    else if (proj.address) {
       const coords = await geocodeAddress(proj.address);
-      if (coords) {
-        setJobLat(coords.lat);
-        setJobLon(coords.lon);
-        await supabase.from('projects').update({ latitude: coords.lat, longitude: coords.lon }).eq('id', proj.id);
-      } else { setJobLat(undefined); setJobLon(undefined); }
+      if (coords) { setJobLat(coords.lat); setJobLon(coords.lon); await supabase.from('projects').update({ latitude: coords.lat, longitude: coords.lon }).eq('id', proj.id); }
+      else { setJobLat(undefined); setJobLon(undefined); }
     }
     const { data: estData } = await supabase.from('project_estimates').select('*, facility:facilities(name)').eq('project_id', proj.id);
     if (estData) setSavedEstimates(estData);
@@ -259,14 +243,27 @@ export default function ContractorView({
     setManifestResults(proj.cached_results || {});
   };
 
+  //        Requirements
   const addRequirement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeProject || !selectedMaterial || !qty) { alert("Please select a project and fill out all fields."); return; }
-    const { data, error } = await supabase.from('project_requirements')
-      .insert([{ project_id: activeProject.id, job_type: jobType, material_name: selectedMaterial, quantity: qty }])
-      .select().single();
-    if (data && !error) { setRequirements([...requirements, data]); setSelectedMaterial(""); }
-    else { alert("Failed to add requirement."); console.error(error); }
+    if (!activeProject || selectedMaterials.length === 0 || !qty) { alert("Please select at least one material and fill out all fields."); return; }
+    if (!selectedTruckType) { alert("Please select a truck type."); return; }
+
+    // Insert one requirement per selected material (or one with compared_materials for multi)
+    const primaryMaterial = selectedMaterials[0];
+    const { data, error } = await supabase.from('project_requirements').insert([{
+      project_id: activeProject.id,
+      job_type: jobType,
+      material_name: primaryMaterial,
+      quantity: qty,
+      truck_type: selectedTruckType,
+      compared_materials: selectedMaterials,
+    }]).select().single();
+
+    if (data && !error) {
+      setRequirements([...requirements, data]);
+      setSelectedMaterials([]);
+    } else { alert("Failed to add requirement."); console.error(error); }
   };
 
   const removeRequirement = async (reqId: string) => {
@@ -279,54 +276,68 @@ export default function ContractorView({
     }
   };
 
+  //        Manifest calculation
   const calculateManifest = async () => {
     if (!activeProject || requirements.length === 0) return;
     setIsCalculating(true);
     const newResults: any = { ...manifestResults };
+
     for (const req of requirements) {
       try {
+        const materialsToFetch = req.compared_materials?.length > 0 ? req.compared_materials : [req.material_name];
         const response = await fetch('/api/estimate', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ address: activeProject.address, qty: req.quantity, jobType: req.job_type, materials: [req.material_name], projectId: activeProject.id })
+          body: JSON.stringify({
+            address: activeProject.address,
+            qty: req.quantity,
+            jobType: req.job_type,
+            materials: materialsToFetch,
+            truckType: req.truck_type || undefined,
+            projectId: activeProject.id,
+          })
         });
         const data = await response.json();
         if (data.success) {
           if (data.jobLat && data.jobLon) { setJobLat(data.jobLat); setJobLon(data.jobLon); }
-          newResults[req.id] = data.data.slice(0, 5);
+          // Store grouped results if multi-material, else flat top-5
+          if (data.grouped && Object.keys(data.grouped).length > 1) {
+            newResults[req.id] = { grouped: data.grouped };
+          } else {
+            newResults[req.id] = data.data.slice(0, 5);
+          }
         } else { newResults[req.id] = []; }
       } catch (err) { console.error(err); newResults[req.id] = []; }
     }
+
     setManifestResults(newResults);
     const now = new Date();
     setLastCalculated(now);
     await supabase.from('projects').update({ cached_results: newResults, last_calculated: now.toISOString() }).eq('id', activeProject.id);
-    // Refresh account-level estimates after recalculating
     await fetchAllSavedEstimates();
     setIsCalculating(false);
   };
 
+  //        Estimate saving
   const toggleEstimate = async (res: any, req: any) => {
     if (!activeProject) return;
     setSavingEstimateId(res.facilityId + res.truckFleet + req.id);
-    const existingExact = savedEstimates.find(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
+    const existingExact = savedEstimates.find(se => se.facility_id === res.facilityId && se.material_name === (res.materialName || req.material_name) && se.truck_fleet === res.truckFleet);
     if (existingExact) {
       const { error } = await supabase.from('project_estimates').delete().eq('id', existingExact.id);
-      if (!error) {
-        setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id));
-        await fetchAllSavedEstimates();
-      } else alert("Failed to remove saved estimate.");
+      if (!error) { setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id)); await fetchAllSavedEstimates(); }
+      else alert("Failed to remove saved estimate.");
     } else {
-      const existingForMat = savedEstimates.find(se => se.material_name === req.material_name);
+      const matName = res.materialName || req.material_name;
+      const existingForMat = savedEstimates.find(se => se.material_name === matName);
       if (existingForMat) await supabase.from('project_estimates').delete().eq('id', existingForMat.id);
       const { data, error } = await supabase.from('project_estimates').insert([{
-        project_id: activeProject.id, facility_id: res.facilityId, material_name: req.material_name,
-        quantity: req.quantity, truck_fleet: res.truckFleet, base_price: res.basePrice,
+        project_id: activeProject.id, facility_id: res.facilityId,
+        material_name: matName, quantity: req.quantity,
+        truck_fleet: res.truckFleet, base_price: res.basePrice,
         freight_price: res.frtPerUnit, total_price: res.totalPerUnit
       }]).select().single();
-      if (data && !error) {
-        setSavedEstimates([...savedEstimates.filter(se => se.material_name !== req.material_name), { ...data, facility: { name: res.supplier } }]);
-        await fetchAllSavedEstimates();
-      } else alert("Failed to save estimate.");
+      if (data && !error) { setSavedEstimates([...savedEstimates.filter(se => se.material_name !== matName), { ...data, facility: { name: res.supplier } }]); await fetchAllSavedEstimates(); }
+      else alert("Failed to save estimate.");
     }
     setSavingEstimateId(null);
   };
@@ -336,18 +347,82 @@ export default function ContractorView({
     try {
       const response = await fetch('/api/quotes', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ facilityId: res.facilityId, materialName: req.material_name, quantity: req.quantity, address: activeProject.address, projectId: activeProject.id })
+        body: JSON.stringify({ facilityId: res.facilityId, materialName: res.materialName || req.material_name, quantity: req.quantity, address: activeProject.address, projectId: activeProject.id })
       });
       if (response.ok) {
-        alert("Quote request sent directly to the supplier!");
-        setProjectQuotes([...projectQuotes, { id: Math.random().toString(), facility_id: res.facilityId, material_name: req.material_name, quantity: req.quantity, status: 'pending', facility: { name: res.supplier } }]);
-        setActiveTab('pending');
-      } else { const errorData = await response.json(); alert("Database Error: " + errorData.error); }
-    } catch (e: any) { alert("Error: " + e.message); console.error(e); }
+        alert("Quote request sent!"); setProjectQuotes([...projectQuotes, { id: Math.random().toString(), facility_id: res.facilityId, material_name: res.materialName || req.material_name, quantity: req.quantity, status: 'pending', facility: { name: res.supplier } }]); setActiveTab('pending');
+      } else { const d = await response.json(); alert("Error: " + d.error); }
+    } catch (e: any) { alert("Error: " + e.message); }
     setRequestingId(null);
   };
 
-  const isImport = jobType === "Import (Delivery)";
+  //        Results table (reusable for single and multi-material)
+  const ResultsTable = ({ options, req, label }: { options: any[], req: any, label?: string }) => {
+    if (!options || options.length === 0) return <p className="p-3 text-center text-xs text-red-400">No results found.</p>;
+    return (
+      <div className="w-full overflow-x-auto">
+        {label && <div className="px-4 py-2 bg-slate-800/60 border-b border-slate-700"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">{label}</span></div>}
+        <table className="w-full min-w-[520px] text-xs text-left">
+          <thead className="text-slate-500 bg-slate-800/50">
+            <tr>
+              <th className="px-4 py-2 font-medium">{req.job_type === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
+              <th className="px-4 py-2 font-medium">Fleet</th>
+              <th className="px-4 py-2 font-medium text-right">Base</th>
+              <th className="px-4 py-2 font-medium text-right">Frt</th>
+              <th className="px-4 py-2 font-bold text-right text-white">Total</th>
+              <th className="px-4 py-2 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-800">
+            {options.map((res: any, idx: number) => {
+              const isSaved = savedEstimates.some(se => se.facility_id === res.facilityId && se.material_name === (res.materialName || req.material_name) && se.truck_fleet === res.truckFleet);
+              const allBase = options.map((o: any) => o.basePrice);
+              const avgBase = allBase.reduce((a: number, b: number) => a + b, 0) / allBase.length;
+              const baseSavingsPct = avgBase > 0 ? ((avgBase - res.basePrice) / avgBase) * 100 : null;
+              const allFrts = options.map((o: any) => o.frtPerUnit);
+              const avgFrt = allFrts.reduce((a: number, b: number) => a + b, 0) / allFrts.length;
+              const frtSavingsPct = avgFrt > 0 ? ((avgFrt - res.frtPerUnit) / avgFrt) * 100 : null;
+              const allTotal = options.map((o: any) => o.totalPerUnit);
+              const avgTotal = allTotal.reduce((a: number, b: number) => a + b, 0) / allTotal.length;
+              const totalSavingsPct = avgTotal > 0 ? ((avgTotal - res.totalPerUnit) / avgTotal) * 100 : null;
+              const savingsSpan = (pct: number | null) => pct === null ? null : (
+                <span className={`ml-1 text-[10px] font-semibold ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {pct >= 0 ? '+' : ''}{pct.toFixed(0)}%
+                </span>
+              );
+              return (
+                <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
+                  <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
+                  <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
+                  <td className="px-4 py-2 text-right text-slate-400">
+                    ${res.basePrice.toFixed(2)}{res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded">*</span>}
+                    {savingsSpan(baseSavingsPct)}
+                  </td>
+                  <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}{savingsSpan(frtSavingsPct)}</td>
+                  <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>
+                    ${res.totalPerUnit.toFixed(2)}{savingsSpan(totalSavingsPct)}
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex space-x-1 justify-center">
+                      <button onClick={() => toggleEstimate(res, req)} disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
+                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-white hover:bg-red-500' : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'}`}
+                        title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
+                        {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
+                      </button>
+                      <button onClick={() => requestQuote(res, req)} disabled={requestingId === res.facilityId + req.id}
+                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}>
+                        {requestingId === res.facilityId + req.id ? '...' : 'Quote'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
@@ -362,19 +437,14 @@ export default function ContractorView({
         </nav>
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold border-2 border-slate-500">
-              {profileName.substring(0, 2).toUpperCase()}
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-semibold text-white">{profileName}</p>
-              <p className="text-xs text-slate-400">{companyName}</p>
-            </div>
+            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold border-2 border-slate-500">{profileName.substring(0, 2).toUpperCase()}</div>
+            <div className="ml-3"><p className="text-sm font-semibold text-white">{profileName}</p><p className="text-xs text-slate-400">{companyName}</p></div>
           </div>
         </div>
         <LogoutButton />
       </aside>
 
-      {/* Main Content */}
+      {/* Main */}
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
         {/* Header */}
         <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
@@ -387,63 +457,44 @@ export default function ContractorView({
                   <i className="fa-solid fa-trash-can text-xs"></i>
                 </button>
               </>
-            ) : (
-              <span className="text-slate-400 italic">Select a project to begin...</span>
-            )}
+            ) : <span className="text-slate-400 italic">Select a project to begin...</span>}
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
-            <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700">
-              <LogoutButton />
-            </div>
+            <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700"><LogoutButton /></div>
             {projects.length > 0 && (
-              <select
-                className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
+              <select className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
                 onChange={(e) => {
                   if (e.target.value === "") { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }
                   else { const p = projects.find(proj => proj.id === e.target.value); if (p) selectProject(p); }
                 }}
-                value={activeProject ? activeProject.id : ""}
-              >
+                value={activeProject ? activeProject.id : ""}>
                 <option value="">-- Switch Project --</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             )}
-            <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">
-              + New Project
-            </button>
+            <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
           </div>
         </header>
 
-        {/* Dashboard Content */}
+        {/* Content */}
         <div className="p-4 md:p-8 space-y-6">
-
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-
-            {/* Card 1: Account-level freight savings */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
-              <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-slate-500' : accountSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}>
-                {accountSavingsFmt.display}
-              </h3>
+              <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-slate-500' : accountSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}>{accountSavingsFmt.display}</h3>
               <p className="text-xs text-slate-400 mt-3">{accountSavingsFmt.sub}</p>
             </div>
-
-            {/* Card 2: Active Network */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Network</p>
               <h3 className="text-3xl font-bold text-white mt-1">{pitsCount + dumpsCount}</h3>
               <p className="text-xs text-slate-400 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
             </div>
-
-            {/* Card 3: Total Est. Value */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Est. Value</p>
               <h3 className="text-3xl font-bold text-white mt-1">$1.4M</h3>
               <p className="text-xs text-slate-400 mt-3">Across 12 active bids</p>
             </div>
-
-            {/* Card 4: Market Price */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Market Price</p>
               <h3 className="text-3xl font-bold text-white mt-1">$10.20<span className="text-sm text-slate-400 font-normal">/ton</span></h3>
@@ -451,21 +502,17 @@ export default function ContractorView({
             </div>
           </div>
 
-          {/* Two Column Layout */}
+          {/* Two column layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Col */}
             <div className="col-span-1 lg:col-span-2 space-y-6">
 
-              {/* Map Card */}
+              {/* Map */}
               <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden">
                 <div className="h-64 bg-slate-900 w-full relative">
-                  <MapComponent
-                    jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
-                    facilities={
-                      Object.values(manifestResults).flat().length > 0
-                        ? Object.values(manifestResults).flat().map((r: any) => ({ lat: r.lat, lon: r.lon, name: r.supplier, isDump: r.basePrice === 0 || r.frtPerUnit > 0 }))
-                        : allFacilities
-                    }
+                  <MapComponent jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
+                    facilities={Object.values(manifestResults).flat().filter((r: any) => r && r.lat).length > 0
+                      ? Object.values(manifestResults).flat().filter((r: any) => r && r.lat).map((r: any) => ({ lat: r.lat, lon: r.lon, name: r.supplier, isDump: r.basePrice === 0 || r.frtPerUnit > 0 }))
+                      : allFacilities}
                   />
                 </div>
                 <div className="px-4 py-2 border-t border-slate-700 flex items-center space-x-5">
@@ -478,16 +525,12 @@ export default function ContractorView({
                 </div>
               </div>
 
-              {/* Manifest Card */}
+              {/* Manifest */}
               <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
                 <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
                   <div>
                     <h2 className="text-lg font-semibold text-white">Project Manifest (Bill of Materials)</h2>
-                    {lastCalculated && (
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        <i className="fa-solid fa-clock mr-1"></i> Last Routed: {lastCalculated.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
+                    {lastCalculated && <p className="text-xs text-slate-400 mt-0.5"><i className="fa-solid fa-clock mr-1"></i> Last Routed: {lastCalculated.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
                   </div>
                   {requirements.length > 0 && (
                     <button onClick={calculateManifest} disabled={isCalculating} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50">
@@ -504,7 +547,7 @@ export default function ContractorView({
                 ) : (
                   <div className="p-5 space-y-6">
 
-                    {/* Project-level freight savings inline banner */}
+                    {/* Project savings banner */}
                     {projectFreightSavings !== null && (
                       <div className={`flex items-center space-x-3 px-4 py-2.5 rounded-lg border ${projectSavingsFmt.positive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
                         <i className={`fa-solid fa-truck text-sm ${projectSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}></i>
@@ -516,131 +559,127 @@ export default function ContractorView({
                     )}
 
                     {/* Add Requirement Form */}
-                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700">
-                      <h3 className="text-sm font-semibold text-white mb-3">Add Requirement</h3>
-                      <div className="inline-flex relative bg-slate-800 border border-slate-700 rounded-lg p-0.5 mb-4">
-                        <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ease-in-out ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
-                        <button type="button" onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterial(""); }}
-                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 space-y-3">
+                      <h3 className="text-sm font-semibold text-white">Add Requirement</h3>
+
+                      {/* Import / Export toggle */}
+                      <div className="inline-flex relative bg-slate-800 border border-slate-700 rounded-lg p-0.5">
+                        <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
+                        <button type="button" onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterials([]); setSelectedCategory(""); }}
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
                           Down Import
                         </button>
-                        <button type="button" onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterial(""); }}
-                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                        <button type="button" onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterials([]); setSelectedCategory(""); }}
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
                           Up Export
                         </button>
                       </div>
-                      <form onSubmit={addRequirement} className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
-                        <select value={selectedMaterial} onChange={(e) => setSelectedMaterial(e.target.value)} required
+
+                      {/* Row: Category + Truck Type + Quantity */}
+                      <div className="flex flex-col md:flex-row gap-2">
+                        {/* Category */}
+                        <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedMaterials([]); }}
                           className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
-                          <option value="">-- Select Material --</option>
-                          {(isImport ? importMaterials : exportMaterials)?.map(m => <option key={m} value={m}>{m}</option>)}
+                          <option value="">All Categories</option>
+                          {filteredCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
+
+                        {/* Truck Type */}
+                        <select value={selectedTruckType} onChange={(e) => setSelectedTruckType(e.target.value)} required
+                          className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                          <option value="">-- Truck Type --</option>
+                          {truckTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                        </select>
+
+                        {/* Quantity */}
                         <div className="relative w-full md:w-32">
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{isImport ? 'Tons' : 'CY'}</span>
                           <input type="number" required value={qty} onChange={(e) => setQty(Number(e.target.value))}
                             className={`w-full bg-slate-800 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
                         </div>
-                        <button type="submit" className={`px-4 py-2 rounded-lg text-sm font-bold transition-all text-white ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>+ Add</button>
+                      </div>
+
+                      {/* Material multi-select checkboxes */}
+                      {filteredMaterials.length > 0 && (
+                        <div>
+                          <p className="text-xs text-slate-400 mb-2">Select material(s) to compare:</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                            {filteredMaterials.map(mat => (
+                              <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                                <input type="checkbox" checked={selectedMaterials.includes(mat)} onChange={() => toggleMaterial(mat)} className="sr-only" />
+                                <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-slate-600'}`}>
+                                  {selectedMaterials.includes(mat) && <i className="fa-solid fa-check text-white" style={{ fontSize: '8px' }}></i>}
+                                </span>
+                                <span className="truncate">{mat}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add button */}
+                      <form onSubmit={addRequirement}>
+                        <button type="submit" disabled={selectedMaterials.length === 0 || !selectedTruckType}
+                          className={`px-5 py-2 rounded-lg text-sm font-bold transition-all text-white disabled:opacity-40 ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                          + Add {selectedMaterials.length > 1 ? `${selectedMaterials.length} Materials` : 'Material'}
+                        </button>
+                        {selectedMaterials.length > 1 && (
+                          <span className="ml-3 text-xs text-slate-400">Results will show side-by-side comparison</span>
+                        )}
                       </form>
                     </div>
 
-                    {/* Requirements & Results */}
+                    {/* Requirements list */}
                     <div className="space-y-6">
-                      {requirements.map((req: any) => (
-                        <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
-                          <div className={`px-4 py-3 flex justify-between items-center ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
-                            <div className="flex items-center space-x-3">
-                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-400'}`}>
-                                {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
-                              </span>
-                              <span className="font-semibold text-white">{req.material_name}</span>
-                              <span className="text-slate-400 text-sm">({req.quantity.toLocaleString()} {req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY'})</span>
+                      {requirements.map((req: any) => {
+                        const result = manifestResults[req.id];
+                        const isGrouped = result && !Array.isArray(result) && result.grouped;
+                        const comparedMats = req.compared_materials || [req.material_name];
+                        return (
+                          <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
+                            {/* Header */}
+                            <div className={`px-4 py-3 flex justify-between items-center ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
+                              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-400'}`}>
+                                  {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
+                                </span>
+                                {comparedMats.length === 1 ? (
+                                  <span className="font-semibold text-white text-sm">{comparedMats[0]}</span>
+                                ) : (
+                                  <div className="flex flex-wrap gap-1">
+                                    {comparedMats.map((m: string) => (
+                                      <span key={m} className="px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded text-[10px]">{m}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                <span className="text-slate-400 text-xs">({req.quantity.toLocaleString()} {req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY'})</span>
+                                {req.truck_type && <span className="px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded text-[10px]">{req.truck_type}</span>}
+                              </div>
+                              <button onClick={() => removeRequirement(req.id)} className="text-slate-500 hover:text-red-500 transition-colors ml-2">
+                                <i className="fa-solid fa-trash"></i>
+                              </button>
                             </div>
-                            <button onClick={() => removeRequirement(req.id)} className="text-slate-500 hover:text-red-500 transition-colors">
-                              <i className="fa-solid fa-trash"></i>
-                            </button>
+
+                            {/* Results */}
+                            {result && (
+                              <div className="bg-slate-900 border-t border-slate-700">
+                                {isGrouped ? (
+                                  // Multi-material: side by side sections
+                                  <div className="divide-y divide-slate-800">
+                                    {Object.entries(result.grouped).map(([matName, options]: [string, any]) => (
+                                      <ResultsTable key={matName} options={options} req={req} label={matName} />
+                                    ))}
+                                  </div>
+                                ) : Array.isArray(result) && result.length > 0 ? (
+                                  <ResultsTable options={result} req={req} />
+                                ) : (
+                                  <p className="p-3 text-center text-xs text-red-400">No facilities found or routing failed.</p>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          {manifestResults[req.id] && (
-                            <div className="bg-slate-900 w-full overflow-x-auto border-t border-slate-700">
-                              {manifestResults[req.id].length > 0 ? (
-                                <table className="w-full min-w-[500px] text-xs text-left">
-                                  <thead className="text-slate-500 bg-slate-800/50">
-                                    <tr>
-                                      <th className="px-4 py-2 font-medium">{req.job_type === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
-                                      <th className="px-4 py-2 font-medium">Fleet</th>
-                                      <th className="px-4 py-2 font-medium text-right">Base</th>
-                                      <th className="px-4 py-2 font-medium text-right">Frt</th>
-                                      <th className="px-4 py-2 font-bold text-right text-white">Total</th>
-                                      <th className="px-4 py-2 text-center">Action</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-800">
-                                    {manifestResults[req.id].map((res: any, idx: number) => {
-                                      const isSaved = savedEstimates.some(se => se.facility_id === res.facilityId && se.material_name === req.material_name && se.truck_fleet === res.truckFleet);
-                                      // Per-row freight savings vs avg of all 5
-                                      const allFrts = manifestResults[req.id].map((o: any) => o.frtPerUnit);
-                                      const avgFrt = allFrts.reduce((a: number, b: number) => a + b, 0) / allFrts.length;
-                                      const frtSavingsPct = avgFrt > 0 ? ((avgFrt - res.frtPerUnit) / avgFrt) * 100 : null;
-                                      const allBases = manifestResults[req.id].map((o: any) => o.basePrice);
-                                      const avgBase = allBases.reduce((a: number, b: number) => a + b, 0) / allBases.length;
-                                      const baseSavingsPct = avgBase > 0 ? ((avgBase - res.basePrice) / avgBase) * 100 : null;
-                                      const allTotals = manifestResults[req.id].map((o: any) => o.totalPerUnit);
-                                      const avgTotal = allTotals.reduce((a: number, b: number) => a + b, 0) / allTotals.length;
-                                      const totalSavingsPct = avgTotal > 0 ? ((avgTotal - res.totalPerUnit) / avgTotal) * 100 : null;
-                                      return (
-                                        <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
-                                          <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
-                                          <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
-                                          <td className="px-4 py-2 text-right text-slate-400">
-                                            ${res.basePrice.toFixed(2)}
-                                            {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Special Pricing Applied">*</span>}
-                                            {baseSavingsPct !== null && (
-                                              <span className={`ml-1 text-[10px] font-semibold ${baseSavingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {baseSavingsPct >= 0 ? '+' : ''}{baseSavingsPct.toFixed(0)}%
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td className="px-4 py-2 text-right text-slate-400">
-                                            ${res.frtPerUnit.toFixed(2)}
-                                            {frtSavingsPct !== null && (
-                                              <span className={`ml-1 text-[10px] font-semibold ${frtSavingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {frtSavingsPct >= 0 ? '+' : ''}{frtSavingsPct.toFixed(0)}%
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>
-                                            ${res.totalPerUnit.toFixed(2)}
-                                            {totalSavingsPct !== null && (
-                                              <span className={`ml-1 text-[10px] font-semibold ${totalSavingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {totalSavingsPct >= 0 ? '+' : ''}{totalSavingsPct.toFixed(0)}%
-                                              </span>
-                                            )}
-                                          </td>
-                                          <td className="px-4 py-2">
-                                            <div className="flex space-x-1 justify-center">
-                                              <button onClick={() => toggleEstimate(res, req)} disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
-                                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-white hover:bg-red-500' : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'}`}
-                                                title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
-                                                {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
-                                              </button>
-                                              <button onClick={() => requestQuote(res, req)} disabled={requestingId === res.facilityId + req.id}
-                                                className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}>
-                                                {requestingId === res.facilityId + req.id ? '...' : 'Quote'}
-                                              </button>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              ) : (
-                                <p className="p-3 text-center text-xs text-red-400">No facilities found or routing failed.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                       {requirements.length === 0 && (
                         <div className="text-center py-6 border-2 border-dashed border-slate-700 rounded-lg">
                           <p className="text-slate-500 text-sm">No materials added to manifest yet.</p>
@@ -714,22 +753,13 @@ export default function ContractorView({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-                <i className="fa-solid fa-triangle-exclamation text-red-500"></i>
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white">Delete Project</h2>
-                <p className="text-xs text-slate-400">This cannot be undone.</p>
-              </div>
+              <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center"><i className="fa-solid fa-triangle-exclamation text-red-500"></i></div>
+              <div><h2 className="text-base font-bold text-white">Delete Project</h2><p className="text-xs text-slate-400">This cannot be undone.</p></div>
             </div>
-            <p className="text-sm text-slate-300 mb-6">
-              Are you sure you want to delete <span className="font-semibold text-white">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.
-            </p>
+            <p className="text-sm text-slate-300 mb-6">Are you sure you want to delete <span className="font-semibold text-white">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.</p>
             <div className="flex space-x-3">
               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
-              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
-                {isDeletingProject ? 'Deleting...' : 'Delete Project'}
-              </button>
+              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{isDeletingProject ? 'Deleting...' : 'Delete Project'}</button>
             </div>
           </div>
         </div>
@@ -750,19 +780,14 @@ export default function ContractorView({
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span>
-                </label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span></label>
                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
                   <MapComponent jobLat={modalJobLat} jobLon={modalJobLon} facilities={allFacilities} onMapClick={handleMapClick} interactive={true} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
-                  Job Site Address {isReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}
-                </label>
-                <textarea required value={newProjAddr} onChange={(e) => setNewProjAddr(e.target.value)}
-                  placeholder="Click the map above, or type an address manually"
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address {isReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}</label>
+                <textarea required value={newProjAddr} onChange={(e) => setNewProjAddr(e.target.value)} placeholder="Click the map above, or type an address manually"
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-16 resize-none" />
               </div>
               <div className="flex space-x-3 pt-2">

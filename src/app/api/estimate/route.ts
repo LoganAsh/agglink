@@ -19,14 +19,20 @@ export async function POST(request: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { jobType = "Import (Delivery)", address, qty = 1500, materials = [], projectId } = body;
+    const {
+      jobType = "Import (Delivery)",
+      address,
+      qty = 1500,
+      materials = [],       // array of material names to compare
+      truckType,            // optional: filter to specific truck type
+      projectId
+    } = body;
 
     if (!address || !qty) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     // 1. Geocode Address
-    // Append Utah if not present to help Nominatim locate it accurately
     let searchAddress = address;
     if (!searchAddress.toLowerCase().includes('utah') && !searchAddress.toLowerCase().includes(', ut')) {
       searchAddress += ', Utah';
@@ -42,11 +48,11 @@ export async function POST(request: Request) {
 
     const isImport = jobType === "Import (Delivery)";
 
-    // 2. Fetch Facilities
+    // 2. Fetch Materials
     let query = supabase.from('materials').select(`
-        price_per_ton, price_per_cy, price_10w_load, price_sd_load, name,
-        facility:facilities(id, name, address, latitude, longitude)
-      `).eq('is_import', isImport);
+      price_per_ton, price_per_cy, price_10w_load, price_sd_load, name,
+      facility:facilities(id, name, address, latitude, longitude)
+    `).eq('is_import', isImport);
 
     if (materials.length > 0) {
       query = query.in('name', materials);
@@ -57,21 +63,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No facilities found.' }, { status: 404 });
     }
 
-    // Trucks configuration
-    const trucks = [
-      { type: 'Side Dump', rate: 155, cap: isImport ? 25 : 12 },
-      { type: '10-Wheeler', rate: 135, cap: isImport ? 15 : 8 }
+    // 3. Build truck list     filter by truckType if specified
+    const allTrucks = [
+      { type: 'Side Dump',   rate: 155, cap: isImport ? 25 : 12 },
+      { type: '10-Wheel',    rate: 135, cap: isImport ? 15 : 8  },
     ];
+    const trucks = truckType
+      ? allTrucks.filter(t => t.type === truckType)
+      : allTrucks;
 
-    const loadTimeHr = 15 / 60.0;
-    const unloadTimeHr = (isImport ? 8 : 10) / 60.0;
-    const loadUnloadHr = loadTimeHr + unloadTimeHr;
-    const minHours = 2.0;
+    const loadTimeHr    = 15 / 60.0;
+    const unloadTimeHr  = (isImport ? 8 : 10) / 60.0;
+    const loadUnloadHr  = loadTimeHr + unloadTimeHr;
+    const minHours      = 2.0;
+    const apiKey        = process.env.ORS_API_KEY;
 
-    const apiKey = process.env.ORS_API_KEY;
-    const results: any[] = [];
-
-    // Fetch custom quotes if projectId is provided
+    // 4. Fetch custom quotes
     let customQuotes: any[] = [];
     if (projectId) {
       const { data: quotes } = await supabase
@@ -82,27 +89,28 @@ export async function POST(request: Request) {
       if (quotes) customQuotes = quotes;
     }
 
-    // 3. Process Routing & Costs
+    // 5. Process routing & costs     group results by material name
+    const resultsByMaterial: Record<string, any[]> = {};
+
     for (const mat of availableMaterials) {
       const fac: any = mat.facility;
+      if (!fac?.latitude || !fac?.longitude) continue;
+
       const rawDist = haversineDistance(jobLat, jobLon, fac.latitude, fac.longitude);
-      
       let dist = rawDist;
       let oneWayTimeHr = 0;
 
       if (rawDist <= 30.0 && apiKey) {
         try {
           const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${jobLon},${jobLat}&end=${fac.longitude},${fac.latitude}&radiuses=-1|-1`;
-          const orsRes = await fetch(orsUrl, {});
+          const orsRes = await fetch(orsUrl);
           if (orsRes.ok) {
             const orsData = await orsRes.json();
             const summary = orsData.features[0].properties.summary;
             dist = summary.distance / 1609.34;
             const penalty = dist > 10.0 ? 1.10 : 1.20;
             oneWayTimeHr = (summary.duration / 3600.0) * penalty;
-          } else {
-            throw new Error("ORS Failed");
-          }
+          } else throw new Error("ORS Failed");
         } catch {
           dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
           oneWayTimeHr = dist / 30.0;
@@ -113,83 +121,93 @@ export async function POST(request: Request) {
       }
 
       const travelTimeHr = oneWayTimeHr * 2;
-      const rawCycleHr = travelTimeHr + loadUnloadHr;
+      const rawCycleHr   = travelTimeHr + loadUnloadHr;
 
       for (const truck of trucks) {
-        const eff = truck.type === '10-Wheeler' ? 1.0 : 0.95;
+        const eff         = truck.type === '10-Wheel' ? 1.0 : 0.95;
         const cycleTimeHr = rawCycleHr / eff;
-        
-        const trips = Math.ceil(qty / truck.cap);
+        const trips       = Math.ceil(qty / truck.cap);
         let maxTripsPerDay = Math.floor(8.0 / cycleTimeHr);
         if (maxTripsPerDay < 1) maxTripsPerDay = 1;
 
-        const fullShifts = Math.floor(trips / maxTripsPerDay);
+        const fullShifts    = Math.floor(trips / maxTripsPerDay);
         const leftoverTrips = trips % maxTripsPerDay;
 
         const roundHalfHr = (hrs: number) => Math.ceil(hrs * 2) / 2.0;
 
-        let fullShiftHrs = roundHalfHr(maxTripsPerDay * cycleTimeHr);
+        let fullShiftHrs  = roundHalfHr(maxTripsPerDay * cycleTimeHr);
         if (fullShifts > 0 && fullShiftHrs < minHours) fullShiftHrs = minHours;
-
-        let leftoverHrs = leftoverTrips > 0 ? roundHalfHr(leftoverTrips * cycleTimeHr) : 0.0;
+        let leftoverHrs   = leftoverTrips > 0 ? roundHalfHr(leftoverTrips * cycleTimeHr) : 0.0;
         if (leftoverHrs > 0 && leftoverHrs < minHours) leftoverHrs = minHours;
 
-        const totalBilledHrs = (fullShifts * fullShiftHrs) + leftoverHrs;
+        const totalBilledHrs    = (fullShifts * fullShiftHrs) + leftoverHrs;
         const totalTruckingCost = totalBilledHrs * truck.rate;
-        
-        let materialCost = 0;
+
+        let materialCost  = 0;
         let basePriceLabel = 0;
-        let isCustomQuote = false;
+        let isCustomQuote  = false;
 
-        // Check for custom quote
-        const customQuote = customQuotes.find(q => q.facility_id === fac.id && q.material_name === mat.name);
+        const customQuote = customQuotes.find(q =>
+          q.facility_id === fac.id && q.material_name === mat.name
+        );
 
-        if (customQuote && customQuote.offered_price) {
-          materialCost = customQuote.offered_price * qty;
+        if (customQuote?.offered_price) {
+          materialCost   = customQuote.offered_price * qty;
           basePriceLabel = customQuote.offered_price;
-          isCustomQuote = true;
+          isCustomQuote  = true;
         } else if (isImport) {
-          materialCost = mat.price_per_ton * qty;
+          materialCost   = mat.price_per_ton * qty;
           basePriceLabel = mat.price_per_ton;
         } else {
-          // Per-load pricing vs Per-CY pricing
-          const dumpFee = truck.type === '10-Wheeler' ? mat.price_10w_load : mat.price_sd_load;
+          const dumpFee = truck.type === '10-Wheel' ? mat.price_10w_load : mat.price_sd_load;
           if (dumpFee > 0) {
-            materialCost = trips * dumpFee;
-            basePriceLabel = dumpFee; 
+            materialCost   = trips * dumpFee;
+            basePriceLabel = dumpFee;
           } else {
-            materialCost = mat.price_per_cy * qty;
+            materialCost   = mat.price_per_cy * qty;
             basePriceLabel = mat.price_per_cy;
           }
         }
 
         const totalCost = materialCost + totalTruckingCost;
-
-        results.push({
-          facilityId: fac.id,
-          supplier: fac.name,
+        const entry = {
+          facilityId:   fac.id,
+          supplier:     fac.name,
           materialName: mat.name,
-          truckFleet: truck.type,
-          cycle: Math.round(cycleTimeHr * 60),
-          basePrice: basePriceLabel,
-          lat: fac.latitude,
-          lon: fac.longitude,
-          frtPerUnit: totalTruckingCost / qty,
+          truckFleet:   truck.type,
+          cycle:        Math.round(cycleTimeHr * 60),
+          basePrice:    basePriceLabel,
+          lat:          fac.latitude,
+          lon:          fac.longitude,
+          frtPerUnit:   totalTruckingCost / qty,
           totalPerUnit: totalCost / qty,
-          totalCost: totalCost,
-          isCustomQuote: isCustomQuote
-        });
+          totalCost:    totalCost,
+          isCustomQuote,
+        };
+
+        if (!resultsByMaterial[mat.name]) resultsByMaterial[mat.name] = [];
+        resultsByMaterial[mat.name].push(entry);
       }
     }
 
-    // Sort by cheapest total per unit
-    results.sort((a, b) => a.totalPerUnit - b.totalPerUnit);
+    // Sort each material group by cheapest total, take top 5
+    const groupedResults: Record<string, any[]> = {};
+    for (const [matName, entries] of Object.entries(resultsByMaterial)) {
+      groupedResults[matName] = entries
+        .sort((a, b) => a.totalPerUnit - b.totalPerUnit)
+        .slice(0, 5);
+    }
 
-    return NextResponse.json({ 
-      success: true, 
-      jobLat: jobLat,
-      jobLon: jobLon,
-      data: results.slice(0, 10) 
+    // Flat results for backwards compatibility (single-material requests)
+    const flatResults = Object.values(groupedResults).flat()
+      .sort((a, b) => a.totalPerUnit - b.totalPerUnit);
+
+    return NextResponse.json({
+      success:  true,
+      jobLat,
+      jobLon,
+      data:     flatResults.slice(0, 10),   // legacy flat list
+      grouped:  groupedResults,             // new: keyed by material name
     });
 
   } catch (error) {
