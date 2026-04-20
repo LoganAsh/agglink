@@ -694,7 +694,7 @@ export default function ContractorView({
           </div>
 
           {/* Top Row: Map + Feed */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
               {/* Map */}
               <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-[420px]">
