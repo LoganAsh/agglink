@@ -509,9 +509,7 @@ export default function ContractorView({
               <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden">
                 <div className="h-96 bg-slate-900 w-full relative">
                   <MapComponent jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
-                    facilities={Object.values(manifestResults).flat().filter((r: any) => r && r.lat).length > 0
-                      ? Object.values(manifestResults).flat().filter((r: any) => r && r.lat).map((r: any) => ({ lat: r.lat, lon: r.lon, name: r.supplier, isDump: r.basePrice === 0 || r.frtPerUnit > 0 }))
-                      : allFacilities}
+                    facilities={allFacilities}
                   />
                 </div>
                 <div className="px-4 py-2 border-t border-slate-700 flex items-center space-x-5">
