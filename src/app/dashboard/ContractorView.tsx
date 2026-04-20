@@ -358,6 +358,12 @@ export default function ContractorView({
     for (const req of requirements) {
       try {
         const materialsToFetch = req.compared_materials?.length > 0 ? req.compared_materials : [req.material_name];
+        console.log('Fetching estimate for req:', req.id, 'materials:', materialsToFetch, 'truckType:', req.truck_type);
+        if (!materialsToFetch || materialsToFetch.length === 0) {
+          console.error('No materials to fetch for req:', req.id);
+          newResults[req.id] = [];
+          continue;
+        }
         const response = await fetch('/api/estimate', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -374,7 +380,10 @@ export default function ContractorView({
           if (data.jobLat && data.jobLon) { setJobLat(data.jobLat); setJobLon(data.jobLon); }
           newResults[req.id] = data.data.slice(0, 5);
         } else { newResults[req.id] = []; }
-      } catch (err) { console.error(err); newResults[req.id] = []; }
+      } catch (err) {
+        console.error('Estimate fetch failed for req:', req.id, err);
+        newResults[req.id] = [];
+      }
     }
 
     setManifestResults(newResults);
