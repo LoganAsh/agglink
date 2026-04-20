@@ -584,6 +584,9 @@ export default function ContractorView({
                                       const allBases = manifestResults[req.id].map((o: any) => o.basePrice);
                                       const avgBase = allBases.reduce((a: number, b: number) => a + b, 0) / allBases.length;
                                       const baseSavingsPct = avgBase > 0 ? ((avgBase - res.basePrice) / avgBase) * 100 : null;
+                                      const allTotals = manifestResults[req.id].map((o: any) => o.totalPerUnit);
+                                      const avgTotal = allTotals.reduce((a: number, b: number) => a + b, 0) / allTotals.length;
+                                      const totalSavingsPct = avgTotal > 0 ? ((avgTotal - res.totalPerUnit) / avgTotal) * 100 : null;
                                       return (
                                         <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
                                           <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
@@ -605,7 +608,14 @@ export default function ContractorView({
                                               </span>
                                             )}
                                           </td>
-                                          <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>${res.totalPerUnit.toFixed(2)}</td>
+                                          <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>
+                                            ${res.totalPerUnit.toFixed(2)}
+                                            {totalSavingsPct !== null && (
+                                              <span className={`ml-1 text-[10px] font-semibold ${totalSavingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {totalSavingsPct >= 0 ? '+' : ''}{totalSavingsPct.toFixed(0)}%
+                                              </span>
+                                            )}
+                                          </td>
                                           <td className="px-4 py-2">
                                             <div className="flex space-x-1 justify-center">
                                               <button onClick={() => toggleEstimate(res, req)} disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
