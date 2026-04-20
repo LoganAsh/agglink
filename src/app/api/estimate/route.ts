@@ -93,8 +93,12 @@ export async function POST(request: Request) {
     const resultsByMaterial: Record<string, any[]> = {};
 
     for (const mat of availableMaterials) {
-      const fac: any = mat.facility;
-      if (!fac?.latitude || !fac?.longitude) continue;
+      console.log('Processing material:', mat.name, 'facility:', mat.facility);
+      const fac: any = Array.isArray(mat.facility) ? mat.facility[0] : mat.facility;
+      if (!fac?.latitude || !fac?.longitude) {
+        console.log('Skipping material, no facility coords:', mat.name, mat.facility);
+        continue;
+      }
 
       const rawDist = haversineDistance(jobLat, jobLon, fac.latitude, fac.longitude);
       let dist = rawDist;
