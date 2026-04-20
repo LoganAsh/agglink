@@ -502,13 +502,12 @@ export default function ContractorView({
             </div>
           </div>
 
-          {/* Two column layout */}
+          {/* Top Row: Map + Feed */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="col-span-1 lg:col-span-2 space-y-6">
 
               {/* Map */}
-              <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden">
-                <div className="h-64 bg-slate-900 w-full relative">
+              <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden">
+                <div className="h-96 bg-slate-900 w-full relative">
                   <MapComponent jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
                     facilities={Object.values(manifestResults).flat().filter((r: any) => r && r.lat).length > 0
                       ? Object.values(manifestResults).flat().filter((r: any) => r && r.lat).map((r: any) => ({ lat: r.lat, lon: r.lon, name: r.supplier, isDump: r.basePrice === 0 || r.frtPerUnit > 0 }))
@@ -525,8 +524,61 @@ export default function ContractorView({
                 </div>
               </div>
 
+              {/* Project Feed */}
+              <div className="col-span-1 bg-slate-800 border border-slate-700 rounded-xl shadow-sm h-96 flex flex-col">
+                <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+                  <h2 className="text-lg font-semibold text-white mb-4">Project Feed</h2>
+                  <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700">
+                    <button onClick={() => setActiveTab('locked')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'locked' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}>Locked Pricing</button>
+                    <button onClick={() => setActiveTab('pending')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center ${activeTab === 'pending' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}>
+                      Pending Quotes
+                      {projectQuotes.filter(q => q.status === 'pending').length > 0 && (
+                        <span className="ml-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="p-5 flex-1 space-y-4 overflow-y-auto">
+                  {!activeProject ? (
+                    <p className="text-slate-500 text-sm text-center py-4">Select a project to view the feed.</p>
+                  ) : activeTab === 'locked' ? (
+                    savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => (
+                      <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">{est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}</span>
+                            <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
+                            <p className="text-xs text-slate-400 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} {importMaterials?.includes(est.material_name) ? "Tons" : "CY"} | {est.truck_fleet}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-emerald-400">${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    )) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
+                  ) : (
+                    projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => (
+                      <div key={idx} className={`border rounded-lg p-4 ${q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-400'}`}>{q.status === 'pending' ? 'Awaiting Response' : 'Quote Received'}</span>
+                            <h4 className="text-white font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
+                            <p className="text-xs text-slate-400 mt-1">{q.material_name}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-slate-300">{q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span></div>
+                            {q.offered_price && <div className="text-lg font-bold text-emerald-400 mt-1">${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(q.material_name) ? "Ton" : "CY"}</span></div>}
+                          </div>
+                        </div>
+                      </div>
+                    )) : <p className="text-slate-500 text-sm text-center py-4">No pending quotes.</p>
+                  )}
+                </div>
+              </div>
+          </div>
+
               {/* Manifest */}
-              <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
                 <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
                   <div>
                     <h2 className="text-lg font-semibold text-white">Project Manifest (Bill of Materials)</h2>
@@ -689,62 +741,6 @@ export default function ContractorView({
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Right Col: Project Feed */}
-            <div className="col-span-1 space-y-6">
-              <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm h-full flex flex-col">
-                <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-                  <h2 className="text-lg font-semibold text-white mb-4">Project Feed</h2>
-                  <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700">
-                    <button onClick={() => setActiveTab('locked')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'locked' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}>Locked Pricing</button>
-                    <button onClick={() => setActiveTab('pending')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center ${activeTab === 'pending' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}>
-                      Pending Quotes
-                      {projectQuotes.filter(q => q.status === 'pending').length > 0 && (
-                        <span className="ml-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div className="p-5 flex-1 space-y-4 max-h-[600px] overflow-y-auto">
-                  {!activeProject ? (
-                    <p className="text-slate-500 text-sm text-center py-4">Select a project to view the feed.</p>
-                  ) : activeTab === 'locked' ? (
-                    savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => (
-                      <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">{est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}</span>
-                            <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
-                            <p className="text-xs text-slate-400 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} {importMaterials?.includes(est.material_name) ? "Tons" : "CY"} | {est.truck_fleet}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-emerald-400">${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span></div>
-                          </div>
-                        </div>
-                      </div>
-                    )) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
-                  ) : (
-                    projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => (
-                      <div key={idx} className={`border rounded-lg p-4 ${q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-400'}`}>{q.status === 'pending' ? 'Awaiting Response' : 'Quote Received'}</span>
-                            <h4 className="text-white font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
-                            <p className="text-xs text-slate-400 mt-1">{q.material_name}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-bold text-slate-300">{q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span></div>
-                            {q.offered_price && <div className="text-lg font-bold text-emerald-400 mt-1">${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(q.material_name) ? "Ton" : "CY"}</span></div>}
-                          </div>
-                        </div>
-                      </div>
-                    )) : <p className="text-slate-500 text-sm text-center py-4">No pending quotes.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 
