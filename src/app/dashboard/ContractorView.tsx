@@ -366,10 +366,12 @@ export default function ContractorView({
           <thead className="text-slate-500 bg-slate-800/50">
             <tr>
               <th className="px-4 py-2 font-medium">{req.job_type === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
+              <th className="px-4 py-2 font-medium">Material</th>
               <th className="px-4 py-2 font-medium">Fleet</th>
               <th className="px-4 py-2 font-medium text-right">Base</th>
               <th className="px-4 py-2 font-medium text-right">Frt</th>
               <th className="px-4 py-2 font-bold text-right text-white">Total</th>
+              <th className="px-4 py-2 font-medium text-right">Job Total</th>
               <th className="px-4 py-2 text-center">Action</th>
             </tr>
           </thead>
@@ -393,6 +395,7 @@ export default function ContractorView({
               return (
                 <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
                   <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
+                  <td className="px-4 py-2 text-slate-300">{res.materialName || req.material_name}</td>
                   <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
                   <td className="px-4 py-2 text-right text-slate-400">
                     ${res.basePrice.toFixed(2)}{res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded">*</span>}
@@ -402,6 +405,7 @@ export default function ContractorView({
                   <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>
                     ${res.totalPerUnit.toFixed(2)}{savingsSpan(totalSavingsPct)}
                   </td>
+                  <td className="px-4 py-2 text-right font-semibold text-slate-200">${(req.quantity * res.totalPerUnit).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td className="px-4 py-2">
                     <div className="flex space-x-1 justify-center">
                       <button onClick={() => toggleEstimate(res, req)} disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
