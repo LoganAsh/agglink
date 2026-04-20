@@ -567,11 +567,11 @@ export default function ContractorView({
                         <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
                         <button type="button" onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterials([]); setSelectedCategory(""); }}
                           className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                          Down Import
+                          Import
                         </button>
                         <button type="button" onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterials([]); setSelectedCategory(""); }}
                           className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
-                          Up Export
+                          Export
                         </button>
                       </div>
 
