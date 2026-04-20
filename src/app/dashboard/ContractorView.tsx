@@ -506,8 +506,8 @@ export default function ContractorView({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
               {/* Map */}
-              <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden">
-                <div className="h-96 bg-slate-900 w-full relative">
+              <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-[420px]">
+                <div className="flex-1 bg-slate-900 w-full relative">
                   <MapComponent jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
                     facilities={allFacilities}
                   />
@@ -523,7 +523,7 @@ export default function ContractorView({
               </div>
 
               {/* Project Feed */}
-              <div className="col-span-1 bg-slate-800 border border-slate-700 rounded-xl shadow-sm h-96 flex flex-col">
+              <div className="col-span-1 bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col h-[420px]">
                 <div className="p-5 border-b border-slate-700 bg-slate-900/50">
                   <h2 className="text-lg font-semibold text-white mb-4">Project Feed</h2>
                   <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700">
