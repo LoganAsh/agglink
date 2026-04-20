@@ -371,7 +371,7 @@ export default function ContractorView({
             qty: req.quantity,
             jobType: req.job_type,
             materials: materialsToFetch,
-            truckType: req.truck_type || undefined,
+            truckType: req.truck_type && req.truck_type.length > 0 ? req.truck_type : undefined,
             projectId: activeProject.id,
           })
         });

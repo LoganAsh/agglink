@@ -72,6 +72,9 @@ export async function POST(request: Request) {
       ? allTrucks.filter(t => t.type === truckType)
       : allTrucks;
 
+    // If truckType was specified but not found, fall back to all trucks
+    const activeTrucks = trucks.length > 0 ? trucks : allTrucks;
+
     const loadTimeHr    = 15 / 60.0;
     const unloadTimeHr  = (isImport ? 8 : 10) / 60.0;
     const loadUnloadHr  = loadTimeHr + unloadTimeHr;
@@ -127,7 +130,7 @@ export async function POST(request: Request) {
       const travelTimeHr = oneWayTimeHr * 2;
       const rawCycleHr   = travelTimeHr + loadUnloadHr;
 
-      for (const truck of trucks) {
+      for (const truck of activeTrucks) {
         const eff         = truck.type === '10-Wheeler' ? 1.0 : 0.95;
         const cycleTimeHr = rawCycleHr / eff;
         const trips       = Math.ceil(qty / truck.cap);
