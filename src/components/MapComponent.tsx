@@ -160,7 +160,7 @@ export default function MapComponent({
             onClick={() => setIsMaximized(false)}
           />
           <div
-            className="fixed inset-[5%] z-[2001] rounded-xl overflow-hidden border border-slate-600 shadow-2xl"
+            className="fixed inset-[10%] z-[2001] rounded-xl overflow-hidden border border-slate-600 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <MapContainer
