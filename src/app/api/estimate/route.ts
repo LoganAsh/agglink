@@ -70,11 +70,12 @@ export async function POST(request: Request) {
     // 3. Build truck list     filter by truckType if specified
     const allTrucks = [
       { type: 'Side Dump',   rate: 155, cap: isImport ? 25 : 12 },
-      { type: '10-Wheel',    rate: 135, cap: isImport ? 15 : 8  },
+      { type: '10-Wheeler',  rate: 135, cap: isImport ? 15 : 8  },
     ];
     const trucks = truckType
       ? allTrucks.filter(t => t.type === truckType)
       : allTrucks;
+    const activeTrucks = trucks.length > 0 ? trucks : allTrucks;
 
     const loadTimeHr    = 15 / 60.0;
     const unloadTimeHr  = (isImport ? 8 : 10) / 60.0;
@@ -127,8 +128,8 @@ export async function POST(request: Request) {
       const travelTimeHr = oneWayTimeHr * 2;
       const rawCycleHr   = travelTimeHr + loadUnloadHr;
 
-      for (const truck of trucks) {
-        const eff         = truck.type === '10-Wheel' ? 1.0 : 0.95;
+      for (const truck of activeTrucks) {
+        const eff         = truck.type === '10-Wheeler' ? 1.0 : 0.95;
         const cycleTimeHr = rawCycleHr / eff;
         const trips       = Math.ceil(qty / truck.cap);
         let maxTripsPerDay = Math.floor(8.0 / cycleTimeHr);
@@ -163,7 +164,7 @@ export async function POST(request: Request) {
           materialCost   = mat.price_per_ton * qty;
           basePriceLabel = mat.price_per_ton;
         } else {
-          const dumpFee = truck.type === '10-Wheel' ? mat.price_10w_load : mat.price_sd_load;
+          const dumpFee = truck.type === '10-Wheeler' ? mat.price_10w_load : mat.price_sd_load;
           if (dumpFee > 0) {
             materialCost   = trips * dumpFee;
             basePriceLabel = dumpFee;
