@@ -49,17 +49,21 @@ export async function POST(request: Request) {
     const isImport = jobType === "Import (Delivery)";
 
     // 2. Fetch Materials
-    let query = supabase.from('materials').select(`
+    // Avoid supabase-js .in() — it fails to escape embedded `"` when wrapping
+    // values containing `()` or `,`, which breaks names like `1" Gravel (Recycled Concrete)`.
+    // Filter by is_import server-side, then match the name list in JS.
+    const { data: allForImport, error } = await supabase.from('materials').select(`
       price_per_ton, price_per_cy, price_10w_load, price_sd_load, name,
       facility:facilities(id, name, address, latitude, longitude)
     `).eq('is_import', isImport);
 
-    if (materials.length > 0) {
-      query = query.in('name', materials);
-    }
+    const availableMaterials = error || !allForImport
+      ? []
+      : (materials.length > 0
+          ? allForImport.filter((m: any) => materials.includes(m.name))
+          : allForImport);
 
-    const { data: availableMaterials, error } = await query;
-    if (error || !availableMaterials || availableMaterials.length === 0) {
+    if (!availableMaterials || availableMaterials.length === 0) {
       return NextResponse.json({ success: false, error: 'No facilities found.', data: [] }, { status: 200 });
     }
 
