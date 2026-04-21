@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       query = query.in('name', materials);
     }
 
+    console.log('About to query materials with:', { materials, isImport, jobType });
     const { data: availableMaterials, error } = await query;
     console.log('Query result count:', availableMaterials?.length, 'error:', error?.message);
     if (error || !availableMaterials || availableMaterials.length === 0) {
