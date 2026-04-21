@@ -37,18 +37,28 @@ export async function POST(request: Request) {
     }
 
     // 1. Geocode Address
-    let searchAddress = address;
-    if (!searchAddress.toLowerCase().includes('utah') && !searchAddress.toLowerCase().includes(', ut')) {
-      searchAddress += ', Utah';
+    let jobLat: number;
+    let jobLon: number;
+
+    try {
+      let searchAddress = address;
+      if (!searchAddress.toLowerCase().includes('utah') && !searchAddress.toLowerCase().includes(', ut')) {
+        searchAddress += ', Utah';
+      }
+      const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddress)}&format=json&limit=1`;
+      console.log('GEO_URL:', geoUrl.substring(0, 100));
+      const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'AggLink/1.0' } });
+      const geoData = await geoRes.json();
+      console.log('GEO_RESULT:', geoData?.length, geoData?.[0]?.lat);
+      if (!geoData || geoData.length === 0) {
+        return NextResponse.json({ error: 'Address not found' }, { status: 404 });
+      }
+      jobLat = parseFloat(geoData[0].lat);
+      jobLon = parseFloat(geoData[0].lon);
+    } catch (geoError) {
+      console.error('GEO_ERROR:', geoError);
+      return NextResponse.json({ error: 'Geocoding failed' }, { status: 500 });
     }
-    const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddress)}&format=json&limit=1`;
-    const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'AggLink/1.0' }});
-    const geoData = await geoRes.json();
-    if (!geoData || geoData.length === 0) {
-      return NextResponse.json({ error: 'Address not found' }, { status: 404 });
-    }
-    const jobLat = parseFloat(geoData[0].lat);
-    const jobLon = parseFloat(geoData[0].lon);
 
     const isImport = jobType === "Import (Delivery)";
 
