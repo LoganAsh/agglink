@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     const { data: availableMaterials, error } = await query;
     if (error || !availableMaterials || availableMaterials.length === 0) {
-      return NextResponse.json({ error: 'No facilities found.' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'No facilities found.', data: [] }, { status: 200 });
     }
 
     // 3. Build truck list     filter by truckType if specified
