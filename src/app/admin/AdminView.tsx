@@ -95,7 +95,11 @@ export default function AdminView({
   const handleRequest = async (req: any, action: 'approve' | 'reject') => {
     setProcessingId(req.id); setActionError(null);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setActionError('Not authenticated'); setProcessingId(null); return; }
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setActionError('No active session'); setProcessingId(null); return; }
+      console.log('Auth token present:', !!session?.access_token, 'token prefix:', session?.access_token?.substring(0, 20));
       const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/approve-signup`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ requestId: req.id, email: req.email, fullName: req.full_name, companyName: req.company_name, role: req.requested_role, action }),
