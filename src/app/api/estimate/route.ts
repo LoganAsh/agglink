@@ -15,12 +15,8 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export async function POST(request: Request) {
   try {
     const supabase = createClient();
-
-    const { data: testData, error: testError } = await supabase.from('materials').select('name').limit(1);
-    console.log('CONNECTION_TEST:', testData?.length, testError?.message);
-
     const { data: { user } } = await supabase.auth.getUser();
-    console.log('AUTH_USER:', user?.id || 'NO USER');
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const {
@@ -37,49 +33,34 @@ export async function POST(request: Request) {
     }
 
     // 1. Geocode Address
-    let jobLat: number;
-    let jobLon: number;
-
-    try {
-      let searchAddress = address;
-      if (!searchAddress.toLowerCase().includes('utah') && !searchAddress.toLowerCase().includes(', ut')) {
-        searchAddress += ', Utah';
-      }
-      const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddress)}&format=json&limit=1`;
-      console.log('GEO_URL:', geoUrl.substring(0, 100));
-      const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'AggLink/1.0' } });
-      const geoData = await geoRes.json();
-      console.log('GEO_RESULT:', geoData?.length, geoData?.[0]?.lat);
-      if (!geoData || geoData.length === 0) {
-        return NextResponse.json({ error: 'Address not found' }, { status: 404 });
-      }
-      jobLat = parseFloat(geoData[0].lat);
-      jobLon = parseFloat(geoData[0].lon);
-    } catch (geoError) {
-      console.error('GEO_ERROR:', geoError);
-      return NextResponse.json({ error: 'Geocoding failed' }, { status: 500 });
+    let searchAddress = address;
+    if (!searchAddress.toLowerCase().includes('utah') && !searchAddress.toLowerCase().includes(', ut')) {
+      searchAddress += ', Utah';
     }
+    const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchAddress)}&format=json&limit=1`;
+    const geoRes = await fetch(geoUrl, { headers: { 'User-Agent': 'AggLink/1.0' }});
+    const geoData = await geoRes.json();
+    if (!geoData || geoData.length === 0) {
+      return NextResponse.json({ error: 'Address not found' }, { status: 404 });
+    }
+    const jobLat = parseFloat(geoData[0].lat);
+    const jobLon = parseFloat(geoData[0].lon);
 
     const isImport = jobType === "Import (Delivery)";
 
     // 2. Fetch Materials
-    console.log('QUERY_MATERIALS:', JSON.stringify(materials));
-    console.log('QUERY_IS_IMPORT:', isImport);
-    console.log('QUERY_JOB_TYPE:', jobType);
-
-    const materialsQuery = supabase.from('materials').select(`
+    let query = supabase.from('materials').select(`
       price_per_ton, price_per_cy, price_10w_load, price_sd_load, name,
       facility:facilities(id, name, address, latitude, longitude)
     `).eq('is_import', isImport);
 
-    const { data: availableMaterials, error } = materials.length > 0
-      ? await materialsQuery.in('name', materials)
-      : await materialsQuery;
+    if (materials.length > 0) {
+      query = query.in('name', materials);
+    }
 
-    console.log('MATERIALS_RESULT:', availableMaterials?.length, 'for names:', JSON.stringify(materials), 'isImport:', isImport);
+    const { data: availableMaterials, error } = await query;
     if (error || !availableMaterials || availableMaterials.length === 0) {
-      console.log('No materials found for:', JSON.stringify(materials), 'jobType:', jobType, 'isImport:', isImport, 'is_import filter:', isImport);
-      return NextResponse.json({ success: true, jobLat: 0, jobLon: 0, data: [], grouped: {} });
+      return NextResponse.json({ error: 'No facilities found.' }, { status: 404 });
     }
 
     // 3. Build truck list     filter by truckType if specified
