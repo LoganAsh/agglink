@@ -95,40 +95,50 @@ export async function POST(request: Request) {
     // 5. Process routing & costs     group results by material name
     const resultsByMaterial: Record<string, any[]> = {};
 
+    // Pre-filter materials with valid facility coords
+    const validMaterials: { mat: any; fac: any }[] = [];
     for (const mat of availableMaterials) {
+      console.log('Processing material:', mat.name, 'facility:', mat.facility);
+      const fac: any = Array.isArray(mat.facility) ? mat.facility[0] : mat.facility;
+      if (!fac?.latitude || !fac?.longitude) {
+        console.log('Skipping material, no facility coords:', mat.name, mat.facility);
+        continue;
+      }
+      validMaterials.push({ mat, fac });
+    }
+
+    // Run all ORS routing calls in parallel with a 3s timeout each
+    const routings = await Promise.all(validMaterials.map(async ({ mat, fac }) => {
+      const rawDist = haversineDistance(jobLat, jobLon, fac.latitude, fac.longitude);
+      if (rawDist <= 30.0 && apiKey) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        try {
+          const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${jobLon},${jobLat}&end=${fac.longitude},${fac.latitude}&radiuses=-1|-1`;
+          const orsRes = await fetch(orsUrl, { signal: controller.signal });
+          clearTimeout(timeout);
+          if (orsRes.ok) {
+            const orsData = await orsRes.json();
+            const summary = orsData.features[0].properties.summary;
+            const dist = summary.distance / 1609.34;
+            const penalty = dist > 10.0 ? 1.10 : 1.20;
+            return { dist, oneWayTimeHr: (summary.duration / 3600.0) * penalty };
+          } else throw new Error("ORS Failed");
+        } catch (orsError) {
+          clearTimeout(timeout);
+          console.error('ORS fetch failed, falling back to haversine:', mat.name, orsError);
+          const dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
+          return { dist, oneWayTimeHr: dist / 30.0 };
+        }
+      }
+      const dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
+      return { dist, oneWayTimeHr: dist / 30.0 };
+    }));
+
+    for (let i = 0; i < validMaterials.length; i++) {
+      const { mat, fac } = validMaterials[i];
       try {
-        console.log('Processing material:', mat.name, 'facility:', mat.facility);
-        const fac: any = Array.isArray(mat.facility) ? mat.facility[0] : mat.facility;
-        if (!fac?.latitude || !fac?.longitude) {
-          console.log('Skipping material, no facility coords:', mat.name, mat.facility);
-          continue;
-        }
-
-        const rawDist = haversineDistance(jobLat, jobLon, fac.latitude, fac.longitude);
-        let dist = rawDist;
-        let oneWayTimeHr = 0;
-
-        if (rawDist <= 30.0 && apiKey) {
-          try {
-            const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${jobLon},${jobLat}&end=${fac.longitude},${fac.latitude}&radiuses=-1|-1`;
-            const orsRes = await fetch(orsUrl);
-            if (orsRes.ok) {
-              const orsData = await orsRes.json();
-              const summary = orsData.features[0].properties.summary;
-              dist = summary.distance / 1609.34;
-              const penalty = dist > 10.0 ? 1.10 : 1.20;
-              oneWayTimeHr = (summary.duration / 3600.0) * penalty;
-            } else throw new Error("ORS Failed");
-          } catch (orsError) {
-            console.error('ORS fetch failed, falling back to haversine:', mat.name, orsError);
-            dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
-            oneWayTimeHr = dist / 30.0;
-          }
-        } else {
-          dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
-          oneWayTimeHr = dist / 30.0;
-        }
-
+        const { oneWayTimeHr } = routings[i];
         const travelTimeHr = oneWayTimeHr * 2;
         const rawCycleHr   = travelTimeHr + loadUnloadHr;
 
