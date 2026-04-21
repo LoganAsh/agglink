@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     const { data: availableMaterials, error } = await query;
     if (error || !availableMaterials || availableMaterials.length === 0) {
-      console.log('No materials found for:', materials, 'isImport:', isImport);
+      console.log('No materials found for:', JSON.stringify(materials), 'isImport:', isImport, 'first material bytes:', materials[0] ? [...materials[0]].map(c => c.charCodeAt(0)) : []);
       return NextResponse.json({ success: true, jobLat: 0, jobLon: 0, data: [], grouped: {} });
     }
 
