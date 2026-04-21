@@ -63,20 +63,20 @@ export async function POST(request: Request) {
     const isImport = jobType === "Import (Delivery)";
 
     // 2. Fetch Materials
-    let query = supabase.from('materials').select(`
+    console.log('QUERY_MATERIALS:', JSON.stringify(materials));
+    console.log('QUERY_IS_IMPORT:', isImport);
+    console.log('QUERY_JOB_TYPE:', jobType);
+
+    const materialsQuery = supabase.from('materials').select(`
       price_per_ton, price_per_cy, price_10w_load, price_sd_load, name,
       facility:facilities(id, name, address, latitude, longitude)
     `).eq('is_import', isImport);
 
-    if (materials.length > 0) {
-      query = query.in('name', materials);
-    }
+    const { data: availableMaterials, error } = materials.length > 0
+      ? await materialsQuery.in('name', materials)
+      : await materialsQuery;
 
-    console.log('QUERY_MATERIALS:', JSON.stringify(materials));
-    console.log('QUERY_IS_IMPORT:', isImport);
-    console.log('QUERY_JOB_TYPE:', jobType);
-    const { data: availableMaterials, error } = await query;
-    console.log('Query result count:', availableMaterials?.length, 'error:', error?.message);
+    console.log('MATERIALS_RESULT:', availableMaterials?.length, 'for names:', JSON.stringify(materials), 'isImport:', isImport);
     if (error || !availableMaterials || availableMaterials.length === 0) {
       console.log('No materials found for:', JSON.stringify(materials), 'jobType:', jobType, 'isImport:', isImport, 'is_import filter:', isImport);
       return NextResponse.json({ success: true, jobLat: 0, jobLon: 0, data: [], grouped: {} });
