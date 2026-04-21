@@ -16,6 +16,12 @@ export async function POST(request: Request) {
   try {
     const supabase = createClient();
 
+    const { data: testData, error: testError } = await supabase.from('materials').select('name').limit(1);
+    console.log('CONNECTION_TEST:', testData?.length, testError?.message);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('AUTH_USER:', user?.id || 'NO USER');
+
     const body = await request.json();
     const {
       jobType = "Import (Delivery)",
