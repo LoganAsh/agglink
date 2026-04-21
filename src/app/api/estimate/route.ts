@@ -15,8 +15,6 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export async function POST(request: Request) {
   try {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const {
