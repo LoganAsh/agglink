@@ -57,8 +57,9 @@ export async function POST(request: Request) {
     }
 
     const { data: availableMaterials, error } = await query;
+    console.log('Query result count:', availableMaterials?.length, 'error:', error?.message);
     if (error || !availableMaterials || availableMaterials.length === 0) {
-      console.log('No materials found for:', JSON.stringify(materials), 'isImport:', isImport, 'first material bytes:', materials[0] ? [...materials[0]].map(c => c.charCodeAt(0)) : []);
+      console.log('No materials found for:', JSON.stringify(materials), 'jobType:', jobType, 'isImport:', isImport, 'is_import filter:', isImport);
       return NextResponse.json({ success: true, jobLat: 0, jobLon: 0, data: [], grouped: {} });
     }
 
