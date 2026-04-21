@@ -22,6 +22,7 @@ export default function ContractorView({
   // Core state
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProject, setActiveProject] = useState<any | null>(null);
+  const [activeView, setActiveView] = useState<'dashboard' | 'calculator'>('dashboard');
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
@@ -66,6 +67,20 @@ export default function ContractorView({
   const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [selectedTruckType, setSelectedTruckType] = useState("");
   const [qty, setQty] = useState(1500);
+
+  // Calculator state
+  const [calcAddress, setCalcAddress] = useState("");
+  const [calcLat, setCalcLat] = useState<number | undefined>(undefined);
+  const [calcLon, setCalcLon] = useState<number | undefined>(undefined);
+  const [calcJobType, setCalcJobType] = useState("Import (Delivery)");
+  const [calcCategory, setCalcCategory] = useState("");
+  const [calcMaterials, setCalcMaterials] = useState<string[]>([]);
+  const [calcTruckType, setCalcTruckType] = useState("");
+  const [calcQty, setCalcQty] = useState(1500);
+  const [calcResults, setCalcResults] = useState<any[]>([]);
+  const [calcIsCalculating, setCalcIsCalculating] = useState(false);
+  const [calcIsReverseGeocoding, setCalcIsReverseGeocoding] = useState(false);
+  const [calcIsImport, setCalcIsImport] = useState(true);
 
   const isImport = jobType === "Import (Delivery)";
 
@@ -128,6 +143,26 @@ export default function ContractorView({
   // Toggle a material in the multi-select list
   const toggleMaterial = (mat: string) => {
     setSelectedMaterials(prev =>
+      prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
+    );
+  };
+
+  const calcFilteredMaterials = useMemo(() => {
+    const allMats = calcIsImport ? importMaterials : exportMaterials;
+    if (!calcCategory) return allMats;
+    const cat = categories.find(c => c.id === calcCategory);
+    if (!cat) return allMats;
+    const mapped = categoryMap.filter(m => m.category_id === calcCategory).map(m => m.material_name);
+    return allMats.filter(m => mapped.includes(m));
+  }, [calcCategory, calcIsImport, importMaterials, exportMaterials, categories, categoryMap]);
+
+  const calcFilteredCategories = useMemo(() =>
+    categories.filter(c => c.type === (calcIsImport ? 'import' : 'export')),
+    [categories, calcIsImport]
+  );
+
+  const calcToggleMaterial = (mat: string) => {
+    setCalcMaterials(prev =>
       prev.includes(mat) ? prev.filter(m => m !== mat) : [...prev, mat]
     );
   };
@@ -211,6 +246,43 @@ export default function ContractorView({
     } catch { setNewProjAddr(`${lat.toFixed(5)}, ${lon.toFixed(5)}`); }
     setIsReverseGeocoding(false);
   }, []);
+
+  const handleCalcMapClick = useCallback(async (lat: number, lon: number) => {
+    setCalcLat(lat); setCalcLon(lon); setCalcIsReverseGeocoding(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const data = await res.json();
+      if (data.display_name) setCalcAddress(data.display_name);
+    } catch { setCalcAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`); }
+    setCalcIsReverseGeocoding(false);
+  }, []);
+
+  const runCalculator = async () => {
+    if (!calcAddress || calcMaterials.length === 0 || !calcTruckType) return;
+    setCalcIsCalculating(true);
+    try {
+      const response = await fetch('/api/public/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: calcAddress,
+          qty: calcQty,
+          jobType: calcJobType,
+          materials: calcMaterials,
+          truckType: calcTruckType,
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCalcResults(Array.isArray(data.data) ? data.data.slice(0, 5) : []);
+      } else {
+        setCalcResults([]);
+      }
+    } catch {
+      setCalcResults([]);
+    }
+    setCalcIsCalculating(false);
+  };
 
   const handleEditMapClick = useCallback(async (lat: number, lon: number) => {
     setEditJobLat(lat); setEditJobLon(lon); setIsEditReverseGeocoding(true);
@@ -537,8 +609,14 @@ export default function ContractorView({
           <span className="text-xl font-bold text-white tracking-wide">AggLink<span className="text-orange-500">.</span></span>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
-          <a href="#" className="flex items-center px-4 py-3 bg-orange-500/10 text-orange-500 rounded-lg font-medium">Dashboard</a>
-          <a href="#" className="flex items-center px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg font-medium transition-colors">Smart Estimator</a>
+          <button type="button" onClick={() => setActiveView('dashboard')}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-gauge-high mr-3 w-4 text-center"></i>Dashboard
+          </button>
+          <button type="button" onClick={() => setActiveView('calculator')}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'calculator' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-calculator mr-3 w-4 text-center"></i>Calculator
+          </button>
         </nav>
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center">
@@ -585,6 +663,7 @@ export default function ContractorView({
         </header>
 
         {/* Content */}
+        {activeView === 'dashboard' && (
         <div className="p-4 md:p-8 space-y-6">
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -844,6 +923,138 @@ export default function ContractorView({
                 )}
               </div>
         </div>
+        )}
+
+        {activeView === 'calculator' && (
+        <div className="p-4 md:p-8 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Left: inputs */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-white">Quick Calculator</h2>
+              <p className="text-xs text-slate-400">Calculate freight and material costs without creating a project.</p>
+
+              <div className="inline-flex relative bg-slate-900 border border-slate-700 rounded-lg p-0.5">
+                <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ${calcIsImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
+                <button type="button" onClick={() => { setCalcIsImport(true); setCalcJobType("Import (Delivery)"); setCalcMaterials([]); setCalcCategory(""); }}
+                  className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${calcIsImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                  Import
+                </button>
+                <button type="button" onClick={() => { setCalcIsImport(false); setCalcJobType("Export (Haul-Off)"); setCalcMaterials([]); setCalcCategory(""); }}
+                  className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!calcIsImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                  Export
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site <span className="text-xs text-slate-500 font-normal ml-1">Click map to drop pin</span></label>
+                <div className="h-48 rounded-lg overflow-hidden border border-slate-700">
+                  <MapComponent jobLat={calcLat} jobLon={calcLon} facilities={allFacilities} onMapClick={handleCalcMapClick} interactive={true} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Address {calcIsReverseGeocoding && <span className="text-xs text-orange-400 animate-pulse ml-2">Looking up...</span>}</label>
+                <textarea value={calcAddress} onChange={(e) => setCalcAddress(e.target.value)} placeholder="Click map above or type address manually"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-14 resize-none" />
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-2">
+                <select value={calcCategory} onChange={(e) => { setCalcCategory(e.target.value); setCalcMaterials([]); }}
+                  className={`flex-1 bg-slate-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${calcIsImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                  <option value="">All Categories</option>
+                  {calcFilteredCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+
+                <select value={calcTruckType} onChange={(e) => setCalcTruckType(e.target.value)}
+                  className={`flex-1 bg-slate-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${calcIsImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                  <option value="">-- Truck Type --</option>
+                  {truckTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                </select>
+
+                <div className="relative w-full md:w-32">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{calcIsImport ? 'Tons' : 'CY'}</span>
+                  <input type="number" value={calcQty} onChange={(e) => setCalcQty(Number(e.target.value))}
+                    className={`w-full bg-slate-900 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${calcIsImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
+                </div>
+              </div>
+
+              {calcFilteredMaterials.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-400 mb-2">Select material(s) to compare:</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
+                    {calcFilteredMaterials.map(mat => (
+                      <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                        <input type="checkbox" checked={calcMaterials.includes(mat)} onChange={() => calcToggleMaterial(mat)} className="sr-only" />
+                        <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-slate-600'}`}>
+                          {calcMaterials.includes(mat) && <i className="fa-solid fa-check text-white" style={{ fontSize: '8px' }}></i>}
+                        </span>
+                        <span className="truncate">{mat}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button onClick={runCalculator} disabled={calcIsCalculating || !calcAddress || calcMaterials.length === 0 || !calcTruckType}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white py-2.5 rounded-lg text-sm font-bold transition-all">
+                {calcIsCalculating ? 'Calculating...' : 'Calculate'}
+              </button>
+            </div>
+
+            {/* Right: results */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+              <div className="p-5 border-b border-slate-700 bg-slate-900/50">
+                <h2 className="text-lg font-semibold text-white">Results</h2>
+                {calcResults.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Top {calcResults.length} options sorted by total price</p>}
+              </div>
+              {calcResults.length === 0 ? (
+                <div className="p-12 text-center text-slate-500">
+                  <i className="fa-solid fa-calculator text-4xl mb-3 opacity-30"></i>
+                  <p className="text-sm">Fill in the details and hit Calculate to see results.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="text-slate-500 bg-slate-800/80 uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3">Supplier</th>
+                        <th className="px-4 py-3">Material</th>
+                        <th className="px-4 py-3">Fleet</th>
+                        <th className="px-4 py-3 text-right">Base</th>
+                        <th className="px-4 py-3 text-right">Frt</th>
+                        <th className="px-4 py-3 text-right font-bold text-white">Total/Unit</th>
+                        <th className="px-4 py-3 text-right">Job Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700/50">
+                      {calcResults.map((res: any, idx: number) => {
+                        const allTotal = calcResults.map(r => r.totalPerUnit);
+                        const avgTotal = allTotal.reduce((a, b) => a + b, 0) / allTotal.length;
+                        const savingsPct = avgTotal > 0 ? ((avgTotal - res.totalPerUnit) / avgTotal) * 100 : null;
+                        return (
+                          <tr key={idx} className="hover:bg-slate-700/30 transition-colors">
+                            <td className="px-4 py-3 text-slate-300">{res.supplier}</td>
+                            <td className="px-4 py-3 text-slate-400">{res.materialName}</td>
+                            <td className="px-4 py-3 text-slate-400">{res.truckFleet}</td>
+                            <td className="px-4 py-3 text-right text-slate-400">${res.basePrice.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-orange-400">
+                              ${res.totalPerUnit.toFixed(2)}
+                              {savingsPct !== null && <span className={`ml-1 text-[10px] font-semibold ${savingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{savingsPct >= 0 ? '+' : ''}{savingsPct.toFixed(0)}%</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-300 font-semibold">${(calcQty * res.totalPerUnit).toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
       </main>
 
       {/* Delete Confirmation Modal */}
