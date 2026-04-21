@@ -58,7 +58,8 @@ export async function POST(request: Request) {
 
     const { data: availableMaterials, error } = await query;
     if (error || !availableMaterials || availableMaterials.length === 0) {
-      return NextResponse.json({ error: 'No facilities found.' }, { status: 404 });
+      console.log('No materials found for:', materials, 'isImport:', isImport);
+      return NextResponse.json({ success: true, jobLat: 0, jobLon: 0, data: [], grouped: {} });
     }
 
     // 3. Build truck list     filter by truckType if specified
