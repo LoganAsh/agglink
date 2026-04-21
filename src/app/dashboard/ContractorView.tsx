@@ -364,7 +364,7 @@ export default function ContractorView({
           newResults[req.id] = [];
           continue;
         }
-        const response = await fetch('/api/estimate', {
+        const response = await fetch('/api/public/estimate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
