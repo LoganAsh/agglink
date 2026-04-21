@@ -179,6 +179,19 @@ export default function ContractorView({
   const accountSavingsFmt = fmtSavings(accountFreightSavings);
   const projectSavingsFmt = fmtSavings(projectFreightSavings);
 
+  const accountTotalValue = useMemo(() => {
+    if (allSavedEstimates.length === 0) return { total: 0, projectCount: 0 };
+    const total = allSavedEstimates.reduce((sum, est) => sum + (est.quantity * est.total_price), 0);
+    const projectIds = new Set(allSavedEstimates.map(est => est.project_id));
+    return { total, projectCount: projectIds.size };
+  }, [allSavedEstimates]);
+
+  const fmtCompactCurrency = (n: number) => {
+    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+    return `$${n.toFixed(0)}`;
+  };
+
   //        Geocoding
   const geocodeAddress = useCallback(async (address: string) => {
     try {
@@ -587,8 +600,12 @@ export default function ContractorView({
             </div>
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Est. Value</p>
-              <h3 className="text-3xl font-bold text-white mt-1">$1.4M</h3>
-              <p className="text-xs text-slate-400 mt-3">Across 12 active bids</p>
+              <h3 className={`text-3xl font-bold mt-1 ${accountTotalValue.total > 0 ? 'text-white' : 'text-slate-500'}`}>
+                {accountTotalValue.total > 0 ? fmtCompactCurrency(accountTotalValue.total) : '--'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-3">
+                {accountTotalValue.projectCount > 0 ? `Across ${accountTotalValue.projectCount} active bid${accountTotalValue.projectCount === 1 ? '' : 's'}` : 'No active bids yet'}
+              </p>
             </div>
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Market Price</p>
