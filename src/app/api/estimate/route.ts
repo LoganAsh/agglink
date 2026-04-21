@@ -79,7 +79,6 @@ export async function POST(request: Request) {
     const unloadTimeHr  = (isImport ? 8 : 10) / 60.0;
     const loadUnloadHr  = loadTimeHr + unloadTimeHr;
     const minHours      = 2.0;
-    const apiKey        = process.env.ORS_API_KEY;
 
     // 4. Fetch custom quotes
     let customQuotes: any[] = [];
@@ -107,32 +106,40 @@ export async function POST(request: Request) {
       validMaterials.push({ mat, fac });
     }
 
-    // Run all ORS routing calls in parallel with a 3s timeout each
-    const routings = await Promise.all(validMaterials.map(async ({ mat, fac }) => {
+    // Run all routing calls in parallel using Google Distance Matrix
+    const routings = await Promise.all(validMaterials.map(async ({ fac }) => {
       const rawDist = haversineDistance(jobLat, jobLon, fac.latitude, fac.longitude);
-      if (rawDist <= 30.0 && apiKey) {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
+      const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+      let dist = rawDist;
+      let oneWayTimeHr = 0;
+
+      if (googleApiKey) {
         try {
-          const orsUrl = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${apiKey}&start=${jobLon},${jobLat}&end=${fac.longitude},${fac.latitude}&radiuses=-1|-1`;
-          const orsRes = await fetch(orsUrl, { signal: controller.signal });
-          clearTimeout(timeout);
-          if (orsRes.ok) {
-            const orsData = await orsRes.json();
-            const summary = orsData.features[0].properties.summary;
-            const dist = summary.distance / 1609.34;
-            const penalty = dist > 10.0 ? 1.10 : 1.20;
-            return { dist, oneWayTimeHr: (summary.duration / 3600.0) * penalty };
-          } else throw new Error("ORS Failed");
-        } catch (orsError) {
-          clearTimeout(timeout);
-          console.error('ORS fetch failed, falling back to haversine:', mat.name, orsError);
-          const dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
-          return { dist, oneWayTimeHr: dist / 30.0 };
+          const matrixUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${jobLat},${jobLon}&destinations=${fac.latitude},${fac.longitude}&mode=driving&units=imperial&key=${googleApiKey}`;
+          const matrixRes = await fetch(matrixUrl);
+          if (matrixRes.ok) {
+            const matrixData = await matrixRes.json();
+            const element = matrixData.rows?.[0]?.elements?.[0];
+            if (element?.status === 'OK') {
+              dist = element.distance.value / 1609.34;
+              oneWayTimeHr = (element.duration.value / 3600) * 1.1;
+            } else {
+              throw new Error('Matrix element not OK: ' + element?.status);
+            }
+          } else {
+            throw new Error('Google API request failed');
+          }
+        } catch (err) {
+          console.log('Google routing failed, using haversine fallback:', err);
+          dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
+          oneWayTimeHr = dist / 30.0;
         }
+      } else {
+        dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
+        oneWayTimeHr = dist / 30.0;
       }
-      const dist = rawDist < 10.0 ? rawDist * 1.5 : rawDist * 1.3;
-      return { dist, oneWayTimeHr: dist / 30.0 };
+
+      return { dist, oneWayTimeHr };
     }));
 
     for (let i = 0; i < validMaterials.length; i++) {
