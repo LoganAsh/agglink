@@ -104,8 +104,14 @@ export default function AdminView({
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ requestId: req.id, email: req.email, fullName: req.full_name, companyName: req.company_name, role: req.requested_role, action }),
       });
-      const data = await res.json();
-      if (!res.ok) setActionError(data.error || 'Something went wrong.');
+      const rawBody = await res.text();
+      let data: any = {};
+      try { data = rawBody ? JSON.parse(rawBody) : {}; } catch { /* non-JSON body */ }
+      console.log('approve-signup response:', res.status, res.statusText, 'body:', rawBody);
+      if (!res.ok) {
+        const msg = data.error || data.message || data.msg || data.details || rawBody || res.statusText || 'Unknown error';
+        setActionError(`HTTP ${res.status}: ${msg}`);
+      }
       else {
         setSignupRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() } : r));
         if (action === 'approve' && data.tempPassword) alert(`Account created for ${req.email}.\n\nA password reset email has been sent.\n\nTemp password (if needed): ${data.tempPassword}`);
