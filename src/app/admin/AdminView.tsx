@@ -35,13 +35,14 @@ export default function AdminView({
   projects,
   estimates,
   quotes,
-  facilities,
+  facilities: initialFacilities,
   materials,
   signupRequests: initialRequests,
   categories: initialCategories,
   categoryMap: initialCategoryMap,
   truckTypes: initialTruckTypes,
   allMaterialNames,
+  suppliers,
 }: {
   adminName: string;
   profiles: any[];
@@ -55,10 +56,13 @@ export default function AdminView({
   categoryMap: any[];
   truckTypes: any[];
   allMaterialNames: string[];
+  suppliers: any[];
 }) {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [profiles, setProfiles] = useState<any[]>(initialProfiles);
+  const [facilities, setFacilities] = useState<any[]>(initialFacilities);
+  const [assigningFacilityId, setAssigningFacilityId] = useState<string | null>(null);
   const [signupRequests, setSignupRequests] = useState<any[]>(initialRequests);
   const [categories, setCategories] = useState<any[]>(initialCategories);
   const [categoryMap, setCategoryMap] = useState<any[]>(initialCategoryMap);
@@ -67,6 +71,15 @@ export default function AdminView({
   const [actionError, setActionError] = useState<string | null>(null);
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
+
+  const assignFacility = async (facilityId: string, ownerId: string | null) => {
+    setAssigningFacilityId(facilityId);
+    const { error } = await supabase.from('facilities').update({ owner_id: ownerId }).eq('id', facilityId);
+    if (!error) {
+      setFacilities(prev => prev.map(f => f.id === facilityId ? { ...f, owner_id: ownerId } : f));
+    } else alert('Failed to update facility owner');
+    setAssigningFacilityId(null);
+  };
 
   // Category management state
   const [newCatName, setNewCatName] = useState('');
@@ -456,13 +469,26 @@ export default function AdminView({
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-500 bg-slate-800/80 uppercase tracking-wider"><tr><th className="px-5 py-3">Facility</th><th className="px-5 py-3">Type</th><th className="px-5 py-3">Materials</th><th className="px-5 py-3">Est. Uses</th><th className="px-5 py-3">Added</th></tr></thead>
+                  <thead className="text-xs text-slate-500 bg-slate-800/80 uppercase tracking-wider"><tr><th className="px-5 py-3">Facility</th><th className="px-5 py-3">Type</th><th className="px-5 py-3">Owner</th><th className="px-5 py-3">Materials</th><th className="px-5 py-3">Est. Uses</th><th className="px-5 py-3">Added</th></tr></thead>
                   <tbody className="divide-y divide-slate-700/50">
                     {facilities.map(f => {
                       const facMaterials = materials.filter(m => m.facility_id === f.id).length;
                       const facEstimates = estimates.filter(e => e.facility_id === f.id).length;
                       const typeColor = f.type === 'pit' ? 'bg-orange-500/20 text-orange-400' : f.type === 'dump' ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400';
-                      return (<tr key={f.id} className="hover:bg-slate-700/30 transition-colors"><td className="px-5 py-3 font-medium text-white">{f.name}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span></td><td className="px-5 py-3 text-slate-400">{facMaterials}</td><td className="px-5 py-3"><span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span></td><td className="px-5 py-3 text-slate-400">{f.created_at ? fmtDate(f.created_at) : '-'}</td></tr>);
+                      return (<tr key={f.id} className="hover:bg-slate-700/30 transition-colors"><td className="px-5 py-3 font-medium text-white">{f.name}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span></td><td className="px-5 py-3">
+  <select
+    value={f.owner_id || ''}
+    disabled={assigningFacilityId === f.id}
+    onChange={(e) => assignFacility(f.id, e.target.value || null)}
+    className="bg-slate-800 border border-slate-700 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
+  >
+    <option value="">-- Unassigned --</option>
+    {suppliers.map(s => (
+      <option key={s.id} value={s.id}>{s.company_name}</option>
+    ))}
+  </select>
+  {assigningFacilityId === f.id && <span className="ml-2 text-xs text-slate-400">Saving...</span>}
+</td><td className="px-5 py-3 text-slate-400">{facMaterials}</td><td className="px-5 py-3"><span className={`font-semibold ${facEstimates > 0 ? 'text-orange-400' : 'text-slate-500'}`}>{facEstimates}</span></td><td className="px-5 py-3 text-slate-400">{f.created_at ? fmtDate(f.created_at) : '-'}</td></tr>);
                     })}
                   </tbody>
                 </table>

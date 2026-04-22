@@ -29,6 +29,7 @@ export default async function AdminPage() {
     { data: allCategories },
     { data: allCategoryMap },
     { data: allTruckTypes },
+    { data: suppliers },
   ] = await Promise.all([
     supabase.from('profiles').select('id, role, company_name, created_at'),
     supabase.from('projects').select('id, name, address, status, created_at, contractor_id'),
@@ -40,6 +41,7 @@ export default async function AdminPage() {
     supabase.from('material_categories').select('*').order('name'),
     supabase.from('material_category_map').select('*'),
     supabase.from('truck_types').select('*').order('name'),
+    supabase.from('profiles').select('id, company_name').eq('role', 'supplier').order('company_name'),
   ]);
 
   // Unique sorted material names for category assignment UI
@@ -61,6 +63,7 @@ export default async function AdminPage() {
       categoryMap={allCategoryMap || []}
       truckTypes={allTruckTypes || []}
       allMaterialNames={allMaterialNames}
+      suppliers={suppliers || []}
     />
   );
 }
