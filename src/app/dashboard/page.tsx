@@ -24,6 +24,10 @@ export default async function DashboardPage() {
     redirect('/admin')
   }
 
+  if (profile?.role === 'supplier') {
+    redirect('/supplier')
+  }
+
   const { count: pitsCount } = await supabase
     .from('facilities')
     .select('*', { count: 'exact', head: true })

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
     // 2. Fetch Materials
     let query = supabase.from('materials').select(`
-      price_per_ton, price_per_cy, price_10w_load, price_sd_load, name,
+      price_per_ton, price_per_cy, price_10w_load, price_sd_load, name, stock_status,
       facility:facilities(id, name, address, latitude, longitude)
     `).eq('is_import', isImport);
 
@@ -183,6 +183,7 @@ export async function POST(request: Request) {
           totalPerUnit: totalCost / qty,
           totalCost:    totalCost,
           isCustomQuote,
+          stockStatus:  mat.stock_status || 'in_stock',
         };
 
         if (!resultsByMaterial[mat.name]) resultsByMaterial[mat.name] = [];

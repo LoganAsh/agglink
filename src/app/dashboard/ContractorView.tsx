@@ -390,9 +390,17 @@ export default function ContractorView({
                   {pct >= 0 ? '+' : ''}{pct.toFixed(0)}%
                 </span>
               );
+              const stockColor = res.stockStatus === 'out_of_stock' ? 'bg-red-500' : res.stockStatus === 'low' ? 'bg-yellow-500' : 'bg-emerald-500';
+              const stockLabel = res.stockStatus === 'out_of_stock' ? 'Out' : res.stockStatus === 'low' ? 'Low' : null;
               return (
                 <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
-                  <td className="px-4 py-2 text-slate-300">{res.supplier}</td>
+                  <td className="px-4 py-2 text-slate-300">
+                    <div className="flex items-center space-x-1.5">
+                      <span>{res.supplier}</span>
+                      <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${stockColor}`} title={res.stockStatus}></span>
+                      {stockLabel && <span className={`text-[10px] font-semibold ${res.stockStatus === 'out_of_stock' ? 'text-red-400' : 'text-yellow-400'}`}>{stockLabel}</span>}
+                    </div>
+                  </td>
                   <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
                   <td className="px-4 py-2 text-right text-slate-400">
                     ${res.basePrice.toFixed(2)}{res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded">*</span>}
