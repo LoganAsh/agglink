@@ -81,6 +81,32 @@ export default function AdminView({
     setAssigningFacilityId(null);
   };
 
+  const [newFacName, setNewFacName] = useState('');
+  const [newFacAddress, setNewFacAddress] = useState('');
+  const [newFacType, setNewFacType] = useState<'pit'|'dump'|'both'>('pit');
+  const [newFacLat, setNewFacLat] = useState('');
+  const [newFacLon, setNewFacLon] = useState('');
+  const [newFacOwner, setNewFacOwner] = useState('');
+  const [savingFacility, setSavingFacility] = useState(false);
+
+  const createFacility = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingFacility(true);
+    const { data, error } = await supabase.from('facilities').insert([{
+      name: newFacName.trim(),
+      address: newFacAddress.trim(),
+      type: newFacType,
+      latitude: newFacLat ? parseFloat(newFacLat) : null,
+      longitude: newFacLon ? parseFloat(newFacLon) : null,
+      owner_id: newFacOwner || null,
+    }]).select().single();
+    if (data && !error) {
+      setFacilities([...facilities, data]);
+      setNewFacName(''); setNewFacAddress(''); setNewFacLat(''); setNewFacLon(''); setNewFacOwner('');
+    } else alert('Failed to create facility: ' + error?.message);
+    setSavingFacility(false);
+  };
+
   // Category management state
   const [newCatName, setNewCatName] = useState('');
   const [newCatType, setNewCatType] = useState<'import' | 'export'>('import');
@@ -458,6 +484,7 @@ export default function AdminView({
 
           {/* FACILITIES */}
           {activeTab === 'facilities' && (
+            <div className="space-y-6">
             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-white">All Facilities ({facilities.length})</h2>
@@ -493,6 +520,85 @@ export default function AdminView({
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-white mb-4">Add New Facility</h3>
+              <form onSubmit={createFacility} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Name</label>
+                  <input
+                    type="text" required value={newFacName} onChange={e => setNewFacName(e.target.value)}
+                    placeholder="e.g., North Pit"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Address</label>
+                  <input
+                    type="text" value={newFacAddress} onChange={e => setNewFacAddress(e.target.value)}
+                    placeholder="Street, City"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs text-slate-400 mb-1">Type</label>
+                  <div className="flex space-x-2">
+                    {(['pit','dump','both'] as const).map(t => {
+                      const active = newFacType === t;
+                      const color =
+                        t === 'pit'  ? (active ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' : 'border-slate-700 text-slate-400 hover:text-white') :
+                        t === 'dump' ? (active ? 'bg-blue-500/10 border-blue-500/50 text-blue-400'       : 'border-slate-700 text-slate-400 hover:text-white') :
+                                       (active ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'border-slate-700 text-slate-400 hover:text-white');
+                      return (
+                        <button key={t} type="button" onClick={() => setNewFacType(t)}
+                          className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border capitalize transition-all ${color}`}>
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Latitude (optional)</label>
+                  <input
+                    type="number" step="any" value={newFacLat} onChange={e => setNewFacLat(e.target.value)}
+                    placeholder="40.7608"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Longitude (optional)</label>
+                  <input
+                    type="number" step="any" value={newFacLon} onChange={e => setNewFacLon(e.target.value)}
+                    placeholder="-111.8910"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs text-slate-400 mb-1">Owner</label>
+                  <select
+                    value={newFacOwner} onChange={e => setNewFacOwner(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.id}>{s.company_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <button type="submit" disabled={savingFacility || !newFacName.trim()}
+                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                    {savingFacility ? 'Creating...' : 'Create Facility'}
+                  </button>
+                </div>
+              </form>
+            </div>
             </div>
           )}
 

@@ -16,38 +16,80 @@ export default function SupplierView({
   profile,
   facilities,
   materials: initialMaterials,
+  allMaterialNames,
 }: {
   profile: { role: string; company_name: string | null };
   facilities: Array<{ id: string; name: string; type: string }>;
-  materials: Array<{
-    id: string;
-    name: string;
-    price_per_ton: number | null;
-    price_per_cy: number | null;
-    is_import: boolean;
-    stock_status: string | null;
-    facility_id: string;
-  }>;
+  materials: any[];
+  allMaterialNames: string[];
 }) {
   const supabase = createClient();
-  const [materials, setMaterials] = useState(initialMaterials);
+
+  const [materials, setMaterials] = useState<any[]>(initialMaterials);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [addingMaterial, setAddingMaterial] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newMatFacilityId, setNewMatFacilityId] = useState('');
+  const [newMatName, setNewMatName] = useState('');
+  const [newMatIsImport, setNewMatIsImport] = useState(true);
+  const [newMatPricePerTon, setNewMatPricePerTon] = useState('');
+  const [newMatPricePerCy, setNewMatPricePerCy] = useState('');
+  const [newMat10wLoad, setNewMat10wLoad] = useState('');
+  const [newMatSdLoad, setNewMatSdLoad] = useState('');
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+  const [editPriceVal, setEditPriceVal] = useState<string>('');
 
   const companyName = profile.company_name || 'Supplier';
 
-  const updateStatus = async (materialId: string, value: string) => {
+  const updateStockStatus = async (materialId: string, status: string) => {
     setSavingId(materialId);
-    const prev = materials;
-    setMaterials(mats => mats.map(m => m.id === materialId ? { ...m, stock_status: value } : m));
-    const { error } = await supabase
-      .from('materials')
-      .update({ stock_status: value })
-      .eq('id', materialId);
-    if (error) {
-      setMaterials(prev);
-      alert(`Failed to update stock status: ${error.message}`);
-    }
+    await supabase.from('materials').update({ stock_status: status }).eq('id', materialId);
+    setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, stock_status: status } : m));
     setSavingId(null);
+  };
+
+  const startEditPrice = (mat: any) => {
+    setEditingPriceId(mat.id);
+    setEditPriceVal(String(mat.is_import ? (mat.price_per_ton ?? '') : (mat.price_per_cy ?? '')));
+  };
+
+  const savePrice = async (mat: any) => {
+    const val = parseFloat(editPriceVal);
+    if (isNaN(val)) return;
+    const update = mat.is_import ? { price_per_ton: val } : { price_per_cy: val };
+    const { error } = await supabase.from('materials').update(update).eq('id', mat.id);
+    if (!error) setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, ...update } : m));
+    else alert('Failed to update price');
+    setEditingPriceId(null);
+  };
+
+  const addMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMatFacilityId || !newMatName) return;
+    setAddingMaterial(true);
+    const { data, error } = await supabase.from('materials').insert([{
+      facility_id: newMatFacilityId,
+      name: newMatName,
+      is_import: newMatIsImport,
+      price_per_ton: newMatIsImport ? (parseFloat(newMatPricePerTon) || 0) : 0,
+      price_per_cy: !newMatIsImport ? (parseFloat(newMatPricePerCy) || 0) : 0,
+      price_10w_load: parseFloat(newMat10wLoad) || 0,
+      price_sd_load: parseFloat(newMatSdLoad) || 0,
+      stock_status: 'in_stock',
+    }]).select().single();
+    if (data && !error) {
+      setMaterials([...materials, data]);
+      setNewMatName(''); setNewMatPricePerTon(''); setNewMatPricePerCy(''); setNewMat10wLoad(''); setNewMatSdLoad('');
+      setShowAddForm(false);
+    } else alert('Failed to add material: ' + error?.message);
+    setAddingMaterial(false);
+  };
+
+  const deleteMaterial = async (materialId: string) => {
+    if (!confirm('Remove this material from your supply list?')) return;
+    const { error } = await supabase.from('materials').delete().eq('id', materialId);
+    if (!error) setMaterials(prev => prev.filter(m => m.id !== materialId));
+    else alert('Failed to remove material');
   };
 
   const materialsByFacility = facilities.map(fac => ({
@@ -92,81 +134,240 @@ export default function SupplierView({
         </header>
 
         <div className="p-4 md:p-8 space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white">My Materials</h1>
-            <p className="text-sm text-slate-400 mt-1">Update stock availability so contractors see real-time status on their estimates.</p>
-          </div>
-
-          {materialsByFacility.length === 0 && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-              No facilities linked to your account yet. Contact an admin to get set up.
-            </div>
-          )}
-
-          {materialsByFacility.map(({ facility, mats }) => (
-            <section key={facility.id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-white">{facility.name}</h3>
-                  <p className="text-xs text-slate-500 capitalize mt-0.5">{facility.type} facility</p>
-                </div>
-                <span className="text-xs text-slate-500">{mats.length} material{mats.length === 1 ? '' : 's'}</span>
+          {/* SECTION 1: My Materials */}
+          <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h1 className="text-lg font-semibold text-white">My Materials</h1>
+                <p className="text-xs text-slate-400 mt-0.5">Manage pricing, stock status, and supply list.</p>
               </div>
+              <button
+                onClick={() => setShowAddForm(v => !v)}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow transition-all"
+              >
+                {showAddForm ? 'Cancel' : '+ Add Material'}
+              </button>
+            </div>
 
-              {mats.length === 0 ? (
-                <div className="px-6 py-8 text-center text-sm text-slate-500">No materials listed at this facility.</div>
-              ) : (
-                <ul className="divide-y divide-slate-800">
-                  {mats.map(mat => {
-                    const price = mat.is_import
-                      ? (mat.price_per_ton != null ? `$${Number(mat.price_per_ton).toFixed(2)}/ton` : '—')
-                      : (mat.price_per_cy != null ? `$${Number(mat.price_per_cy).toFixed(2)}/cy` : '—');
-                    const current = mat.stock_status || 'in_stock';
-                    const isSaving = savingId === mat.id;
-                    return (
-                      <li key={mat.id} className="px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div className="flex-1 min-w-0">
+            {materialsByFacility.length === 0 && (
+              <div className="px-6 py-10 text-center text-slate-400">
+                No facilities linked to your account yet. Contact an admin to get set up.
+              </div>
+            )}
+
+            {materialsByFacility.length > 0 && materials.length === 0 && (
+              <div className="px-6 py-10 text-center">
+                <p className="text-slate-400 mb-3">No materials listed yet.</p>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+                >
+                  + Add your first material
+                </button>
+              </div>
+            )}
+
+            {materialsByFacility.map(({ facility, mats }) => (
+              mats.length === 0 ? null : (
+                <div key={facility.id} className="border-b border-slate-800 last:border-b-0">
+                  <div className="px-6 py-3 bg-slate-800/40 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">{facility.name}</h3>
+                      <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{facility.type} facility</p>
+                    </div>
+                    <span className="text-xs text-slate-500">{mats.length} material{mats.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <ul className="divide-y divide-slate-800">
+                    {mats.map(mat => {
+                      const unit = mat.is_import ? '/ton' : '/CY';
+                      const currentPrice = mat.is_import ? mat.price_per_ton : mat.price_per_cy;
+                      const current = mat.stock_status || 'in_stock';
+                      const isSaving = savingId === mat.id;
+                      const isEditing = editingPriceId === mat.id;
+                      return (
+                        <li key={mat.id} className="px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-white truncate">{mat.name}</span>
+                              <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${mat.is_import ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
+                                {mat.is_import ? 'Import' : 'Export'}
+                              </span>
+                            </div>
+
+                            <div className="mt-1.5 flex items-center space-x-2">
+                              {isEditing ? (
+                                <>
+                                  <input
+                                    type="number" step="any" value={editPriceVal}
+                                    onChange={e => setEditPriceVal(e.target.value)}
+                                    className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-orange-500"
+                                    autoFocus
+                                  />
+                                  <span className="text-xs text-slate-500">${unit}</span>
+                                  <button
+                                    onClick={() => savePrice(mat)}
+                                    className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold px-2"
+                                    title="Save"
+                                  ><i className="fa-solid fa-check"></i></button>
+                                  <button
+                                    onClick={() => setEditingPriceId(null)}
+                                    className="text-slate-500 hover:text-slate-300 text-xs font-semibold px-2"
+                                    title="Cancel"
+                                  ><i className="fa-solid fa-xmark"></i></button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="text-xs text-slate-400">
+                                    {currentPrice != null ? `$${Number(currentPrice).toFixed(2)}${unit}` : <span className="text-slate-600 italic">no price set</span>}
+                                  </span>
+                                  <button
+                                    onClick={() => startEditPrice(mat)}
+                                    className="text-slate-500 hover:text-orange-400 text-xs transition-colors"
+                                    title="Edit price"
+                                  ><i className="fa-solid fa-pencil"></i></button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
                           <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-white truncate">{mat.name}</span>
-                            <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${mat.is_import ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
-                              {mat.is_import ? 'Import' : 'Export'}
-                            </span>
+                            <div className="inline-flex rounded-lg overflow-hidden border border-slate-700">
+                              {STATUS_OPTIONS.map((opt, i) => {
+                                const selected = current === opt.value;
+                                const base = 'px-3 py-1.5 text-xs font-semibold border-r last:border-r-0 border-slate-700 transition-colors disabled:opacity-50';
+                                return (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => !selected && updateStockStatus(mat.id, opt.value)}
+                                    disabled={isSaving}
+                                    className={`${base} ${selected ? opt.color : UNSELECTED}`}
+                                    title={opt.label}
+                                    style={{ borderRightWidth: i === STATUS_OPTIONS.length - 1 ? 0 : 1 }}
+                                  >
+                                    {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {isSaving && (
+                              <span className="text-xs text-slate-500 flex items-center">
+                                <i className="fa-solid fa-spinner fa-spin mr-1.5"></i>
+                              </span>
+                            )}
+                            <button
+                              onClick={() => deleteMaterial(mat.id)}
+                              className="text-slate-500 hover:text-red-400 transition-colors p-1.5"
+                              title="Remove material"
+                            >
+                              <i className="fa-solid fa-trash-can text-xs"></i>
+                            </button>
                           </div>
-                          <p className="text-xs text-slate-500 mt-1">{price}</p>
-                        </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )
+            ))}
+          </section>
 
-                        <div className="flex items-center space-x-2">
-                          <div className="inline-flex rounded-lg overflow-hidden border border-slate-700">
-                            {STATUS_OPTIONS.map((opt, i) => {
-                              const selected = current === opt.value;
-                              const base = 'px-3 py-1.5 text-xs font-semibold border-r last:border-r-0 border-slate-700 transition-colors disabled:opacity-50';
-                              return (
-                                <button
-                                  key={opt.value}
-                                  onClick={() => !selected && updateStatus(mat.id, opt.value)}
-                                  disabled={isSaving}
-                                  className={`${base} ${selected ? opt.color : UNSELECTED}`}
-                                  title={opt.label}
-                                  style={{ borderRightWidth: i === STATUS_OPTIONS.length - 1 ? 0 : 1 }}
-                                >
-                                  {opt.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {isSaving && (
-                            <span className="text-xs text-slate-500 flex items-center">
-                              <i className="fa-solid fa-spinner fa-spin mr-1.5"></i>Saving
-                            </span>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+          {/* SECTION 2: Add Material form */}
+          {showAddForm && (
+            <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <h2 className="text-lg font-semibold text-white mb-4">Add Material to Supply List</h2>
+              <form onSubmit={addMaterial} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Facility</label>
+                  <select
+                    required value={newMatFacilityId} onChange={e => setNewMatFacilityId(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="">-- Select Facility --</option>
+                    {facilities.map(f => (
+                      <option key={f.id} value={f.id}>{f.name} ({f.type})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Type</label>
+                  <div className="flex space-x-2">
+                    <button type="button" onClick={() => setNewMatIsImport(true)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${newMatIsImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+                      Import
+                    </button>
+                    <button type="button" onClick={() => setNewMatIsImport(false)}
+                      className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-all ${!newMatIsImport ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+                      Export
+                    </button>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs text-slate-400 mb-1">Material</label>
+                  <select
+                    required value={newMatName} onChange={e => setNewMatName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="">-- Select Material --</option>
+                    {allMaterialNames.map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {newMatIsImport ? (
+                  <div className="md:col-span-2">
+                    <label className="block text-xs text-slate-400 mb-1">Price per Ton ($)</label>
+                    <input
+                      type="number" step="any" value={newMatPricePerTon} onChange={e => setNewMatPricePerTon(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Price per CY ($)</label>
+                      <input
+                        type="number" step="any" value={newMatPricePerCy} onChange={e => setNewMatPricePerCy(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                    <div />
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">10-Wheeler Load Price ($, optional)</label>
+                      <input
+                        type="number" step="any" value={newMat10wLoad} onChange={e => setNewMat10wLoad(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">Side Dump Load Price ($, optional)</label>
+                      <input
+                        type="number" step="any" value={newMatSdLoad} onChange={e => setNewMatSdLoad(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div className="md:col-span-2 flex space-x-2 pt-2">
+                  <button type="button" onClick={() => setShowAddForm(false)}
+                    className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg text-sm font-semibold transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={addingMaterial || !newMatFacilityId || !newMatName}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                    {addingMaterial ? 'Adding...' : 'Add Material'}
+                  </button>
+                </div>
+              </form>
             </section>
-          ))}
+          )}
         </div>
       </main>
     </div>

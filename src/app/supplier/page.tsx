@@ -26,15 +26,19 @@ export default async function SupplierPage() {
 
   const { data: materials } = await supabase
     .from('materials')
-    .select('id, name, price_per_ton, price_per_cy, is_import, stock_status, facility_id')
+    .select('id, name, price_per_ton, price_per_cy, price_10w_load, price_sd_load, is_import, stock_status, facility_id')
     .in('facility_id', facilityIds.length > 0 ? facilityIds : ['none'])
     .order('name');
+
+  const { data: allMatsRaw } = await supabase.from('materials').select('name, is_import').order('name');
+  const allMaterialNames: string[] = allMatsRaw ? Array.from(new Set(allMatsRaw.map(m => m.name))).sort() as string[] : [];
 
   return (
     <SupplierView
       profile={profile}
       facilities={facilities || []}
       materials={materials || []}
+      allMaterialNames={allMaterialNames}
     />
   );
 }
