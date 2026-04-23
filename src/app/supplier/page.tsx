@@ -1,11 +1,12 @@
+export const dynamic = 'force-dynamic';
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import SupplierView from './SupplierView';
 
-export const dynamic = 'force-dynamic';
-
 export default async function SupplierPage() {
   const supabase = createClient();
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
@@ -20,9 +21,10 @@ export default async function SupplierPage() {
   const { data: facilities } = await supabase
     .from('facilities')
     .select('id, name, type')
-    .eq('owner_id', user.id);
+    .eq('owner_id', user.id)
+    .order('name');
 
-  const facilityIds = facilities?.map(f => f.id) || [];
+  const facilityIds = facilities?.map((f: any) => f.id) || [];
 
   const { data: materials } = await supabase
     .from('materials')
@@ -30,8 +32,15 @@ export default async function SupplierPage() {
     .in('facility_id', facilityIds.length > 0 ? facilityIds : ['none'])
     .order('name');
 
-  const { data: allMatsRaw } = await supabase.from('materials').select('name, is_import').order('name');
-  const allMaterialNames: string[] = allMatsRaw ? Array.from(new Set(allMatsRaw.map(m => m.name))).sort() as string[] : [];
+  // All unique material names for the add material dropdown
+  const { data: allMatsRaw } = await supabase
+    .from('materials')
+    .select('name')
+    .order('name');
+
+  const allMaterialNames: string[] = allMatsRaw
+    ? Array.from(new Set(allMatsRaw.map((m: any) => m.name))).sort() as string[]
+    : [];
 
   return (
     <SupplierView
