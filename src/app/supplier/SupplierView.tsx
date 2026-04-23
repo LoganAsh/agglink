@@ -10,8 +10,6 @@ const STATUS_OPTIONS = [
   { value: 'out_of_stock', label: 'Out', color: 'bg-red-500/20 text-red-400 border-red-500/40' },
 ];
 
-const UNSELECTED = 'bg-slate-800 text-slate-500 border-slate-700 hover:text-slate-300';
-
 export default function SupplierView({
   profile,
   facilities,
@@ -83,13 +81,6 @@ export default function SupplierView({
       setShowAddForm(false);
     } else alert('Failed to add material: ' + error?.message);
     setAddingMaterial(false);
-  };
-
-  const deleteMaterial = async (materialId: string) => {
-    if (!confirm('Remove this material from your supply list?')) return;
-    const { error } = await supabase.from('materials').delete().eq('id', materialId);
-    if (!error) setMaterials(prev => prev.filter(m => m.id !== materialId));
-    else alert('Failed to remove material');
   };
 
   const materialsByFacility = facilities.map(fac => ({
@@ -177,95 +168,50 @@ export default function SupplierView({
                     </div>
                     <span className="text-xs text-slate-500">{mats.length} material{mats.length === 1 ? '' : 's'}</span>
                   </div>
-                  <ul className="divide-y divide-slate-800">
-                    {mats.map(mat => {
-                      const unit = mat.is_import ? '/ton' : '/CY';
-                      const currentPrice = mat.is_import ? mat.price_per_ton : mat.price_per_cy;
-                      const current = mat.stock_status || 'in_stock';
-                      const isSaving = savingId === mat.id;
-                      const isEditing = editingPriceId === mat.id;
-                      return (
-                        <li key={mat.id} className="px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-white truncate">{mat.name}</span>
-                              <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded border ${mat.is_import ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' : 'bg-blue-500/10 text-blue-400 border-blue-500/30'}`}>
-                                {mat.is_import ? 'Import' : 'Export'}
-                              </span>
-                            </div>
+                  <div className="divide-y divide-slate-700/50">
+                    {mats.map(mat => (
+                      <div key={mat.id} className="flex items-center justify-between gap-3 py-3 px-4">
 
-                            <div className="mt-1.5 flex items-center space-x-2">
-                              {isEditing ? (
-                                <>
-                                  <input
-                                    type="number" step="any" value={editPriceVal}
-                                    onChange={e => setEditPriceVal(e.target.value)}
-                                    className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white w-24 focus:outline-none focus:border-orange-500"
-                                    autoFocus
-                                  />
-                                  <span className="text-xs text-slate-500">${unit}</span>
-                                  <button
-                                    onClick={() => savePrice(mat)}
-                                    className="text-emerald-400 hover:text-emerald-300 text-xs font-semibold px-2"
-                                    title="Save"
-                                  ><i className="fa-solid fa-check"></i></button>
-                                  <button
-                                    onClick={() => setEditingPriceId(null)}
-                                    className="text-slate-500 hover:text-slate-300 text-xs font-semibold px-2"
-                                    title="Cancel"
-                                  ><i className="fa-solid fa-xmark"></i></button>
-                                </>
-                              ) : (
-                                <>
-                                  <span className="text-xs text-slate-400">
-                                    {currentPrice != null ? `$${Number(currentPrice).toFixed(2)}${unit}` : <span className="text-slate-600 italic">no price set</span>}
-                                  </span>
-                                  <button
-                                    onClick={() => startEditPrice(mat)}
-                                    className="text-slate-500 hover:text-orange-400 text-xs transition-colors"
-                                    title="Edit price"
-                                  ><i className="fa-solid fa-pencil"></i></button>
-                                </>
-                              )}
-                            </div>
-                          </div>
+                        {/* Left: name + badge */}
+                        <div className="flex flex-col min-w-0 flex-shrink-0 w-1/3">
+                          <span className="text-sm font-medium text-white truncate">{mat.name}</span>
+                          <span className={`text-[10px] font-bold uppercase mt-0.5 ${mat.is_import ? 'text-orange-400' : 'text-blue-400'}`}>
+                            {mat.is_import ? 'Import' : 'Export'}
+                          </span>
+                        </div>
 
-                          <div className="flex items-center space-x-2">
-                            <div className="inline-flex rounded-lg overflow-hidden border border-slate-700">
-                              {STATUS_OPTIONS.map((opt, i) => {
-                                const selected = current === opt.value;
-                                const base = 'px-3 py-1.5 text-xs font-semibold border-r last:border-r-0 border-slate-700 transition-colors disabled:opacity-50';
-                                return (
-                                  <button
-                                    key={opt.value}
-                                    onClick={() => !selected && updateStockStatus(mat.id, opt.value)}
-                                    disabled={isSaving}
-                                    className={`${base} ${selected ? opt.color : UNSELECTED}`}
-                                    title={opt.label}
-                                    style={{ borderRightWidth: i === STATUS_OPTIONS.length - 1 ? 0 : 1 }}
-                                  >
-                                    {opt.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            {isSaving && (
-                              <span className="text-xs text-slate-500 flex items-center">
-                                <i className="fa-solid fa-spinner fa-spin mr-1.5"></i>
-                              </span>
-                            )}
-                            <button
-                              onClick={() => deleteMaterial(mat.id)}
-                              className="text-slate-500 hover:text-red-400 transition-colors p-1.5"
-                              title="Remove material"
-                            >
-                              <i className="fa-solid fa-trash-can text-xs"></i>
+                        {/* Center: stock status segmented control */}
+                        <div className="flex items-center space-x-1 flex-shrink-0">
+                          {STATUS_OPTIONS.map(opt => (
+                            <button key={opt.value} onClick={() => updateStockStatus(mat.id, opt.value)}
+                              disabled={savingId === mat.id}
+                              className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all disabled:opacity-50 ${mat.stock_status === opt.value ? opt.color : 'bg-slate-800 text-slate-500 border-slate-700'}`}>
+                              {opt.label}
                             </button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                          ))}
+                        </div>
+
+                        {/* Right: price + edit */}
+                        <div className="flex items-center space-x-1 flex-shrink-0 justify-end w-1/4">
+                          {editingPriceId === mat.id ? (
+                            <div className="flex items-center space-x-1">
+                              <input type="number" value={editPriceVal} onChange={e => setEditPriceVal(e.target.value)}
+                                className="w-20 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500" />
+                              <button onClick={() => savePrice(mat)} className="text-emerald-400 hover:text-emerald-300 text-xs"><i className="fa-solid fa-check"></i></button>
+                              <button onClick={() => setEditingPriceId(null)} className="text-slate-500 hover:text-slate-300 text-xs"><i className="fa-solid fa-xmark"></i></button>
+                            </div>
+                          ) : (
+                            <button onClick={() => startEditPrice(mat)} className="flex items-center space-x-1 text-right group">
+                              <span className="text-sm font-semibold text-white">${mat.is_import ? (mat.price_per_ton || 0).toFixed(2) : (mat.price_per_cy || 0).toFixed(2)}</span>
+                              <span className="text-[10px] text-slate-500">{mat.is_import ? '/ton' : '/cy'}</span>
+                              <i className="fa-solid fa-pen text-[10px] text-slate-600 group-hover:text-orange-400 transition-colors ml-1"></i>
+                            </button>
+                          )}
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             ))}
