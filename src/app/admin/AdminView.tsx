@@ -60,6 +60,7 @@ export default function AdminView({
 }) {
   const supabase = createClient();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [profiles, setProfiles] = useState<any[]>(initialProfiles);
   const [facilities, setFacilities] = useState<any[]>(initialFacilities);
   const [assigningFacilityId, setAssigningFacilityId] = useState<string | null>(null);
@@ -294,17 +295,20 @@ export default function AdminView({
       </aside>
 
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
-        <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10 flex-shrink-0">
-          <div>
-            <h1 className="text-lg font-semibold text-white capitalize">
-              {activeTab === 'overview' ? 'Admin Overview' : activeTab === 'requests' ? 'Access Requests' : activeTab === 'trucks' ? 'Truck Types' : activeTab}
-            </h1>
-            <p className="text-xs text-slate-500">AggLink platform administration</p>
+        <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 flex-shrink-0">
+          <div className="flex items-center">
+            <span className="md:hidden text-base font-bold text-white mr-3">AggLink<span className="text-orange-500">.</span></span>
+            <div>
+              <h1 className="text-lg font-semibold text-white capitalize">
+                {activeTab === 'overview' ? 'Admin Overview' : activeTab === 'requests' ? 'Access Requests' : activeTab === 'trucks' ? 'Truck Types' : activeTab}
+              </h1>
+              <p className="text-xs text-slate-500">AggLink platform administration</p>
+            </div>
           </div>
-          <a href="/dashboard" className="text-xs text-slate-400 hover:text-orange-400 transition-colors border border-slate-700 hover:border-orange-500/40 px-3 py-1.5 rounded-lg">&larr; Contractor View</a>
+          <a href="/dashboard" className="hidden md:block text-xs text-slate-400 hover:text-orange-400 transition-colors border border-slate-700 hover:border-orange-500/40 px-3 py-1.5 rounded-lg">&larr; Contractor View</a>
         </header>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 md:p-6 pb-24 md:pb-6 space-y-6">
 
           {/* OVERVIEW */}
           {activeTab === 'overview' && (
@@ -762,6 +766,74 @@ export default function AdminView({
 
         </div>
       </main>
+
+      {showMoreMenu && (
+        <div className="md:hidden fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)}>
+          <div className="absolute bottom-16 left-0 right-0 bg-slate-900 border-t border-slate-800 rounded-t-2xl shadow-2xl p-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-4"></div>
+            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3 px-2">More</p>
+            <div className="space-y-1">
+              {[
+                { id: 'projects', label: 'Projects', icon: 'fa-folder' },
+                { id: 'materials', label: 'Materials', icon: 'fa-cubes' },
+                { id: 'categories', label: 'Categories', icon: 'fa-tags' },
+                { id: 'trucks', label: 'Truck Types', icon: 'fa-truck' },
+                { id: 'quotes', label: 'Quotes', icon: 'fa-file-invoice-dollar' },
+              ].map(t => (
+                <button key={t.id} onClick={() => { setActiveTab(t.id as Tab); setShowMoreMenu(false); }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === t.id ? 'bg-orange-500/10 text-orange-400' : 'text-slate-300 hover:bg-slate-800'}`}>
+                  <i className={`fa-solid ${t.icon} w-5 text-center`}></i>
+                  <span className="text-sm font-medium">{t.label}</span>
+                  {activeTab === t.id && <i className="fa-solid fa-check ml-auto text-orange-400 text-xs"></i>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800 pb-safe">
+        <div className="flex items-center justify-around px-2 py-2">
+
+          {/* Overview */}
+          <button onClick={() => { setActiveTab('overview'); setShowMoreMenu(false); }}
+            className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'overview' ? 'text-orange-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-chart-pie text-lg"></i>
+            <span className="text-[10px] font-medium">Overview</span>
+          </button>
+
+          {/* Requests */}
+          <button onClick={() => { setActiveTab('requests'); setShowMoreMenu(false); }}
+            className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all relative ${activeTab === 'requests' ? 'text-orange-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-user-clock text-lg"></i>
+            {pendingCount > 0 && <span className="absolute top-0 right-1 bg-orange-500 text-white text-[9px] font-bold px-1 rounded-full">{pendingCount}</span>}
+            <span className="text-[10px] font-medium">Requests</span>
+          </button>
+
+          {/* Users */}
+          <button onClick={() => { setActiveTab('users'); setShowMoreMenu(false); }}
+            className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'users' ? 'text-orange-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-users text-lg"></i>
+            <span className="text-[10px] font-medium">Users</span>
+          </button>
+
+          {/* Facilities */}
+          <button onClick={() => { setActiveTab('facilities'); setShowMoreMenu(false); }}
+            className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'facilities' ? 'text-orange-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-location-dot text-lg"></i>
+            <span className="text-[10px] font-medium">Facilities</span>
+          </button>
+
+          {/* More */}
+          <button onClick={() => setShowMoreMenu(!showMoreMenu)}
+            className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${showMoreMenu || ['projects','materials','categories','trucks','quotes'].includes(activeTab) ? 'text-orange-400' : 'text-slate-500'}`}>
+            <i className="fa-solid fa-ellipsis text-lg"></i>
+            <span className="text-[10px] font-medium">More</span>
+          </button>
+
+        </div>
+      </div>
     </div>
   );
 }
