@@ -34,6 +34,7 @@ export default function SupplierView({
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [offerPrice, setOfferPrice] = useState('');
+  const [responseMessage, setResponseMessage] = useState('');
   const [submittingQuote, setSubmittingQuote] = useState(false);
 
   // Add material form state
@@ -131,12 +132,17 @@ export default function SupplierView({
     setSubmittingQuote(true);
     const { error } = await supabase
       .from('quote_requests')
-      .update({ status: 'responded', offered_price: price })
+      .update({
+        status: 'responded',
+        offered_price: price,
+        supplier_message: responseMessage.trim() || null,
+      })
       .eq('id', quote.id);
     if (!error) {
       setQuotes(prev => prev.filter(q => q.id !== quote.id));
       setRespondingTo(null);
       setOfferPrice('');
+      setResponseMessage('');
     } else alert('Failed to submit quote.');
     setSubmittingQuote(false);
   };
@@ -382,7 +388,9 @@ export default function SupplierView({
                       {loadingQuotes ? (
                         <p className="text-slate-500 text-sm text-center py-4">Checking for requests...</p>
                       ) : quotes.length > 0 ? (
-                        quotes.map((q: any) => (
+                        quotes.map((q: any) => {
+                          const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
+                          return (
                           <div key={q.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 transition-all">
                             <div className="flex justify-between items-start mb-2">
                               <h4 className="text-white font-semibold truncate pr-2">{q.contractor?.company_name || 'Unknown Contractor'}</h4>
@@ -391,11 +399,18 @@ export default function SupplierView({
                             {q.job_site_address && <p className="text-sm text-slate-300 truncate">Site: {q.job_site_address}</p>}
                             <p className="text-sm text-slate-300 mt-2">Requested: <span className="font-bold text-white">{Number(q.quantity || 0).toLocaleString()} Units</span></p>
                             <p className="text-sm text-slate-400 mt-1 truncate">Material: {q.material_name}</p>
-                            <div className="mt-4 pt-3 border-t border-slate-700 flex items-center justify-between">
+                            {startDate && <p className="text-sm text-slate-400 mt-1">Start: <span className="text-slate-300">{startDate}</span></p>}
+                            {q.message && (
+                              <div className="mt-3 bg-slate-800/60 border border-slate-700 rounded px-3 py-2">
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">Contractor note</p>
+                                <p className="text-xs text-slate-300 whitespace-pre-wrap">{q.message}</p>
+                              </div>
+                            )}
+                            <div className="mt-4 pt-3 border-t border-slate-700">
                               {respondingTo === q.id ? (
-                                <>
+                                <div className="space-y-2">
                                   <div className="flex items-center">
-                                    <span className="text-xs text-slate-500 mr-2">Set Price:</span>
+                                    <span className="text-xs text-slate-500 mr-2">Offer Price:</span>
                                     <div className="relative">
                                       <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white text-sm">$</span>
                                       <input
@@ -403,27 +418,36 @@ export default function SupplierView({
                                         step="0.01"
                                         value={offerPrice}
                                         onChange={(e) => setOfferPrice(e.target.value)}
-                                        className="w-20 bg-slate-800 border border-slate-600 rounded px-2 py-1 pl-5 text-sm text-white focus:border-orange-500 focus:outline-none"
+                                        className="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 pl-5 text-sm text-white focus:border-orange-500 focus:outline-none"
                                       />
                                     </div>
+                                    <span className="text-[10px] text-slate-500 ml-2">/unit</span>
                                   </div>
-                                  <div className="flex space-x-2">
-                                    <button onClick={() => { setRespondingTo(null); setOfferPrice(''); }} className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
+                                  <textarea
+                                    value={responseMessage}
+                                    onChange={e => setResponseMessage(e.target.value)}
+                                    rows={3}
+                                    placeholder="Reply to the contractor (optional) — confirm specs, lead time, terms..."
+                                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-white focus:border-orange-500 focus:outline-none resize-none"
+                                  />
+                                  <div className="flex justify-end space-x-2">
+                                    <button onClick={() => { setRespondingTo(null); setOfferPrice(''); setResponseMessage(''); }} className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
                                     <button disabled={submittingQuote} onClick={() => submitQuote(q)} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50">
                                       {submittingQuote ? '...' : 'Send Quote'}
                                     </button>
                                   </div>
-                                </>
+                                </div>
                               ) : (
                                 <div className="flex justify-end w-full">
-                                  <button onClick={() => { setRespondingTo(q.id); setOfferPrice(''); }} className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
+                                  <button onClick={() => { setRespondingTo(q.id); setOfferPrice(''); setResponseMessage(''); }} className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
                                     Draft Response <i className="fa-solid fa-arrow-right ml-1"></i>
                                   </button>
                                 </div>
                               )}
                             </div>
                           </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <p className="text-slate-500 text-sm text-center py-4">No pending quote requests.</p>
                       )}

@@ -406,6 +406,8 @@ export default function ContractorView({
     if (estData) setSavedEstimates(estData);
     const { data: reqData } = await supabase.from('project_requirements').select('*').eq('project_id', proj.id).order('created_at', { ascending: true });
     if (reqData) setRequirements(reqData);
+    const { data: quoteData } = await supabase.from('quote_requests').select('*, facility:facilities(name)').eq('project_id', proj.id).order('created_at', { ascending: false });
+    setProjectQuotes(quoteData || []);
     setManifestResults(proj.cached_results || {});
   };
 
@@ -827,21 +829,37 @@ export default function ContractorView({
                       </div>
                     )) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
                   ) : (
-                    projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => (
+                    projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => {
+                      const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
+                      return (
                       <div key={idx} className={`border rounded-lg p-4 ${q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-400'}`}>{q.status === 'pending' ? 'Awaiting Response' : 'Quote Received'}</span>
                             <h4 className="text-white font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
                             <p className="text-xs text-slate-400 mt-1">{q.material_name}</p>
+                            {startDate && <p className="text-[11px] text-slate-500 mt-0.5">Start: {startDate}</p>}
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-bold text-slate-300">{q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span></div>
                             {q.offered_price && <div className="text-lg font-bold text-emerald-400 mt-1">${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(q.material_name) ? "Ton" : "CY"}</span></div>}
                           </div>
                         </div>
+                        {q.message && (
+                          <div className="mt-3 bg-slate-800/40 border border-slate-700/60 rounded px-2.5 py-1.5">
+                            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Your note</p>
+                            <p className="text-[11px] text-slate-300 whitespace-pre-wrap mt-0.5">{q.message}</p>
+                          </div>
+                        )}
+                        {q.supplier_message && (
+                          <div className="mt-2 bg-emerald-500/5 border border-emerald-500/20 rounded px-2.5 py-1.5">
+                            <p className="text-[9px] text-emerald-400 uppercase tracking-wider font-semibold">Supplier reply</p>
+                            <p className="text-[11px] text-slate-200 whitespace-pre-wrap mt-0.5">{q.supplier_message}</p>
+                          </div>
+                        )}
                       </div>
-                    )) : <p className="text-slate-500 text-sm text-center py-4">No pending quotes.</p>
+                      );
+                    }) : <p className="text-slate-500 text-sm text-center py-4">No pending quotes.</p>
                   )}
                 </div>
               </div>
