@@ -675,32 +675,49 @@ export default function ContractorView({
         }),
       });
       if (response.ok) {
-        const newQuotes = ids.map(fid => {
-          const fac = quoteModalFacilities.find(f => f.facilityId === fid);
+        const data = await response.json().catch(() => ({} as any));
+        const results: { facilityId: string; status: string; supplierMessage: string | null }[] = data.results || ids.map((fid: string) => ({ facilityId: fid, status: 'pending', supplierMessage: null }));
+        const statusByFacility = new Map(results.map(r => [r.facilityId, r.status]));
+
+        const newQuotes = results.map(r => {
+          const fac = quoteModalFacilities.find(f => f.facilityId === r.facilityId);
           return {
             id: Math.random().toString(),
-            facility_id: fid,
+            facility_id: r.facilityId,
             material_name: quoteModalReq.material_name,
             quantity: quoteModalReq.quantity,
-            status: 'pending',
+            status: r.status,
+            supplier_message: r.supplierMessage,
             facility: { name: fac?.supplier || 'Supplier' },
           };
         });
         setProjectQuotes([...projectQuotes, ...newQuotes]);
-        // Optimistically flip matching results to Pending without re-running the estimate
-        const idSet = new Set(ids);
+
+        // Optimistically reflect each result on the manifest entries
         const matName = quoteModalReq.material_name;
         setManifestResults((prev: any) => {
           const next: any = {};
           for (const k of Object.keys(prev)) {
-            next[k] = (prev[k] || []).map((entry: any) =>
-              idSet.has(entry.facilityId) && entry.materialName === matName
-                ? { ...entry, isQuotePending: true, isCustomQuote: false, isDeclined: false }
-                : entry
-            );
+            next[k] = (prev[k] || []).map((entry: any) => {
+              if (entry.materialName !== matName) return entry;
+              const status = statusByFacility.get(entry.facilityId);
+              if (!status) return entry;
+              return {
+                ...entry,
+                isQuotePending: status === 'pending',
+                isDeclined:     status === 'declined',
+                isCustomQuote:  false,
+              };
+            });
           }
           return next;
         });
+
+        const declinedCount = data.autoDeclined ?? 0;
+        if (declinedCount > 0) {
+          alert(`Sent ${results.length - declinedCount} request${results.length - declinedCount === 1 ? '' : 's'}. ${declinedCount} were auto-declined for being below the supplier's minimum.`);
+        }
+
         setActiveTab('pending');
         closeQuoteModal();
       } else {

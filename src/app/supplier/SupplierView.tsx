@@ -34,6 +34,10 @@ export default function SupplierView({
   const [savingFacilityId, setSavingFacilityId] = useState<string | null>(null);
   const [resetEmailSent, setResetEmailSent] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [resetEmailMsg, setResetEmailMsg] = useState<string | null>(null);
+  const [autoDeclineMessage, setAutoDeclineMessage] = useState<string>(profile?.auto_decline_message || '');
+  const [savingAutoMsg, setSavingAutoMsg] = useState(false);
+  const [autoDeclineMsgSavedAt, setAutoDeclineMsgSavedAt] = useState<number | null>(null);
+  const [savingThresholdId, setSavingThresholdId] = useState<string | null>(null);
 
   // Quote response state
   const [quotes, setQuotes] = useState<any[]>([]);
@@ -119,6 +123,34 @@ export default function SupplierView({
       alert('Failed to update facility setting: ' + error.message);
     }
     setSavingFacilityId(null);
+  };
+
+  //        Settings — auto-decline response message (per profile)
+  const saveAutoDeclineMessage = async () => {
+    setSavingAutoMsg(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSavingAutoMsg(false); alert('Not signed in.'); return; }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ auto_decline_message: autoDeclineMessage.trim() || null })
+      .eq('id', user.id);
+    if (error) alert('Failed to save: ' + error.message);
+    else setAutoDeclineMsgSavedAt(Date.now());
+    setSavingAutoMsg(false);
+  };
+
+  //        Materials — auto-decline threshold (per material)
+  const saveAutoDeclineThreshold = async (mat: any) => {
+    setSavingThresholdId(mat.id);
+    const raw = mat.auto_decline_below;
+    const newVal = raw === '' || raw == null ? null : Math.max(0, Math.floor(Number(raw)));
+    const { error } = await supabase
+      .from('materials')
+      .update({ auto_decline_below: newVal })
+      .eq('id', mat.id);
+    if (error) alert('Failed to update threshold: ' + error.message);
+    else setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, auto_decline_below: newVal } : m));
+    setSavingThresholdId(null);
   };
 
   //        Settings — password reset email
@@ -680,46 +712,74 @@ export default function SupplierView({
                   {/* Material rows */}
                   <div className="divide-y divide-slate-700/50">
                     {facMats.map((mat: any) => (
-                      <div key={mat.id} className="flex items-center justify-between gap-3 py-3 px-4">
+                      <div key={mat.id} className="py-3 px-4 space-y-2">
+                        <div className="flex items-center justify-between gap-3">
 
-                        {/* Left: name + badge */}
-                        <div className="flex flex-col min-w-0 flex-shrink-0 w-1/3">
-                          <span className="text-sm font-medium text-white truncate">{mat.name}</span>
-                          <span className={`text-[10px] font-bold uppercase mt-0.5 ${mat.is_import ? 'text-orange-400' : 'text-blue-400'}`}>
-                            {mat.is_import ? 'Import' : 'Export'}
-                          </span>
+                          {/* Left: name + badge */}
+                          <div className="flex flex-col min-w-0 flex-shrink-0 w-1/3">
+                            <span className="text-sm font-medium text-white truncate">{mat.name}</span>
+                            <span className={`text-[10px] font-bold uppercase mt-0.5 ${mat.is_import ? 'text-orange-400' : 'text-blue-400'}`}>
+                              {mat.is_import ? 'Import' : 'Export'}
+                            </span>
+                          </div>
+
+                          {/* Center: stock status */}
+                          <div className="flex items-center space-x-1 flex-shrink-0">
+                            {STATUS_OPTIONS.map(opt => (
+                              <button key={opt.value} onClick={() => updateStockStatus(mat.id, opt.value)}
+                                disabled={savingId === mat.id}
+                                className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all disabled:opacity-50 ${mat.stock_status === opt.value ? opt.color : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-500'}`}>
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Right: price + edit + delete */}
+                          <div className="flex items-center space-x-2 flex-shrink-0 justify-end w-1/4">
+                            {editingPriceId === mat.id ? (
+                              <div className="flex items-center space-x-1">
+                                <input type="number" value={editPriceVal} onChange={e => setEditPriceVal(e.target.value)}
+                                  className="w-20 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500" />
+                                <button onClick={() => savePrice(mat)} className="text-emerald-400 hover:text-emerald-300 text-xs"><i className="fa-solid fa-check"></i></button>
+                                <button onClick={() => setEditingPriceId(null)} className="text-slate-500 hover:text-slate-300 text-xs"><i className="fa-solid fa-xmark"></i></button>
+                              </div>
+                            ) : (
+                              <button onClick={() => startEditPrice(mat)} className="flex items-center space-x-1 text-right group">
+                                <span className="text-sm font-semibold text-white">${mat.is_import ? (mat.price_per_ton || 0).toFixed(2) : (mat.price_per_cy || 0).toFixed(2)}</span>
+                                <span className="text-[10px] text-slate-500">{mat.is_import ? '/ton' : '/cy'}</span>
+                                <i className="fa-solid fa-pen text-[10px] text-slate-600 group-hover:text-orange-400 transition-colors ml-1"></i>
+                              </button>
+                            )}
+                            <button onClick={() => deleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500 transition-colors ml-1">
+                              <i className="fa-solid fa-trash text-xs"></i>
+                            </button>
+                          </div>
                         </div>
 
-                        {/* Center: stock status */}
-                        <div className="flex items-center space-x-1 flex-shrink-0">
-                          {STATUS_OPTIONS.map(opt => (
-                            <button key={opt.value} onClick={() => updateStockStatus(mat.id, opt.value)}
-                              disabled={savingId === mat.id}
-                              className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all disabled:opacity-50 ${mat.stock_status === opt.value ? opt.color : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-500'}`}>
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Right: price + edit + delete */}
-                        <div className="flex items-center space-x-2 flex-shrink-0 justify-end w-1/4">
-                          {editingPriceId === mat.id ? (
-                            <div className="flex items-center space-x-1">
-                              <input type="number" value={editPriceVal} onChange={e => setEditPriceVal(e.target.value)}
-                                className="w-20 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500" />
-                              <button onClick={() => savePrice(mat)} className="text-emerald-400 hover:text-emerald-300 text-xs"><i className="fa-solid fa-check"></i></button>
-                              <button onClick={() => setEditingPriceId(null)} className="text-slate-500 hover:text-slate-300 text-xs"><i className="fa-solid fa-xmark"></i></button>
-                            </div>
-                          ) : (
-                            <button onClick={() => startEditPrice(mat)} className="flex items-center space-x-1 text-right group">
-                              <span className="text-sm font-semibold text-white">${mat.is_import ? (mat.price_per_ton || 0).toFixed(2) : (mat.price_per_cy || 0).toFixed(2)}</span>
-                              <span className="text-[10px] text-slate-500">{mat.is_import ? '/ton' : '/cy'}</span>
-                              <i className="fa-solid fa-pen text-[10px] text-slate-600 group-hover:text-orange-400 transition-colors ml-1"></i>
-                            </button>
+                        {/* Sub-row: auto-decline threshold */}
+                        <div className="flex items-center text-[11px] text-slate-500 space-x-2 pl-1">
+                          <i className="fa-solid fa-shield-halved text-slate-600"></i>
+                          <label htmlFor={`autodec-${mat.id}`} className="whitespace-nowrap">Auto-decline below:</label>
+                          <input
+                            id={`autodec-${mat.id}`}
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={mat.auto_decline_below ?? ''}
+                            onChange={e => {
+                              const raw = e.target.value;
+                              setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, auto_decline_below: raw === '' ? null : raw } : m));
+                            }}
+                            onBlur={() => saveAutoDeclineThreshold(mat)}
+                            disabled={savingThresholdId === mat.id}
+                            placeholder="—"
+                            className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[11px] text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
+                          />
+                          <span className="text-slate-600">{mat.is_import ? 'tons' : 'CY'}</span>
+                          {(mat.auto_decline_below == null || mat.auto_decline_below === '') && (
+                            <span className="text-slate-700 italic">leave blank to disable</span>
                           )}
-                          <button onClick={() => deleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500 transition-colors ml-1">
-                            <i className="fa-solid fa-trash text-xs"></i>
-                          </button>
+                          {savingThresholdId === mat.id && <i className="fa-solid fa-spinner fa-spin text-slate-600"></i>}
                         </div>
 
                       </div>
@@ -874,6 +934,36 @@ export default function SupplierView({
                     })}
                   </ul>
                 )}
+              </section>
+
+              {/* Auto-decline response message */}
+              <section className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/40">
+                  <h2 className="text-base font-semibold text-white">Auto-decline Response</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Sent to contractors automatically when a quote request is below the material&apos;s minimum threshold (set per-material in My Materials).</p>
+                </div>
+                <div className="px-6 py-5 space-y-3">
+                  <textarea
+                    value={autoDeclineMessage}
+                    onChange={e => setAutoDeclineMessage(e.target.value)}
+                    rows={4}
+                    placeholder="e.g., Thanks for reaching out. We have a minimum order quantity for this material — please let us know if you'd like to revise."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 resize-none"
+                  />
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={saveAutoDeclineMessage}
+                      disabled={savingAutoMsg}
+                      className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      {savingAutoMsg ? 'Saving...' : 'Save Message'}
+                    </button>
+                    {autoDeclineMsgSavedAt && Date.now() - autoDeclineMsgSavedAt < 5000 && (
+                      <span className="text-xs text-emerald-400"><i className="fa-solid fa-check mr-1"></i>Saved.</span>
+                    )}
+                  </div>
+                </div>
               </section>
 
               {/* Account section */}

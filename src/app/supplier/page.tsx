@@ -12,7 +12,7 @@ export default async function SupplierPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, company_name')
+    .select('role, company_name, auto_decline_message')
     .eq('id', user.id)
     .single();
 
@@ -28,7 +28,7 @@ export default async function SupplierPage() {
 
   const { data: materials } = await supabase
     .from('materials')
-    .select('id, name, price_per_ton, price_per_cy, price_10w_load, price_sd_load, is_import, stock_status, facility_id')
+    .select('id, name, price_per_ton, price_per_cy, price_10w_load, price_sd_load, is_import, stock_status, auto_decline_below, facility_id')
     .in('facility_id', facilityIds.length > 0 ? facilityIds : ['none'])
     .order('name');
 
