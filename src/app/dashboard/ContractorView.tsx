@@ -235,6 +235,19 @@ export default function ContractorView({
     return { total, projectCount: projectIds.size };
   }, [allSavedEstimates]);
 
+  const mostRequestedMaterial = useMemo(() => {
+    if (allSavedEstimates.length === 0) return { name: null as string | null, quantity: 0 };
+    const totals: Record<string, number> = {};
+    for (const est of allSavedEstimates) {
+      const name = est.material_name;
+      if (!name) continue;
+      totals[name] = (totals[name] || 0) + Number(est.quantity || 0);
+    }
+    const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    if (entries.length === 0) return { name: null as string | null, quantity: 0 };
+    return { name: entries[0][0], quantity: entries[0][1] };
+  }, [allSavedEstimates]);
+
   const fmtCompactCurrency = (n: number) => {
     if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
     if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
@@ -827,9 +840,20 @@ export default function ContractorView({
               </p>
             </div>
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Market Price</p>
-              <h3 className="text-3xl font-bold text-white mt-1">$10.20<span className="text-sm text-slate-400 font-normal">/ton</span></h3>
-              <p className="text-xs text-slate-400 mt-3">Avg Road Base (SLC Region)</p>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Most Requested Material</p>
+              {mostRequestedMaterial.name ? (
+                <>
+                  <h3 className="text-xl font-bold text-white mt-2 truncate" title={mostRequestedMaterial.name}>{mostRequestedMaterial.name}</h3>
+                  <p className="text-xs text-slate-400 mt-3">
+                    {mostRequestedMaterial.quantity.toLocaleString()} {importMaterials?.includes(mostRequestedMaterial.name) ? 'Tons' : exportMaterials?.includes(mostRequestedMaterial.name) ? 'CY' : 'Units'} requested
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-3xl font-bold text-slate-500 mt-1">--</h3>
+                  <p className="text-xs text-slate-400 mt-3">No saved estimates yet</p>
+                </>
+              )}
             </div>
           </div>
 
