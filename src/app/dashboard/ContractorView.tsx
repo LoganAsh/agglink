@@ -618,6 +618,20 @@ export default function ContractorView({
           };
         });
         setProjectQuotes([...projectQuotes, ...newQuotes]);
+        // Optimistically flip matching results to Pending without re-running the estimate
+        const idSet = new Set(ids);
+        const matName = quoteModalReq.material_name;
+        setManifestResults((prev: any) => {
+          const next: any = {};
+          for (const k of Object.keys(prev)) {
+            next[k] = (prev[k] || []).map((entry: any) =>
+              idSet.has(entry.facilityId) && entry.materialName === matName
+                ? { ...entry, isQuotePending: true, isCustomQuote: false, isDeclined: false }
+                : entry
+            );
+          }
+          return next;
+        });
         setActiveTab('pending');
         closeQuoteModal();
       } else {
