@@ -22,7 +22,7 @@ export default function ContractorView({
   // Core state
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProject, setActiveProject] = useState<any | null>(null);
-  const [activeView, setActiveView] = useState<'dashboard' | 'calculator'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'calculator'>('dashboard');
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
@@ -766,6 +766,10 @@ export default function ContractorView({
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-gauge-high mr-3 w-4 text-center"></i>Dashboard
           </button>
+          <button type="button" onClick={() => setActiveView('projects')}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'projects' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-folder mr-3 w-4 text-center"></i>Projects
+          </button>
           <button type="button" onClick={() => setActiveView('calculator')}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'calculator' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-calculator mr-3 w-4 text-center"></i>Calculator
@@ -857,6 +861,58 @@ export default function ContractorView({
             </div>
           </div>
 
+          {/* Dashboard placeholders: Materials by Month + Upcoming Bids */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Materials Purchased by Month</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">12-month rolling view</p>
+                </div>
+                <span className="text-[10px] uppercase tracking-wider font-bold bg-slate-700 text-slate-400 px-2 py-1 rounded">Placeholder</span>
+              </div>
+              <div className="h-64 flex items-end space-x-2 px-2 pb-2 border-b border-slate-700">
+                {(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).map((m, i) => {
+                  const sample = [40, 65, 35, 80, 55, 70, 90, 75, 60, 85, 50, 95];
+                  return (
+                    <div key={m} className="flex-1 flex flex-col items-center justify-end h-full">
+                      <div className="w-full bg-orange-500/30 hover:bg-orange-500/50 rounded-t-sm transition-colors" style={{ height: `${sample[i]}%` }} />
+                      <span className="text-[10px] text-slate-500 mt-1">{m}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2 text-right italic">Sample data — not yet wired to real estimates.</p>
+            </div>
+
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Upcoming Bids</h2>
+                <span className="text-[10px] uppercase tracking-wider font-bold bg-slate-700 text-slate-400 px-2 py-1 rounded">Placeholder</span>
+              </div>
+              <div className="space-y-3">
+                {[
+                  { proj: 'I-15 Reconstruction',       date: 'Jul 14', amount: '$1.2M' },
+                  { proj: 'Mountain View Subdivision', date: 'Jul 22', amount: '$640K' },
+                  { proj: 'Riverdale Bridge',          date: 'Aug 03', amount: '$2.1M' },
+                ].map(b => (
+                  <div key={b.proj} className="flex items-center justify-between py-2.5 px-3 bg-slate-900/50 border border-slate-700/60 rounded-lg">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{b.proj}</p>
+                      <p className="text-[10px] text-slate-500">Due {b.date}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-orange-400 flex-shrink-0">{b.amount}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-3 text-right italic">Sample data — bid tracking coming soon.</p>
+            </div>
+          </div>
+        </div>
+        )}
+
+        {activeView === 'projects' && (
+        <div className="p-4 md:p-8 space-y-6">
           {/* Top Row: Map + Feed */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
