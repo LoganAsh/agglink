@@ -24,6 +24,28 @@ export default function ContractorView({
   const [activeProject, setActiveProject] = useState<any | null>(null);
   const [projectsFilter, setProjectsFilter] = useState<'active' | 'archived'>('active');
   const [archivingProject, setArchivingProject] = useState(false);
+  const [projectsSortKey, setProjectsSortKey] = useState<'name' | 'address' | 'created_at' | 'last_calculated'>('name');
+  const [projectsSortDir, setProjectsSortDir] = useState<'asc' | 'desc'>('asc');
+  const [recentProjectIds, setRecentProjectIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('agglink:recentProjectIds');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setRecentProjectIds(parsed.filter((x: any) => typeof x === 'string').slice(0, 5));
+      }
+    } catch { /* ignore corrupt entry */ }
+  }, []);
+
+  const pushRecentProject = (id: string) => {
+    setRecentProjectIds(prev => {
+      const next = [id, ...prev.filter(x => x !== id)].slice(0, 5);
+      try { localStorage.setItem('agglink:recentProjectIds', JSON.stringify(next)); } catch { /* quota / SSR */ }
+      return next;
+    });
+  };
   const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'calculator'>('dashboard');
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -442,6 +464,7 @@ export default function ContractorView({
 
   const selectProject = async (proj: any) => {
     setActiveProject(proj);
+    pushRecentProject(proj.id);
     setManifestResults(proj.cached_results || {});
     setLastCalculated(proj.last_calculated ? new Date(proj.last_calculated) : null);
     setJobAddress(proj.address);
@@ -839,17 +862,23 @@ export default function ContractorView({
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
             <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700"><LogoutButton /></div>
-            {activeView === 'projects' && visibleProjects.length > 0 && (
-              <select className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
-                onChange={(e) => {
-                  if (e.target.value === "") { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }
-                  else { const p = visibleProjects.find(proj => proj.id === e.target.value); if (p) selectProject(p); }
-                }}
-                value={activeProject && visibleProjects.some(p => p.id === activeProject.id) ? activeProject.id : ""}>
-                <option value="">-- Switch {projectsFilter === 'archived' ? 'Archived ' : ''}Project --</option>
-                {visibleProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            )}
+            {activeView === 'projects' && projects.length > 0 && (() => {
+              const recents = recentProjectIds
+                .map(id => projects.find(p => p.id === id))
+                .filter(Boolean);
+              if (recents.length === 0) return null;
+              return (
+                <select className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
+                  onChange={(e) => {
+                    if (e.target.value === "") { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }
+                    else { const p = projects.find(proj => proj.id === e.target.value); if (p) selectProject(p); }
+                  }}
+                  value={activeProject ? activeProject.id : ""}>
+                  <option value="">-- Recent Projects --</option>
+                  {recents.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              );
+            })()}
             <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
           </div>
         </header>
@@ -973,6 +1002,62 @@ export default function ContractorView({
               );
             })}
           </div>
+
+          {!activeProject ? (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-slate-900/50 text-xs text-slate-400 uppercase tracking-wider">
+                    <tr>
+                      {([
+                        { key: 'name',            label: 'Project' },
+                        { key: 'address',         label: 'Address' },
+                        { key: 'created_at',      label: 'Created' },
+                        { key: 'last_calculated', label: 'Last Calculated' },
+                      ] as const).map(col => (
+                        <th key={col.key}
+                          onClick={() => {
+                            if (projectsSortKey === col.key) setProjectsSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setProjectsSortKey(col.key); setProjectsSortDir('asc'); }
+                          }}
+                          className="px-5 py-3 cursor-pointer hover:text-white select-none">
+                          {col.label}
+                          {projectsSortKey === col.key && (
+                            <i className={`fa-solid fa-arrow-${projectsSortDir === 'asc' ? 'up' : 'down'} ml-1.5 text-[10px]`}></i>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/60">
+                    {visibleProjects.length === 0 ? (
+                      <tr><td colSpan={4} className="px-5 py-10 text-center text-slate-500 italic">No {projectsFilter} projects.</td></tr>
+                    ) : [...visibleProjects].sort((a, b) => {
+                      const dir = projectsSortDir === 'asc' ? 1 : -1;
+                      const av = a[projectsSortKey] ?? '';
+                      const bv = b[projectsSortKey] ?? '';
+                      if (av < bv) return -1 * dir;
+                      if (av > bv) return 1 * dir;
+                      return 0;
+                    }).map(p => (
+                      <tr key={p.id} onClick={() => selectProject(p)}
+                        className="cursor-pointer hover:bg-slate-700/40 transition-colors">
+                        <td className="px-5 py-3 font-medium text-white">{p.name}</td>
+                        <td className="px-5 py-3 text-slate-400 truncate max-w-xs">{p.address || '—'}</td>
+                        <td className="px-5 py-3 text-slate-400">{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
+                        <td className="px-5 py-3 text-slate-400">{p.last_calculated ? new Date(p.last_calculated).toLocaleDateString() : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+          <>
+          <button onClick={() => { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }}
+            className="text-xs text-slate-400 hover:text-orange-400 transition-colors flex items-center">
+            <i className="fa-solid fa-arrow-left mr-1.5"></i>All Projects
+          </button>
 
           {/* Top Row: Map + Feed */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
@@ -1260,6 +1345,8 @@ export default function ContractorView({
                   </div>
                 )}
               </div>
+          </>
+          )}
         </div>
         )}
 
