@@ -7,20 +7,20 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // ── SVG DivIcon factory ───────────────────────────────────────────────────────
-// Slim teardrop: tall & narrow with a sharp point, small inner dot
+// Ball pin: round head with a thin straight needle pointing to the geo location
 function makePinIcon(fill: string, stroke: string) {
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="26" viewBox="0 0 16 26">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 5.25 8 18 8 18S16 13.25 16 8C16 3.58 12.42 0 8 0z"
-        fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
-      <circle cx="8" cy="8" r="3" fill="white" opacity="0.92"/>
+      <line x1="8" y1="12" x2="8" y2="25" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="8" cy="7" r="6" fill="${fill}" stroke="${stroke}" stroke-width="1.2"/>
+      <circle cx="6" cy="5" r="1.6" fill="white" opacity="0.7"/>
     </svg>`;
   return L.divIcon({
     html: svg,
     className: '',
     iconSize: [16, 26],
-    iconAnchor: [8, 26],
-    popupAnchor: [0, -28],
+    iconAnchor: [8, 25],
+    popupAnchor: [0, -25],
   });
 }
 
