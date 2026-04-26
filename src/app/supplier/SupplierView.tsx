@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 
@@ -104,22 +104,26 @@ export default function SupplierView({
     else alert('Failed to remove material');
   };
 
-  //        Quote requests
-  const facilityIds = facilities.map(f => f.id);
-  const fetchQuotes = useCallback(async () => {
+  //        Quote requests — fetched once on mount; updates locally after responding
+  useEffect(() => {
+    let cancelled = false;
+    const facilityIds = facilities.map(f => f.id);
     if (facilityIds.length === 0) { setQuotes([]); return; }
     setLoadingQuotes(true);
-    const { data, error } = await supabase
+    supabase
       .from('quote_requests')
       .select('*, contractor:profiles(company_name)')
       .eq('status', 'pending')
       .in('facility_id', facilityIds)
-      .order('created_at', { ascending: false });
-    if (!error && data) setQuotes(data);
-    setLoadingQuotes(false);
-  }, [supabase, facilityIds]);
-
-  useEffect(() => { fetchQuotes(); }, [fetchQuotes]);
+      .order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (!error && data) setQuotes(data);
+        setLoadingQuotes(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const submitQuote = async (quote: any) => {
     const price = parseFloat(offerPrice);
