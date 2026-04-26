@@ -50,6 +50,11 @@ export default function ContractorView({
   const [quoteMessage, setQuoteMessage] = useState('');
   const [submittingQuoteModal, setSubmittingQuoteModal] = useState(false);
 
+  // Per-quote follow-up message (contractor → supplier on a pending request)
+  const [messagingQuoteId, setMessagingQuoteId] = useState<string | null>(null);
+  const [followupText, setFollowupText] = useState('');
+  const [sendingFollowup, setSendingFollowup] = useState(false);
+
   // Map state
   const [jobLat, setJobLat] = useState<number | undefined>(undefined);
   const [jobLon, setJobLon] = useState<number | undefined>(undefined);
@@ -562,6 +567,24 @@ export default function ContractorView({
     });
   };
 
+  const sendQuoteFollowup = async (quoteId: string) => {
+    const text = followupText.trim();
+    if (!text) return;
+    setSendingFollowup(true);
+    const { error } = await supabase
+      .from('quote_requests')
+      .update({ contractor_message: text })
+      .eq('id', quoteId);
+    if (!error) {
+      setProjectQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, contractor_message: text } : q));
+      setMessagingQuoteId(null);
+      setFollowupText('');
+    } else {
+      alert('Failed to send message: ' + error.message);
+    }
+    setSendingFollowup(false);
+  };
+
   const submitQuoteModal = async () => {
     if (!activeProject || !quoteModalReq) return;
     const ids = Array.from(quoteModalSelected);
@@ -864,6 +887,43 @@ export default function ContractorView({
                           <div className="mt-2 bg-emerald-500/5 border border-emerald-500/20 rounded px-2.5 py-1.5">
                             <p className="text-[9px] text-emerald-400 uppercase tracking-wider font-semibold">Supplier reply</p>
                             <p className="text-[11px] text-slate-200 whitespace-pre-wrap mt-0.5">{q.supplier_message}</p>
+                          </div>
+                        )}
+                        {q.contractor_message && messagingQuoteId !== q.id && (
+                          <div className="mt-2 bg-slate-800/40 border border-slate-700/60 rounded px-2.5 py-1.5">
+                            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Your last message</p>
+                            <p className="text-[11px] text-slate-300 whitespace-pre-wrap mt-0.5">{q.contractor_message}</p>
+                          </div>
+                        )}
+                        {q.status === 'pending' && (
+                          <div className="mt-3 pt-2 border-t border-slate-700/60">
+                            {messagingQuoteId === q.id ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  value={followupText}
+                                  onChange={e => setFollowupText(e.target.value)}
+                                  rows={3}
+                                  autoFocus
+                                  placeholder="Send a question or note to the supplier..."
+                                  className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-white focus:border-orange-500 focus:outline-none resize-none"
+                                />
+                                <div className="flex justify-end space-x-2">
+                                  <button onClick={() => { setMessagingQuoteId(null); setFollowupText(''); }}
+                                    className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
+                                  <button disabled={sendingFollowup || !followupText.trim()} onClick={() => sendQuoteFollowup(q.id)}
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">
+                                    {sendingFollowup ? '...' : 'Send Message'}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex justify-end">
+                                <button onClick={() => { setMessagingQuoteId(q.id); setFollowupText(''); }}
+                                  className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
+                                  Send Message <i className="fa-solid fa-arrow-right ml-1"></i>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

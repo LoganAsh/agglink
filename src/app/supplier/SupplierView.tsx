@@ -221,6 +221,12 @@ export default function SupplierView({
             <p className="text-xs text-slate-300 whitespace-pre-wrap">{q.message}</p>
           </div>
         )}
+        {q.contractor_message && (
+          <div className="mt-2 bg-orange-500/5 border border-orange-500/20 rounded px-3 py-2">
+            <p className="text-[10px] text-orange-400 uppercase tracking-wider font-semibold mb-1">Contractor follow-up</p>
+            <p className="text-xs text-slate-200 whitespace-pre-wrap">{q.contractor_message}</p>
+          </div>
+        )}
 
         {isResponded && q.offered_price != null && (
           <div className="mt-3 bg-emerald-500/5 border border-emerald-500/20 rounded px-3 py-2">
