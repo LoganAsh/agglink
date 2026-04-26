@@ -804,7 +804,7 @@ export default function ContractorView({
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
             <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700"><LogoutButton /></div>
-            {projects.length > 0 && (
+            {activeView === 'projects' && projects.length > 0 && (
               <select className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
                 onChange={(e) => {
                   if (e.target.value === "") { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }
