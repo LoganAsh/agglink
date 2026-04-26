@@ -90,7 +90,7 @@ export async function POST(request: Request) {
         .from('quote_requests')
         .select('*')
         .eq('project_id', projectId)
-        .in('status', ['responded', 'declined'])
+        .in('status', ['pending', 'responded', 'declined'])
         .order('created_at', { ascending: false });
       if (quotes) customQuotes = quotes;
     }
@@ -153,6 +153,7 @@ export async function POST(request: Request) {
         let basePriceLabel = 0;
         let isCustomQuote  = false;
         let isDeclined     = false;
+        let isQuotePending = false;
 
         // customQuotes is ordered by created_at desc — first match wins
         const latestQuote = customQuotes.find(q =>
@@ -160,6 +161,7 @@ export async function POST(request: Request) {
         );
         const respondedQuote = latestQuote?.status === 'responded' && latestQuote?.offered_price ? latestQuote : null;
         if (latestQuote?.status === 'declined') isDeclined = true;
+        if (latestQuote?.status === 'pending') isQuotePending = true;
 
         if (respondedQuote) {
           materialCost   = respondedQuote.offered_price * qty;
@@ -194,6 +196,7 @@ export async function POST(request: Request) {
           totalCost:    totalCost,
           isCustomQuote,
           isDeclined,
+          isQuotePending,
           stockStatus:  mat.stock_status || 'in_stock',
         };
 

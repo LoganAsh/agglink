@@ -681,8 +681,6 @@ export default function ContractorView({
                   <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
                   <td className="px-4 py-2 text-right text-slate-400">
                     ${res.basePrice.toFixed(2)}
-                    {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Custom quote accepted">*</span>}
-                    {res.isDeclined && <span className="ml-1 text-[10px] bg-red-500/20 text-red-400 px-1 rounded" title="Custom quote declined by supplier">×</span>}
                     {savingsSpan(baseSavingsPct)}
                   </td>
                   <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}{savingsSpan(frtSavingsPct)}</td>
@@ -697,10 +695,27 @@ export default function ContractorView({
                         title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
                         {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                       </button>
-                      <button onClick={() => openQuoteModal(res, req, options)}
-                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}>
-                        Quote
-                      </button>
+                      {res.isCustomQuote ? (
+                        <span title="Custom quote accepted"
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 inline-flex items-center">
+                          <i className="fa-solid fa-check mr-1"></i>Approved
+                        </span>
+                      ) : res.isDeclined ? (
+                        <span title="Custom quote declined by supplier"
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-red-500/40 bg-red-500/10 text-red-400 inline-flex items-center">
+                          <i className="fa-solid fa-xmark mr-1"></i>Declined
+                        </span>
+                      ) : res.isQuotePending ? (
+                        <span title="Awaiting supplier response"
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-orange-500/40 bg-orange-500/10 text-orange-400 inline-flex items-center">
+                          <i className="fa-solid fa-clock mr-1"></i>Pending
+                        </span>
+                      ) : (
+                        <button onClick={() => openQuoteModal(res, req, options)}
+                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}>
+                          Quote
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
