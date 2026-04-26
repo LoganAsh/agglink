@@ -46,6 +46,7 @@ export default function ContractorView({
   const [quoteModalSelected, setQuoteModalSelected] = useState<Set<string>>(new Set());
   const [quoteStartMonth, setQuoteStartMonth] = useState('');
   const [quoteStartYear, setQuoteStartYear] = useState('');
+  const [quoteBidDate, setQuoteBidDate] = useState('');
   const [quoteMessage, setQuoteMessage] = useState('');
   const [submittingQuoteModal, setSubmittingQuoteModal] = useState(false);
 
@@ -541,6 +542,7 @@ export default function ContractorView({
     setQuoteModalSelected(new Set([res.facilityId]));
     setQuoteStartMonth('');
     setQuoteStartYear(String(new Date().getFullYear()));
+    setQuoteBidDate('');
     setQuoteMessage('');
     setShowQuoteModal(true);
   };
@@ -576,6 +578,7 @@ export default function ContractorView({
           projectId: activeProject.id,
           startMonth: quoteStartMonth || null,
           startYear: quoteStartYear ? parseInt(quoteStartYear, 10) : null,
+          bidDate: quoteBidDate || null,
           message: quoteMessage.trim() || null,
         }),
       });
@@ -654,7 +657,9 @@ export default function ContractorView({
                   <td className="px-4 py-2 text-slate-300">{res.materialName || req.material_name}</td>
                   <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
                   <td className="px-4 py-2 text-right text-slate-400">
-                    ${res.basePrice.toFixed(2)}{res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded">*</span>}
+                    ${res.basePrice.toFixed(2)}
+                    {res.isCustomQuote && <span className="ml-1 text-[10px] bg-emerald-500/20 text-emerald-400 px-1 rounded" title="Custom quote accepted">*</span>}
+                    {res.isDeclined && <span className="ml-1 text-[10px] bg-red-500/20 text-red-400 px-1 rounded" title="Custom quote declined by supplier">×</span>}
                     {savingsSpan(baseSavingsPct)}
                   </td>
                   <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}{savingsSpan(frtSavingsPct)}</td>
@@ -831,14 +836,18 @@ export default function ContractorView({
                   ) : (
                     projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => {
                       const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
+                      const borderColor = q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : q.status === 'declined' ? 'border-red-500/30 bg-red-500/5' : 'border-emerald-500/30 bg-emerald-500/5';
+                      const badgeColor = q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : q.status === 'declined' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400';
+                      const badgeLabel = q.status === 'pending' ? 'Awaiting Response' : q.status === 'declined' ? 'Declined' : 'Quote Received';
                       return (
-                      <div key={idx} className={`border rounded-lg p-4 ${q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : 'border-emerald-500/30 bg-emerald-500/5'}`}>
+                      <div key={idx} className={`border rounded-lg p-4 ${borderColor}`}>
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-400'}`}>{q.status === 'pending' ? 'Awaiting Response' : 'Quote Received'}</span>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${badgeColor}`}>{badgeLabel}</span>
                             <h4 className="text-white font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
                             <p className="text-xs text-slate-400 mt-1">{q.material_name}</p>
                             {startDate && <p className="text-[11px] text-slate-500 mt-0.5">Start: {startDate}</p>}
+                            {q.bid_date && <p className="text-[11px] text-slate-500 mt-0.5">Bid by: {q.bid_date}</p>}
                           </div>
                           <div className="text-right">
                             <div className="text-sm font-bold text-slate-300">{q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span></div>
@@ -1304,6 +1313,17 @@ export default function ContractorView({
                     className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
                   />
                 </div>
+              </div>
+
+              {/* Bid date (optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bid Date <span className="text-slate-600 font-normal normal-case">(optional — deadline for the supplier to respond)</span></label>
+                <input
+                  type="date"
+                  value={quoteBidDate}
+                  onChange={e => setQuoteBidDate(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                />
               </div>
 
               {/* Facility selection */}

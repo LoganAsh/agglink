@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       projectId,
       startMonth,
       startYear,
+      bidDate,
       message,
     } = body;
 
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
       status: 'pending',
       start_month: startMonth || null,
       start_year: startYear || null,
+      bid_date: bidDate || null,
       message: message || null,
     }));
 

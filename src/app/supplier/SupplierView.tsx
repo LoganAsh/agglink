@@ -24,7 +24,7 @@ export default function SupplierView({
   const supabase = createClient();
 
   const [materials, setMaterials] = useState<any[]>(initialMaterials);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'materials' | 'add'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'materials' | 'add'>('dashboard');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editPriceVal, setEditPriceVal] = useState('');
@@ -33,9 +33,11 @@ export default function SupplierView({
   const [quotes, setQuotes] = useState<any[]>([]);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [messagingTo, setMessagingTo] = useState<string | null>(null);
   const [offerPrice, setOfferPrice] = useState('');
   const [responseMessage, setResponseMessage] = useState('');
   const [submittingQuote, setSubmittingQuote] = useState(false);
+  const [quotesFilter, setQuotesFilter] = useState<'pending' | 'approved' | 'declined'>('pending');
 
   // Add material form state
   const [newMatFacilityId, setNewMatFacilityId] = useState(facilities[0]?.id || '');
@@ -105,7 +107,7 @@ export default function SupplierView({
     else alert('Failed to remove material');
   };
 
-  //        Quote requests — fetched once on mount; updates locally after responding
+  //        Quote requests — fetch all statuses once on mount; updates locally after responding
   useEffect(() => {
     let cancelled = false;
     const facilityIds = facilities.map(f => f.id);
@@ -114,7 +116,6 @@ export default function SupplierView({
     supabase
       .from('quote_requests')
       .select('*, contractor:profiles(company_name)')
-      .eq('status', 'pending')
       .in('facility_id', facilityIds)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
@@ -126,24 +127,58 @@ export default function SupplierView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const pendingQuotes = quotes.filter(q => q.status === 'pending');
+  const filteredQuotes = quotes.filter(q =>
+    quotesFilter === 'pending' ? q.status === 'pending' :
+    quotesFilter === 'approved' ? q.status === 'responded' :
+    q.status === 'declined'
+  );
+
   const submitQuote = async (quote: any) => {
     const price = parseFloat(offerPrice);
     if (isNaN(price)) return;
     setSubmittingQuote(true);
-    const { error } = await supabase
-      .from('quote_requests')
-      .update({
-        status: 'responded',
-        offered_price: price,
-        supplier_message: responseMessage.trim() || null,
-      })
-      .eq('id', quote.id);
+    const update = {
+      status: 'responded',
+      offered_price: price,
+      supplier_message: responseMessage.trim() || null,
+    };
+    const { error } = await supabase.from('quote_requests').update(update).eq('id', quote.id);
     if (!error) {
-      setQuotes(prev => prev.filter(q => q.id !== quote.id));
+      setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, ...update } : q));
       setRespondingTo(null);
       setOfferPrice('');
       setResponseMessage('');
     } else alert('Failed to submit quote.');
+    setSubmittingQuote(false);
+  };
+
+  const declineQuote = async (quote: any) => {
+    setSubmittingQuote(true);
+    const update = {
+      status: 'declined',
+      supplier_message: responseMessage.trim() || null,
+    };
+    const { error } = await supabase.from('quote_requests').update(update).eq('id', quote.id);
+    if (!error) {
+      setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, ...update } : q));
+      setRespondingTo(null);
+      setOfferPrice('');
+      setResponseMessage('');
+    } else alert('Failed to decline quote.');
+    setSubmittingQuote(false);
+  };
+
+  const sendMessageOnly = async (quote: any) => {
+    if (!responseMessage.trim()) return;
+    setSubmittingQuote(true);
+    const update = { supplier_message: responseMessage.trim() };
+    const { error } = await supabase.from('quote_requests').update(update).eq('id', quote.id);
+    if (!error) {
+      setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, ...update } : q));
+      setMessagingTo(null);
+      setResponseMessage('');
+    } else alert('Failed to send message.');
     setSubmittingQuote(false);
   };
 
@@ -156,6 +191,131 @@ export default function SupplierView({
   const topMaterial = materials[0]?.name || '—';
 
   const initials = (profile.company_name || 'SP').substring(0, 2).toUpperCase();
+
+  const renderQuoteCard = (q: any) => {
+    const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
+    const isPending = q.status === 'pending';
+    const isResponded = q.status === 'responded';
+    const isDeclined = q.status === 'declined';
+    return (
+      <div key={q.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 transition-all">
+        <div className="flex justify-between items-start mb-2 gap-2">
+          <h4 className="text-white font-semibold truncate pr-2">{q.contractor?.company_name || 'Unknown Contractor'}</h4>
+          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded flex-shrink-0 ${
+            isPending ? 'bg-orange-500/20 text-orange-400' :
+            isResponded ? 'bg-emerald-500/20 text-emerald-400' :
+            'bg-red-500/20 text-red-400'
+          }`}>
+            {isPending ? 'Pending' : isResponded ? 'Approved' : 'Declined'}
+          </span>
+        </div>
+        {q.job_site_address && <p className="text-sm text-slate-300 truncate">Site: {q.job_site_address}</p>}
+        <p className="text-sm text-slate-300 mt-2">Requested: <span className="font-bold text-white">{Number(q.quantity || 0).toLocaleString()} Units</span></p>
+        <p className="text-sm text-slate-400 mt-1 truncate">Material: {q.material_name}</p>
+        {startDate && <p className="text-sm text-slate-400 mt-1">Start: <span className="text-slate-300">{startDate}</span></p>}
+        {q.bid_date && <p className="text-sm text-slate-400 mt-1">Bid by: <span className="text-slate-300">{q.bid_date}</span></p>}
+
+        {q.message && (
+          <div className="mt-3 bg-slate-800/60 border border-slate-700 rounded px-3 py-2">
+            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">Contractor note</p>
+            <p className="text-xs text-slate-300 whitespace-pre-wrap">{q.message}</p>
+          </div>
+        )}
+
+        {isResponded && q.offered_price != null && (
+          <div className="mt-3 bg-emerald-500/5 border border-emerald-500/20 rounded px-3 py-2">
+            <p className="text-[10px] text-emerald-400 uppercase tracking-wider font-semibold mb-1">Your offer</p>
+            <p className="text-lg font-bold text-emerald-400">${Number(q.offered_price).toFixed(2)}</p>
+            {q.supplier_message && <p className="text-xs text-slate-300 whitespace-pre-wrap mt-1">{q.supplier_message}</p>}
+          </div>
+        )}
+        {isDeclined && (
+          <div className="mt-3 bg-red-500/5 border border-red-500/20 rounded px-3 py-2">
+            <p className="text-[10px] text-red-400 uppercase tracking-wider font-semibold mb-1">Declined</p>
+            {q.supplier_message && <p className="text-xs text-slate-300 whitespace-pre-wrap mt-1">{q.supplier_message}</p>}
+          </div>
+        )}
+        {isPending && q.supplier_message && respondingTo !== q.id && messagingTo !== q.id && (
+          <div className="mt-3 bg-slate-800/60 border border-slate-700 rounded px-3 py-2">
+            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Your last message</p>
+            <p className="text-xs text-slate-300 whitespace-pre-wrap">{q.supplier_message}</p>
+          </div>
+        )}
+
+        {isPending && (
+          <div className="mt-4 pt-3 border-t border-slate-700">
+            {respondingTo === q.id ? (
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <span className="text-xs text-slate-500 mr-2">Offer Price:</span>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white text-sm">$</span>
+                    <input
+                      type="number" step="0.01" value={offerPrice}
+                      onChange={e => setOfferPrice(e.target.value)}
+                      className="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 pl-5 text-sm text-white focus:border-orange-500 focus:outline-none"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-500 ml-2">/unit</span>
+                </div>
+                <textarea
+                  value={responseMessage}
+                  onChange={e => setResponseMessage(e.target.value)}
+                  rows={3}
+                  placeholder="Reply to the contractor (optional) — confirm specs, lead time, terms..."
+                  className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-white focus:border-orange-500 focus:outline-none resize-none"
+                />
+                <div className="flex justify-between items-center">
+                  <button disabled={submittingQuote} onClick={() => declineQuote(q)}
+                    className="text-red-400 hover:text-red-300 text-xs font-semibold border border-red-500/30 hover:bg-red-500/10 px-3 py-1.5 rounded transition-colors disabled:opacity-50">
+                    Decline Request
+                  </button>
+                  <div className="flex space-x-2">
+                    <button onClick={() => { setRespondingTo(null); setOfferPrice(''); setResponseMessage(''); }}
+                      className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
+                    <button disabled={submittingQuote || !offerPrice} onClick={() => submitQuote(q)}
+                      className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50">
+                      {submittingQuote ? '...' : 'Send Quote'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : messagingTo === q.id ? (
+              <div className="space-y-2">
+                <textarea
+                  value={responseMessage}
+                  onChange={e => setResponseMessage(e.target.value)}
+                  rows={3}
+                  autoFocus
+                  placeholder="Send a question or note to the contractor (no quote)..."
+                  className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-white focus:border-orange-500 focus:outline-none resize-none"
+                />
+                <div className="flex justify-end space-x-2">
+                  <button onClick={() => { setMessagingTo(null); setResponseMessage(''); }}
+                    className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
+                  <button disabled={submittingQuote || !responseMessage.trim()} onClick={() => sendMessageOnly(q)}
+                    className="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50">
+                    {submittingQuote ? '...' : 'Send Message'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <button onClick={() => { setMessagingTo(q.id); setOfferPrice(''); setResponseMessage(''); }}
+                  className="text-slate-400 hover:text-white text-xs font-bold transition-colors">
+                  Send Message <i className="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+                <button onClick={() => { setRespondingTo(q.id); setOfferPrice(''); setResponseMessage(''); }}
+                  className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
+                  Draft Response <i className="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
@@ -170,8 +330,16 @@ export default function SupplierView({
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-chart-line w-4 text-center"></i>
             <span>Dashboard</span>
-            {quotes.length > 0 && (
-              <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{quotes.length}</span>
+            {pendingQuotes.length > 0 && (
+              <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{pendingQuotes.length}</span>
+            )}
+          </button>
+          <button onClick={() => setActiveTab('quotes')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'quotes' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-handshake w-4 text-center"></i>
+            <span>Quote Requests</span>
+            {pendingQuotes.length > 0 && (
+              <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{pendingQuotes.length}</span>
             )}
           </button>
           <button onClick={() => setActiveTab('materials')}
@@ -205,7 +373,7 @@ export default function SupplierView({
           <div className="flex items-center space-x-3">
             <span className="md:hidden text-base font-bold text-white">AggLink<span className="text-orange-500">.</span></span>
             <h1 className="text-lg font-semibold text-white">
-              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'materials' ? 'My Materials' : 'Add Material'}
+              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'quotes' ? 'Quote Requests' : activeTab === 'materials' ? 'My Materials' : 'Add Material'}
             </h1>
           </div>
           <div className="flex items-center space-x-3">
@@ -254,7 +422,7 @@ export default function SupplierView({
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Pending Quotes</p>
-                      <h3 className="text-3xl font-bold text-white mt-1">{quotes.length} <span className="text-sm font-normal text-orange-500">{quotes.length === 1 ? 'Request' : 'Requests'}</span></h3>
+                      <h3 className="text-3xl font-bold text-white mt-1">{pendingQuotes.length} <span className="text-sm font-normal text-orange-500">{pendingQuotes.length === 1 ? 'Request' : 'Requests'}</span></h3>
                     </div>
                     <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
                       <i className="fa-solid fa-hand-holding-dollar text-lg"></i>
@@ -376,7 +544,7 @@ export default function SupplierView({
                   <div className="bg-slate-800 border-2 border-orange-500/50 rounded-xl shadow-lg shadow-orange-500/10 overflow-hidden">
                     <div className="bg-orange-500/10 p-4 border-b border-orange-500/20 flex justify-between items-center">
                       <h3 className="text-orange-500 font-bold"><i className="fa-solid fa-bolt mr-2"></i> Quote Requests</h3>
-                      {quotes.length > 0 && (
+                      {pendingQuotes.length > 0 && (
                         <span className="flex h-3 w-3 relative">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
@@ -387,73 +555,45 @@ export default function SupplierView({
                     <div className="p-5 space-y-4 max-h-[500px] overflow-y-auto">
                       {loadingQuotes ? (
                         <p className="text-slate-500 text-sm text-center py-4">Checking for requests...</p>
-                      ) : quotes.length > 0 ? (
-                        quotes.map((q: any) => {
-                          const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
-                          return (
-                          <div key={q.id} className="bg-slate-900 border border-slate-700 rounded-lg p-4 transition-all">
-                            <div className="flex justify-between items-start mb-2">
-                              <h4 className="text-white font-semibold truncate pr-2">{q.contractor?.company_name || 'Unknown Contractor'}</h4>
-                              <span className="text-xs text-slate-400 flex-shrink-0">New</span>
-                            </div>
-                            {q.job_site_address && <p className="text-sm text-slate-300 truncate">Site: {q.job_site_address}</p>}
-                            <p className="text-sm text-slate-300 mt-2">Requested: <span className="font-bold text-white">{Number(q.quantity || 0).toLocaleString()} Units</span></p>
-                            <p className="text-sm text-slate-400 mt-1 truncate">Material: {q.material_name}</p>
-                            {startDate && <p className="text-sm text-slate-400 mt-1">Start: <span className="text-slate-300">{startDate}</span></p>}
-                            {q.message && (
-                              <div className="mt-3 bg-slate-800/60 border border-slate-700 rounded px-3 py-2">
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1">Contractor note</p>
-                                <p className="text-xs text-slate-300 whitespace-pre-wrap">{q.message}</p>
-                              </div>
-                            )}
-                            <div className="mt-4 pt-3 border-t border-slate-700">
-                              {respondingTo === q.id ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center">
-                                    <span className="text-xs text-slate-500 mr-2">Offer Price:</span>
-                                    <div className="relative">
-                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-white text-sm">$</span>
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        value={offerPrice}
-                                        onChange={(e) => setOfferPrice(e.target.value)}
-                                        className="w-24 bg-slate-800 border border-slate-600 rounded px-2 py-1 pl-5 text-sm text-white focus:border-orange-500 focus:outline-none"
-                                      />
-                                    </div>
-                                    <span className="text-[10px] text-slate-500 ml-2">/unit</span>
-                                  </div>
-                                  <textarea
-                                    value={responseMessage}
-                                    onChange={e => setResponseMessage(e.target.value)}
-                                    rows={3}
-                                    placeholder="Reply to the contractor (optional) — confirm specs, lead time, terms..."
-                                    className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-white focus:border-orange-500 focus:outline-none resize-none"
-                                  />
-                                  <div className="flex justify-end space-x-2">
-                                    <button onClick={() => { setRespondingTo(null); setOfferPrice(''); setResponseMessage(''); }} className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
-                                    <button disabled={submittingQuote} onClick={() => submitQuote(q)} className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50">
-                                      {submittingQuote ? '...' : 'Send Quote'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex justify-end w-full">
-                                  <button onClick={() => { setRespondingTo(q.id); setOfferPrice(''); setResponseMessage(''); }} className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
-                                    Draft Response <i className="fa-solid fa-arrow-right ml-1"></i>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          );
-                        })
+                      ) : pendingQuotes.length > 0 ? (
+                        pendingQuotes.map(renderQuoteCard)
                       ) : (
                         <p className="text-slate-500 text-sm text-center py-4">No pending quote requests.</p>
                       )}
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/*        QUOTE REQUESTS TAB        */}
+          {activeTab === 'quotes' && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { id: 'pending',  label: 'Pending',  count: quotes.filter(q => q.status === 'pending').length,   activeCls: 'bg-orange-500/20 text-orange-400 border-orange-500/40' },
+                  { id: 'approved', label: 'Approved', count: quotes.filter(q => q.status === 'responded').length, activeCls: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' },
+                  { id: 'declined', label: 'Declined', count: quotes.filter(q => q.status === 'declined').length,  activeCls: 'bg-red-500/20 text-red-400 border-red-500/40' },
+                ] as const).map(opt => {
+                  const isActive = quotesFilter === opt.id;
+                  return (
+                    <button key={opt.id} onClick={() => setQuotesFilter(opt.id)}
+                      className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${isActive ? opt.activeCls : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600 hover:text-white'}`}>
+                      {opt.label} <span className="ml-1.5 text-[10px] opacity-80">({opt.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                {loadingQuotes ? (
+                  <p className="text-slate-500 text-sm text-center py-6">Loading quote requests...</p>
+                ) : filteredQuotes.length > 0 ? (
+                  filteredQuotes.map(renderQuoteCard)
+                ) : (
+                  <p className="text-slate-500 text-sm text-center py-6">No {quotesFilter} quote requests.</p>
+                )}
               </div>
             </div>
           )}
@@ -643,18 +783,23 @@ export default function SupplierView({
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800">
           <div className="flex items-center justify-around px-2 py-2">
             <button onClick={() => setActiveTab('dashboard')}
-              className={`flex flex-col items-center space-y-1 px-4 py-1.5 rounded-lg transition-all relative ${activeTab === 'dashboard' ? 'text-orange-400' : 'text-slate-500'}`}>
+              className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'dashboard' ? 'text-orange-400' : 'text-slate-500'}`}>
               <i className="fa-solid fa-chart-line text-lg"></i>
-              {quotes.length > 0 && <span className="absolute top-0 right-1 bg-orange-500 text-white text-[9px] font-bold px-1 rounded-full">{quotes.length}</span>}
               <span className="text-[10px] font-medium">Dashboard</span>
             </button>
+            <button onClick={() => setActiveTab('quotes')}
+              className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all relative ${activeTab === 'quotes' ? 'text-orange-400' : 'text-slate-500'}`}>
+              <i className="fa-solid fa-handshake text-lg"></i>
+              {pendingQuotes.length > 0 && <span className="absolute top-0 right-0.5 bg-orange-500 text-white text-[9px] font-bold px-1 rounded-full">{pendingQuotes.length}</span>}
+              <span className="text-[10px] font-medium">Quotes</span>
+            </button>
             <button onClick={() => setActiveTab('materials')}
-              className={`flex flex-col items-center space-y-1 px-4 py-1.5 rounded-lg transition-all ${activeTab === 'materials' ? 'text-orange-400' : 'text-slate-500'}`}>
+              className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'materials' ? 'text-orange-400' : 'text-slate-500'}`}>
               <i className="fa-solid fa-cubes text-lg"></i>
               <span className="text-[10px] font-medium">Materials</span>
             </button>
             <button onClick={() => setActiveTab('add')}
-              className={`flex flex-col items-center space-y-1 px-4 py-1.5 rounded-lg transition-all ${activeTab === 'add' ? 'text-orange-400' : 'text-slate-500'}`}>
+              className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'add' ? 'text-orange-400' : 'text-slate-500'}`}>
               <i className="fa-solid fa-plus text-lg"></i>
               <span className="text-[10px] font-medium">Add</span>
             </button>

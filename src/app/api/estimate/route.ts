@@ -83,14 +83,15 @@ export async function POST(request: Request) {
     const minHours      = 2.0;
     const apiKey        = process.env.ORS_API_KEY;
 
-    // 4. Fetch custom quotes
+    // 4. Fetch custom quotes (responded with offered_price) and declined quotes
     let customQuotes: any[] = [];
     if (projectId) {
       const { data: quotes } = await supabase
         .from('quote_requests')
         .select('*')
         .eq('project_id', projectId)
-        .eq('status', 'responded');
+        .in('status', ['responded', 'declined'])
+        .order('created_at', { ascending: false });
       if (quotes) customQuotes = quotes;
     }
 
@@ -151,14 +152,18 @@ export async function POST(request: Request) {
         let materialCost  = 0;
         let basePriceLabel = 0;
         let isCustomQuote  = false;
+        let isDeclined     = false;
 
-        const customQuote = customQuotes.find(q =>
+        // customQuotes is ordered by created_at desc — first match wins
+        const latestQuote = customQuotes.find(q =>
           q.facility_id === fac.id && q.material_name === mat.name
         );
+        const respondedQuote = latestQuote?.status === 'responded' && latestQuote?.offered_price ? latestQuote : null;
+        if (latestQuote?.status === 'declined') isDeclined = true;
 
-        if (customQuote?.offered_price) {
-          materialCost   = customQuote.offered_price * qty;
-          basePriceLabel = customQuote.offered_price;
+        if (respondedQuote) {
+          materialCost   = respondedQuote.offered_price * qty;
+          basePriceLabel = respondedQuote.offered_price;
           isCustomQuote  = true;
         } else if (isImport) {
           materialCost   = mat.price_per_ton * qty;
@@ -188,6 +193,7 @@ export async function POST(request: Request) {
           totalPerUnit: totalCost / qty,
           totalCost:    totalCost,
           isCustomQuote,
+          isDeclined,
           stockStatus:  mat.stock_status || 'in_stock',
         };
 
