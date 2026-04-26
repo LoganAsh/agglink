@@ -22,6 +22,8 @@ export default function ContractorView({
   // Core state
   const [projects, setProjects] = useState<any[]>([]);
   const [activeProject, setActiveProject] = useState<any | null>(null);
+  const [projectsFilter, setProjectsFilter] = useState<'active' | 'archived'>('active');
+  const [archivingProject, setArchivingProject] = useState(false);
   const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'calculator'>('dashboard');
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -234,6 +236,34 @@ export default function ContractorView({
     const projectIds = new Set(allSavedEstimates.map(est => est.project_id));
     return { total, projectCount: projectIds.size };
   }, [allSavedEstimates]);
+
+  const visibleProjects = useMemo(() =>
+    projects.filter(p => projectsFilter === 'archived' ? p.status === 'archived' : p.status !== 'archived'),
+    [projects, projectsFilter]
+  );
+
+  const toggleArchive = async () => {
+    if (!activeProject) return;
+    const isArchived = activeProject.status === 'archived';
+    const nextStatus = isArchived ? 'active' : 'archived';
+    setArchivingProject(true);
+    const { error } = await supabase.from('projects').update({ status: nextStatus }).eq('id', activeProject.id);
+    if (error) {
+      alert('Failed to ' + (isArchived ? 'unarchive' : 'archive') + ' project: ' + error.message);
+      setArchivingProject(false);
+      return;
+    }
+    setProjects(prev => prev.map(p => p.id === activeProject.id ? { ...p, status: nextStatus } : p));
+    // Deselect so the user picks one from the new filter
+    setActiveProject(null);
+    setSavedEstimates([]);
+    setRequirements([]);
+    setManifestResults({});
+    setProjectQuotes([]);
+    setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
+    setProjectsFilter(nextStatus === 'archived' ? 'archived' : 'active');
+    setArchivingProject(false);
+  };
 
   const mostRequestedMaterial = useMemo(() => {
     if (allSavedEstimates.length === 0) return { name: null as string | null, quantity: 0 };
@@ -796,6 +826,11 @@ export default function ContractorView({
                 <button onClick={openEditModal} className="ml-1 p-1.5 text-slate-600 hover:text-orange-400 hover:bg-orange-500/10 rounded-md transition-all" title="Edit project">
                   <i className="fa-solid fa-pen-to-square text-xs"></i>
                 </button>
+                <button onClick={toggleArchive} disabled={archivingProject}
+                  className="ml-1 p-1.5 text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-all disabled:opacity-50"
+                  title={activeProject.status === 'archived' ? 'Unarchive project' : 'Archive project'}>
+                  <i className={`fa-solid ${activeProject.status === 'archived' ? 'fa-box-open' : 'fa-box-archive'} text-xs`}></i>
+                </button>
                 <button onClick={() => setShowDeleteConfirm(true)} className="ml-1 p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all" title="Delete project">
                   <i className="fa-solid fa-trash-can text-xs"></i>
                 </button>
@@ -804,15 +839,15 @@ export default function ContractorView({
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
             <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700"><LogoutButton /></div>
-            {activeView === 'projects' && projects.length > 0 && (
+            {activeView === 'projects' && visibleProjects.length > 0 && (
               <select className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
                 onChange={(e) => {
                   if (e.target.value === "") { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }
-                  else { const p = projects.find(proj => proj.id === e.target.value); if (p) selectProject(p); }
+                  else { const p = visibleProjects.find(proj => proj.id === e.target.value); if (p) selectProject(p); }
                 }}
-                value={activeProject ? activeProject.id : ""}>
-                <option value="">-- Switch Project --</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                value={activeProject && visibleProjects.some(p => p.id === activeProject.id) ? activeProject.id : ""}>
+                <option value="">-- Switch {projectsFilter === 'archived' ? 'Archived ' : ''}Project --</option>
+                {visibleProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             )}
             <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
@@ -913,6 +948,32 @@ export default function ContractorView({
 
         {activeView === 'projects' && (
         <div className="p-4 md:p-8 space-y-6">
+          {/* Active / Archived filter */}
+          <div className="flex items-center space-x-2">
+            {(['active','archived'] as const).map(f => {
+              const isActive = projectsFilter === f;
+              const count = projects.filter(p => f === 'archived' ? p.status === 'archived' : p.status !== 'archived').length;
+              return (
+                <button key={f}
+                  onClick={() => {
+                    setProjectsFilter(f);
+                    // If the currently selected project doesn't match the new filter, deselect
+                    if (activeProject) {
+                      const activeIsArchived = activeProject.status === 'archived';
+                      if ((f === 'archived') !== activeIsArchived) {
+                        setActiveProject(null);
+                        setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]);
+                        setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
+                      }
+                    }
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${isActive ? 'bg-orange-500/10 text-orange-400 border-orange-500/40' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600 hover:text-white'}`}>
+                  {f} <span className="ml-1.5 text-[10px] opacity-80">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Top Row: Map + Feed */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
