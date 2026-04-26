@@ -819,7 +819,12 @@ export default function ContractorView({
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-gauge-high mr-3 w-4 text-center"></i>Dashboard
           </button>
-          <button type="button" onClick={() => setActiveView('projects')}
+          <button type="button" onClick={() => {
+              setActiveView('projects');
+              setActiveProject(null);
+              setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]);
+              setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
+            }}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'projects' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-folder mr-3 w-4 text-center"></i>Projects
           </button>
@@ -845,7 +850,11 @@ export default function ContractorView({
             {activeProject ? (
               <>
                 <h2 className="text-lg font-semibold text-white">{activeProject.name}</h2>
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
+                {activeProject.status === 'archived' ? (
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Archived Project</span>
+                ) : (
+                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
+                )}
                 <button onClick={openEditModal} className="ml-1 p-1.5 text-slate-600 hover:text-orange-400 hover:bg-orange-500/10 rounded-md transition-all" title="Edit project">
                   <i className="fa-solid fa-pen-to-square text-xs"></i>
                 </button>
