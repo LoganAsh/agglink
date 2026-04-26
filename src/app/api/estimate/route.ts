@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     // Filter by is_import server-side, then match the name list in JS.
     const { data: allForImport, error } = await supabase.from('materials').select(`
       price_per_ton, price_per_cy, price_10w_load, price_sd_load, name, stock_status,
-      facility:facilities(id, name, address, latitude, longitude)
+      facility:facilities(id, name, address, latitude, longitude, accepts_quote_requests)
     `).eq('is_import', isImport);
 
     const availableMaterials = error || !allForImport
@@ -198,6 +198,7 @@ export async function POST(request: Request) {
           isDeclined,
           isQuotePending,
           stockStatus:  mat.stock_status || 'in_stock',
+          acceptsQuotes: fac.accepts_quote_requests !== false,
         };
 
         if (!resultsByMaterial[mat.name]) resultsByMaterial[mat.name] = [];

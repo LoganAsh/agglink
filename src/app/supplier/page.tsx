@@ -20,7 +20,7 @@ export default async function SupplierPage() {
 
   const { data: facilities } = await supabase
     .from('facilities')
-    .select('id, name, type')
+    .select('id, name, type, accepts_quote_requests')
     .eq('owner_id', user.id)
     .order('name');
 

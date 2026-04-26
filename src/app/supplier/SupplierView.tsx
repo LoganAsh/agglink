@@ -24,10 +24,16 @@ export default function SupplierView({
   const supabase = createClient();
 
   const [materials, setMaterials] = useState<any[]>(initialMaterials);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'materials' | 'add'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'materials' | 'add' | 'settings'>('dashboard');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editPriceVal, setEditPriceVal] = useState('');
+
+  // Settings tab state
+  const [facilitySettings, setFacilitySettings] = useState<any[]>(facilities);
+  const [savingFacilityId, setSavingFacilityId] = useState<string | null>(null);
+  const [resetEmailSent, setResetEmailSent] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [resetEmailMsg, setResetEmailMsg] = useState<string | null>(null);
 
   // Quote response state
   const [quotes, setQuotes] = useState<any[]>([]);
@@ -97,6 +103,43 @@ export default function SupplierView({
       setActiveTab('materials');
     } else alert('Failed to add material: ' + error?.message);
     setAddingMaterial(false);
+  };
+
+  //        Settings — facility quote-acceptance toggle
+  const toggleFacilityAcceptsQuotes = async (facilityId: string, next: boolean) => {
+    setSavingFacilityId(facilityId);
+    const prev = facilitySettings;
+    setFacilitySettings(fs => fs.map(f => f.id === facilityId ? { ...f, accepts_quote_requests: next } : f));
+    const { error } = await supabase
+      .from('facilities')
+      .update({ accepts_quote_requests: next })
+      .eq('id', facilityId);
+    if (error) {
+      setFacilitySettings(prev);
+      alert('Failed to update facility setting: ' + error.message);
+    }
+    setSavingFacilityId(null);
+  };
+
+  //        Settings — password reset email
+  const sendPasswordReset = async () => {
+    setResetEmailSent('sending');
+    setResetEmailMsg(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      setResetEmailSent('error');
+      setResetEmailMsg('Could not determine your email address.');
+      return;
+    }
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, { redirectTo });
+    if (error) {
+      setResetEmailSent('error');
+      setResetEmailMsg(error.message);
+    } else {
+      setResetEmailSent('sent');
+      setResetEmailMsg(`Password reset email sent to ${user.email}.`);
+    }
   };
 
   //        Delete material
@@ -358,6 +401,11 @@ export default function SupplierView({
             <i className="fa-solid fa-plus w-4 text-center"></i>
             <span>Add Material</span>
           </button>
+          <button onClick={() => setActiveTab('settings')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'settings' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-gear w-4 text-center"></i>
+            <span>Settings</span>
+          </button>
         </nav>
         <div className="p-4 border-t border-slate-800">
           <div className="flex items-center mb-3">
@@ -379,7 +427,7 @@ export default function SupplierView({
           <div className="flex items-center space-x-3">
             <span className="md:hidden text-base font-bold text-white">AggLink<span className="text-orange-500">.</span></span>
             <h1 className="text-lg font-semibold text-white">
-              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'quotes' ? 'Quote Requests' : activeTab === 'materials' ? 'My Materials' : 'Add Material'}
+              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'quotes' ? 'Quote Requests' : activeTab === 'materials' ? 'My Materials' : activeTab === 'add' ? 'Add Material' : 'Settings'}
             </h1>
           </div>
           <div className="flex items-center space-x-3">
@@ -783,6 +831,78 @@ export default function SupplierView({
             </div>
           )}
 
+          {/*        SETTINGS TAB        */}
+          {activeTab === 'settings' && (
+            <div className="max-w-3xl space-y-6">
+
+              {/* Facility quote settings */}
+              <section className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/40">
+                  <h2 className="text-base font-semibold text-white">Quote Request Settings</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Toggle whether contractors can send job-specific quote requests to each facility.</p>
+                </div>
+                {facilitySettings.length === 0 ? (
+                  <div className="px-6 py-8 text-center text-sm text-slate-500">No facilities linked to your account.</div>
+                ) : (
+                  <ul className="divide-y divide-slate-700/60">
+                    {facilitySettings.map(f => {
+                      const enabled = f.accepts_quote_requests !== false;
+                      const isSaving = savingFacilityId === f.id;
+                      return (
+                        <li key={f.id} className="px-6 py-4 flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{f.name}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{f.type} facility</p>
+                          </div>
+                          <div className="flex items-center space-x-3 flex-shrink-0">
+                            <span className={`text-xs font-semibold ${enabled ? 'text-emerald-400' : 'text-slate-500'}`}>
+                              {enabled ? 'Accepting quotes' : 'Quotes disabled'}
+                            </span>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={enabled}
+                              disabled={isSaving}
+                              onClick={() => toggleFacilityAcceptsQuotes(f.id, !enabled)}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50 ${enabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                            >
+                              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+
+              {/* Account section */}
+              <section className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/40">
+                  <h2 className="text-base font-semibold text-white">Account</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Manage your sign-in credentials.</p>
+                </div>
+                <div className="px-6 py-5">
+                  <p className="text-sm text-slate-300 font-medium">Reset Password</p>
+                  <p className="text-xs text-slate-500 mt-1">We&apos;ll email you a secure link to set a new password.</p>
+                  <button
+                    type="button"
+                    onClick={sendPasswordReset}
+                    disabled={resetEmailSent === 'sending'}
+                    className="mt-3 inline-flex items-center bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    <i className="fa-solid fa-envelope mr-2"></i>
+                    {resetEmailSent === 'sending' ? 'Sending...' : resetEmailSent === 'sent' ? 'Email Sent' : 'Send Password Reset Email'}
+                  </button>
+                  {resetEmailMsg && (
+                    <p className={`text-xs mt-2 ${resetEmailSent === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>{resetEmailMsg}</p>
+                  )}
+                </div>
+              </section>
+
+            </div>
+          )}
+
         </div>
 
         {/* Mobile bottom nav */}
@@ -808,6 +928,11 @@ export default function SupplierView({
               className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'add' ? 'text-orange-400' : 'text-slate-500'}`}>
               <i className="fa-solid fa-plus text-lg"></i>
               <span className="text-[10px] font-medium">Add</span>
+            </button>
+            <button onClick={() => setActiveTab('settings')}
+              className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'settings' ? 'text-orange-400' : 'text-slate-500'}`}>
+              <i className="fa-solid fa-gear text-lg"></i>
+              <span className="text-[10px] font-medium">Settings</span>
             </button>
           </div>
         </div>

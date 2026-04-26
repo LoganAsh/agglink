@@ -653,7 +653,10 @@ export default function ContractorView({
 
   const submitQuoteModal = async () => {
     if (!activeProject || !quoteModalReq) return;
-    const ids = Array.from(quoteModalSelected);
+    const ids = Array.from(quoteModalSelected).filter(id => {
+      const fac = quoteModalFacilities.find(f => f.facilityId === id);
+      return fac?.acceptsQuotes !== false;
+    });
     if (ids.length === 0) { alert('Select at least one facility.'); return; }
     setSubmittingQuoteModal(true);
     try {
@@ -789,6 +792,11 @@ export default function ContractorView({
                         <span title="Awaiting supplier response"
                           className="px-2 py-1 rounded text-[10px] font-bold border border-orange-500/40 bg-orange-500/10 text-orange-400 inline-flex items-center">
                           <i className="fa-solid fa-clock mr-1"></i>Pending
+                        </span>
+                      ) : res.acceptsQuotes === false ? (
+                        <span title="Supplier is not accepting quote requests"
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-slate-600 bg-slate-700/40 text-slate-400 inline-flex items-center">
+                          <i className="fa-solid fa-ban mr-1"></i>No Quotes
                         </span>
                       ) : (
                         <button onClick={() => openQuoteModal(res, req, options)}
@@ -1660,19 +1668,21 @@ export default function ContractorView({
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {quoteModalFacilities.map(fac => {
                     const checked = quoteModalSelected.has(fac.facilityId);
+                    const disabled = fac.acceptsQuotes === false;
                     return (
                       <label key={fac.facilityId}
-                        className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${checked ? 'bg-orange-500/10 border-orange-500/40' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                        className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all ${disabled ? 'bg-slate-900/40 border-slate-800 opacity-60 cursor-not-allowed' : checked ? 'bg-orange-500/10 border-orange-500/40 cursor-pointer' : 'bg-slate-800 border-slate-700 hover:border-slate-600 cursor-pointer'}`}>
                         <div className="flex items-center space-x-3 min-w-0">
                           <input
                             type="checkbox"
                             checked={checked}
+                            disabled={disabled}
                             onChange={() => toggleQuoteFacility(fac.facilityId)}
-                            className="w-4 h-4 accent-orange-500 flex-shrink-0"
+                            className="w-4 h-4 accent-orange-500 flex-shrink-0 disabled:opacity-50"
                           />
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-white truncate">{fac.supplier}</p>
-                            <p className="text-[10px] text-slate-500">{fac.truckFleet}</p>
+                            <p className="text-[10px] text-slate-500">{fac.truckFleet}{disabled && <span className="ml-2 text-red-400">Not accepting quotes</span>}</p>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
