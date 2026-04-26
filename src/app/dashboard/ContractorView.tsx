@@ -39,7 +39,15 @@ export default function ContractorView({
   const [allSavedEstimates, setAllSavedEstimates] = useState<any[]>([]);
   const [projectQuotes, setProjectQuotes] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'locked' | 'pending'>('locked');
-  const [requestingId, setRequestingId] = useState<string | null>(null);
+  // Quote request modal state
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [quoteModalReq, setQuoteModalReq] = useState<any | null>(null);
+  const [quoteModalFacilities, setQuoteModalFacilities] = useState<any[]>([]);
+  const [quoteModalSelected, setQuoteModalSelected] = useState<Set<string>>(new Set());
+  const [quoteStartMonth, setQuoteStartMonth] = useState('');
+  const [quoteStartYear, setQuoteStartYear] = useState('');
+  const [quoteMessage, setQuoteMessage] = useState('');
+  const [submittingQuoteModal, setSubmittingQuoteModal] = useState(false);
 
   // Map state
   const [jobLat, setJobLat] = useState<number | undefined>(undefined);
@@ -515,18 +523,83 @@ export default function ContractorView({
     setSavingEstimateId(null);
   };
 
-  const requestQuote = async (res: any, req: any) => {
-    setRequestingId(res.facilityId + req.id);
+  //        Quote request modal
+  const openQuoteModal = (res: any, req: any, options: any[]) => {
+    // Dedupe by facilityId — multiple truck-fleet rows can share a supplier.
+    const seen = new Set<string>();
+    const uniqueFacilities: any[] = [];
+    for (const o of options) {
+      if (!seen.has(o.facilityId)) {
+        seen.add(o.facilityId);
+        uniqueFacilities.push(o);
+      }
+    }
+    setQuoteModalReq(req);
+    setQuoteModalFacilities(uniqueFacilities);
+    setQuoteModalSelected(new Set([res.facilityId]));
+    setQuoteStartMonth('');
+    setQuoteStartYear(String(new Date().getFullYear()));
+    setQuoteMessage('');
+    setShowQuoteModal(true);
+  };
+
+  const closeQuoteModal = () => {
+    setShowQuoteModal(false);
+    setQuoteModalReq(null);
+    setQuoteModalFacilities([]);
+    setQuoteModalSelected(new Set());
+  };
+
+  const toggleQuoteFacility = (facilityId: string) => {
+    setQuoteModalSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(facilityId)) next.delete(facilityId); else next.add(facilityId);
+      return next;
+    });
+  };
+
+  const submitQuoteModal = async () => {
+    if (!activeProject || !quoteModalReq) return;
+    const ids = Array.from(quoteModalSelected);
+    if (ids.length === 0) { alert('Select at least one facility.'); return; }
+    setSubmittingQuoteModal(true);
     try {
       const response = await fetch('/api/quotes', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ facilityId: res.facilityId, materialName: res.materialName || req.material_name, quantity: req.quantity, address: activeProject.address, projectId: activeProject.id })
+        body: JSON.stringify({
+          facilityIds: ids,
+          materialName: quoteModalReq.material_name,
+          quantity: quoteModalReq.quantity,
+          address: activeProject.address,
+          projectId: activeProject.id,
+          startMonth: quoteStartMonth || null,
+          startYear: quoteStartYear ? parseInt(quoteStartYear, 10) : null,
+          message: quoteMessage.trim() || null,
+        }),
       });
       if (response.ok) {
-        alert("Quote request sent!"); setProjectQuotes([...projectQuotes, { id: Math.random().toString(), facility_id: res.facilityId, material_name: res.materialName || req.material_name, quantity: req.quantity, status: 'pending', facility: { name: res.supplier } }]); setActiveTab('pending');
-      } else { const d = await response.json(); alert("Error: " + d.error); }
-    } catch (e: any) { alert("Error: " + e.message); }
-    setRequestingId(null);
+        const newQuotes = ids.map(fid => {
+          const fac = quoteModalFacilities.find(f => f.facilityId === fid);
+          return {
+            id: Math.random().toString(),
+            facility_id: fid,
+            material_name: quoteModalReq.material_name,
+            quantity: quoteModalReq.quantity,
+            status: 'pending',
+            facility: { name: fac?.supplier || 'Supplier' },
+          };
+        });
+        setProjectQuotes([...projectQuotes, ...newQuotes]);
+        setActiveTab('pending');
+        closeQuoteModal();
+      } else {
+        const d = await response.json().catch(() => ({}));
+        alert('Error: ' + (d.error || response.statusText));
+      }
+    } catch (e: any) {
+      alert('Error: ' + e.message);
+    }
+    setSubmittingQuoteModal(false);
   };
 
   //        Results table (reusable for single and multi-material)
@@ -594,9 +667,9 @@ export default function ContractorView({
                         title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
                         {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                       </button>
-                      <button onClick={() => requestQuote(res, req)} disabled={requestingId === res.facilityId + req.id}
+                      <button onClick={() => openQuoteModal(res, req, options)}
                         className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}>
-                        {requestingId === res.facilityId + req.id ? '...' : 'Quote'}
+                        Quote
                       </button>
                     </div>
                   </td>
@@ -1146,6 +1219,131 @@ export default function ContractorView({
                 <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quote Request Modal */}
+      {showQuoteModal && quoteModalReq && activeProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={closeQuoteModal}>
+          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Request Job-Specific Quote</h3>
+                <p className="text-xs text-slate-400 mt-0.5">{activeProject.name}</p>
+              </div>
+              <button onClick={closeQuoteModal} className="text-slate-400 hover:text-white p-1.5">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto">
+              {/* Job details */}
+              <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-slate-500 uppercase tracking-wider font-semibold">Material</p>
+                    <p className="text-white font-medium mt-0.5">{quoteModalReq.material_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500 uppercase tracking-wider font-semibold">Quantity</p>
+                    <p className="text-white font-medium mt-0.5">{Number(quoteModalReq.quantity || 0).toLocaleString()} {quoteModalReq.job_type === 'Import (Delivery)' ? 'tons' : 'CY'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-slate-500 uppercase tracking-wider font-semibold">Job Site</p>
+                    <p className="text-white font-medium mt-0.5">{activeProject.address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Start date (optional) */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Job Start Date <span className="text-slate-600 font-normal normal-case">(optional)</span></label>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={quoteStartMonth}
+                    onChange={e => setQuoteStartMonth(e.target.value)}
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="">— Month or Season —</option>
+                    <optgroup label="Month">
+                      {['January','February','March','April','May','June','July','August','September','October','November','December'].map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Season">
+                      {['Spring','Summer','Fall','Winter'].map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <input
+                    type="number"
+                    min="2024" max="2099" step="1"
+                    value={quoteStartYear}
+                    onChange={e => setQuoteStartYear(e.target.value)}
+                    placeholder="Year"
+                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              {/* Facility selection */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                  Suppliers to Request Quote From <span className="text-slate-600 font-normal normal-case">({quoteModalSelected.size} selected)</span>
+                </label>
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {quoteModalFacilities.map(fac => {
+                    const checked = quoteModalSelected.has(fac.facilityId);
+                    return (
+                      <label key={fac.facilityId}
+                        className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-all ${checked ? 'bg-orange-500/10 border-orange-500/40' : 'bg-slate-800 border-slate-700 hover:border-slate-600'}`}>
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleQuoteFacility(fac.facilityId)}
+                            className="w-4 h-4 accent-orange-500 flex-shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{fac.supplier}</p>
+                            <p className="text-[10px] text-slate-500">{fac.truckFleet}</p>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-semibold text-white">${fac.totalPerUnit.toFixed(2)}</p>
+                          <p className="text-[10px] text-slate-500">{quoteModalReq.job_type === 'Import (Delivery)' ? '/ton' : '/CY'}</p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Additional Details <span className="text-slate-600 font-normal normal-case">(optional)</span></label>
+                <textarea
+                  value={quoteMessage}
+                  onChange={e => setQuoteMessage(e.target.value)}
+                  rows={4}
+                  placeholder="Specs, delivery preferences, scheduling notes, etc."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-slate-700 flex space-x-3 flex-shrink-0">
+              <button onClick={closeQuoteModal}
+                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">
+                Cancel
+              </button>
+              <button onClick={submitQuoteModal} disabled={submittingQuoteModal || quoteModalSelected.size === 0}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                {submittingQuoteModal ? 'Sending...' : `Send Request (${quoteModalSelected.size})`}
+              </button>
+            </div>
           </div>
         </div>
       )}
