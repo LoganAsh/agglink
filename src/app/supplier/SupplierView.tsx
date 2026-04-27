@@ -84,8 +84,27 @@ export default function SupplierView({
   //        Price editing
   const savePriceField = async (materialId: string, field: string, value: number) => {
     if (isNaN(value)) return;
-    const { error } = await supabase.from('materials').update({ [field]: value }).eq('id', materialId);
-    if (!error) setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, [field]: value } : m));
+    const mat = materials.find(m => m.id === materialId);
+    const updates: Record<string, number> = { [field]: value };
+
+    // When the supplier updates the public price, cascade the new value into the
+    // contractor/customer tiers that haven't been customised — i.e. they're still
+    // 0/null or still match the old public price.
+    if (mat && (field === 'price_per_ton' || field === 'price_per_cy')) {
+      const oldPublic = (mat as any)[field];
+      const tierFields = field === 'price_per_ton'
+        ? ['price_per_ton_contractor', 'price_per_ton_customer']
+        : ['price_per_cy_contractor', 'price_per_cy_customer'];
+      for (const tierField of tierFields) {
+        const tierVal = (mat as any)[tierField];
+        const isUnset = tierVal == null || tierVal === 0;
+        const matchesOldPublic = oldPublic != null && tierVal === oldPublic;
+        if (isUnset || matchesOldPublic) updates[tierField] = value;
+      }
+    }
+
+    const { error } = await supabase.from('materials').update(updates).eq('id', materialId);
+    if (!error) setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, ...updates } : m));
     else alert('Failed to update price');
   };
 
@@ -123,15 +142,21 @@ export default function SupplierView({
     e.preventDefault();
     if (!newMatFacilityId || !newMatName) return;
     setAddingMaterial(true);
+    const tonPrice = newMatIsImport ? (parseFloat(newMatPricePerTon) || 0) : 0;
+    const cyPrice  = !newMatIsImport ? (parseFloat(newMatPricePerCy) || 0) : 0;
     const { data, error } = await supabase.from('materials').insert([{
       facility_id: newMatFacilityId,
       name: newMatName,
       is_import: newMatIsImport,
-      price_per_ton: newMatIsImport ? (parseFloat(newMatPricePerTon) || 0) : 0,
-      price_per_cy: !newMatIsImport ? (parseFloat(newMatPricePerCy) || 0) : 0,
+      price_per_ton:            tonPrice,
+      price_per_ton_contractor: tonPrice,
+      price_per_ton_customer:   tonPrice,
+      price_per_cy:             cyPrice,
+      price_per_cy_contractor:  cyPrice,
+      price_per_cy_customer:    cyPrice,
       price_10w_load: parseFloat(newMat10wLoad) || 0,
-      price_sd_load: parseFloat(newMatSdLoad) || 0,
-      stock_status: newMatStock,
+      price_sd_load:  parseFloat(newMatSdLoad)  || 0,
+      stock_status:   newMatStock,
     }]).select().single();
     if (data && !error) {
       setMaterials([...materials, data]);
