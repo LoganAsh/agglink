@@ -336,10 +336,12 @@ export default function ContractorView({
 
   const accountTotalValue = useMemo(() => {
     if (allSavedEstimates.length === 0) return { total: 0, projectCount: 0 };
-    const total = allSavedEstimates.reduce((sum, est) => sum + (est.quantity * est.total_price), 0);
-    const projectIds = new Set(allSavedEstimates.map(est => est.project_id));
+    const archivedIds = new Set(projects.filter(p => p.status === 'archived').map(p => p.id));
+    const activeEstimates = allSavedEstimates.filter(est => !archivedIds.has(est.project_id));
+    const total = activeEstimates.reduce((sum, est) => sum + (est.quantity * est.total_price), 0);
+    const projectIds = new Set(activeEstimates.map(est => est.project_id));
     return { total, projectCount: projectIds.size };
-  }, [allSavedEstimates]);
+  }, [allSavedEstimates, projects]);
 
   const visibleProjects = useMemo(() =>
     projects.filter(p => projectsFilter === 'archived' ? p.status === 'archived' : p.status !== 'archived'),
