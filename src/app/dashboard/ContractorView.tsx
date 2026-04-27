@@ -65,6 +65,7 @@ export default function ContractorView({
   };
   const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'calculator'>('dashboard');
   const [networkSearch, setNetworkSearch] = useState('');
+  const [networkFilter, setNetworkFilter] = useState<'all' | 'in' | 'out'>('all');
   const [tierRequestRes, setTierRequestRes] = useState<any>(null);
   const [tierRequestMessage, setTierRequestMessage] = useState('');
   const [tierRequestSending, setTierRequestSending] = useState(false);
@@ -1488,17 +1489,44 @@ export default function ContractorView({
         </div>
         )}
 
-        {activeView === 'facility_management' && (
+        {activeView === 'facility_management' && (() => {
+          const networkIdSet = new Set(networkFacilities.map((f: any) => f.id));
+          const inNetworkAll = (allFacilities || []).filter((f: any) => networkIdSet.has(f.id));
+          const outNetworkAll = (allFacilities || []).filter((f: any) => !networkIdSet.has(f.id));
+          const filterScoped =
+            networkFilter === 'in'  ? inNetworkAll :
+            networkFilter === 'out' ? outNetworkAll :
+            (allFacilities || []);
+          const matchesSearch = (f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase());
+          const visibleFacilities = filterScoped.filter(matchesSearch);
+          return (
         <div className="p-4 md:p-8 space-y-6">
           <div>
             <h1 className="text-2xl font-bold text-white">Facility Network</h1>
             <p className="text-sm text-slate-400 mt-1">Add facilities to your network to see them in the estimator and on your map.</p>
           </div>
 
+          {/* Network filter chips */}
+          <div className="flex items-center space-x-2">
+            {([
+              { id: 'all', label: 'All',              count: (allFacilities || []).length, activeCls: 'bg-orange-500/10 text-orange-400 border-orange-500/40' },
+              { id: 'in',  label: 'In My Network',    count: inNetworkAll.length,          activeCls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40' },
+              { id: 'out', label: 'Outside Network',  count: outNetworkAll.length,         activeCls: 'bg-slate-700/40 text-slate-300 border-slate-500' },
+            ] as const).map(opt => {
+              const isActive = networkFilter === opt.id;
+              return (
+                <button key={opt.id} onClick={() => setNetworkFilter(opt.id)}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isActive ? opt.activeCls : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600 hover:text-white'}`}>
+                  {opt.label} <span className="ml-1.5 text-[10px] opacity-80">({opt.count})</span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* All facilities map with custom popups */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[460px]">
             <MapComponent
-              facilities={allFacilities || []}
+              facilities={visibleFacilities}
               renderFacilityPopup={(fac: any) => {
                 const owner = (suppliers || []).find((s: any) => s.id === fac.owner_id);
                 const ownerName = owner?.company_name || 'Unknown supplier';
@@ -1559,12 +1587,11 @@ export default function ContractorView({
 
           <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
             <div className="px-5 py-3 border-b border-slate-700 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
-              <span>{(allFacilities || []).filter((f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase())).length} facilities</span>
+              <span>{visibleFacilities.length} facilities</span>
               <span>{networkFacilities.length} in your network</span>
             </div>
             <div className="divide-y divide-slate-700/60">
-              {(allFacilities || [])
-                .filter((f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase()))
+              {visibleFacilities
                 .map((f: any) => {
                   const inNetwork = networkFacilities.some((n: any) => n.id === f.id);
                   const owner = (suppliers || []).find((s: any) => s.id === f.owner_id);
@@ -1605,13 +1632,14 @@ export default function ContractorView({
                     </div>
                   );
                 })}
-              {(allFacilities || []).filter((f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase())).length === 0 && (
-                <div className="px-5 py-10 text-center text-sm text-slate-500 italic">No facilities match your search.</div>
+              {visibleFacilities.length === 0 && (
+                <div className="px-5 py-10 text-center text-sm text-slate-500 italic">No facilities match your filter.</div>
               )}
             </div>
           </div>
         </div>
-        )}
+          );
+        })()}
 
         {activeView === 'calculator' && (
         <div className="p-4 md:p-8 space-y-6">
