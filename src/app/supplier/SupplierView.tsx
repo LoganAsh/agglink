@@ -12,22 +12,34 @@ const STATUS_OPTIONS = [
 
 export default function SupplierView({
   profile,
+  profileId,
   facilities,
   materials: initialMaterials,
   allMaterialNames = [],
+  contractors = [],
+  relationships: initialRelationships = [],
+  tierRequests: initialTierRequests = [],
 }: {
   profile: any;
+  profileId: string;
   facilities: any[];
   materials: any[];
   allMaterialNames?: string[];
+  contractors?: any[];
+  relationships?: any[];
+  tierRequests?: any[];
 }) {
   const supabase = createClient();
 
   const [materials, setMaterials] = useState<any[]>(initialMaterials);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'materials' | 'add' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'quotes' | 'materials' | 'customers' | 'add' | 'settings'>('dashboard');
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editPriceVal, setEditPriceVal] = useState('');
+  const [editingPriceField, setEditingPriceField] = useState<{ matId: string; field: string } | null>(null);
+
+  // Customer management state
+  const [relationships, setRelationships] = useState<any[]>(initialRelationships);
+  const [tierRequests, setTierRequests] = useState<any[]>(initialTierRequests);
 
   // Settings tab state
   const [facilitySettings, setFacilitySettings] = useState<any[]>(facilities);
@@ -70,19 +82,40 @@ export default function SupplierView({
   };
 
   //        Price editing
-  const startEditPrice = (mat: any) => {
-    setEditingPriceId(mat.id);
-    setEditPriceVal(mat.is_import ? (mat.price_per_ton || '') : (mat.price_per_cy || ''));
+  const savePriceField = async (materialId: string, field: string, value: number) => {
+    if (isNaN(value)) return;
+    const { error } = await supabase.from('materials').update({ [field]: value }).eq('id', materialId);
+    if (!error) setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, [field]: value } : m));
+    else alert('Failed to update price');
   };
 
-  const savePrice = async (mat: any) => {
-    const val = parseFloat(editPriceVal);
-    if (isNaN(val)) return;
-    const update = mat.is_import ? { price_per_ton: val } : { price_per_cy: val };
-    const { error } = await supabase.from('materials').update(update).eq('id', mat.id);
-    if (!error) setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, ...update } : m));
-    else alert('Failed to update price');
-    setEditingPriceId(null);
+  const setContractorTier = async (contractorId: string, tier: string) => {
+    const { data, error } = await supabase
+      .from('supplier_relationships')
+      .upsert({
+        supplier_id: profileId,
+        contractor_id: contractorId,
+        tier,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'supplier_id,contractor_id' })
+      .select().single();
+    if (data && !error) {
+      setRelationships(prev => {
+        const filtered = prev.filter(r => r.contractor_id !== contractorId);
+        return [...filtered, data];
+      });
+    } else alert('Failed to update tier: ' + error?.message);
+  };
+
+  const handleTierRequest = async (req: any, action: 'approve' | 'reject') => {
+    if (action === 'approve') {
+      await setContractorTier(req.contractor_id, req.requested_tier);
+    }
+    await supabase.from('tier_requests').update({
+      status: action === 'approve' ? 'approved' : 'rejected',
+      reviewed_at: new Date().toISOString(),
+    }).eq('id', req.id);
+    setTierRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r));
   };
 
   //        Add material
@@ -428,6 +461,14 @@ export default function SupplierView({
             <i className="fa-solid fa-cubes w-4 text-center"></i>
             <span>My Materials</span>
           </button>
+          <button onClick={() => setActiveTab('customers')}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'customers' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-handshake w-4 text-center"></i>
+            <span>Customer Management</span>
+            {tierRequests.filter(r => r.status === 'pending').length > 0 && (
+              <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{tierRequests.filter(r => r.status === 'pending').length}</span>
+            )}
+          </button>
           <button onClick={() => setActiveTab('add')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'add' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-plus w-4 text-center"></i>
@@ -459,7 +500,7 @@ export default function SupplierView({
           <div className="flex items-center space-x-3">
             <span className="md:hidden text-base font-bold text-white">AggLink<span className="text-orange-500">.</span></span>
             <h1 className="text-lg font-semibold text-white">
-              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'quotes' ? 'Quote Requests' : activeTab === 'materials' ? 'My Materials' : activeTab === 'add' ? 'Add Material' : 'Settings'}
+              {activeTab === 'dashboard' ? 'Dashboard' : activeTab === 'quotes' ? 'Quote Requests' : activeTab === 'materials' ? 'My Materials' : activeTab === 'customers' ? 'Customer Management' : activeTab === 'add' ? 'Add Material' : 'Settings'}
             </h1>
           </div>
           <div className="flex items-center space-x-3">
@@ -582,31 +623,35 @@ export default function SupplierView({
                                 </td>
                                 <td className="px-5 py-4 text-right">
                                   <div className="flex items-center justify-end">
-                                    {editingPriceId === mat.id ? (
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-white">$</span>
-                                        <input
-                                          type="number"
-                                          value={editPriceVal}
-                                          onChange={(e) => setEditPriceVal(e.target.value)}
-                                          className="w-20 bg-slate-900 border border-orange-500 rounded px-2 py-1 text-sm text-white focus:outline-none"
-                                          step="0.01"
-                                        />
-                                        <button onClick={() => savePrice(mat)} className="text-emerald-400 hover:text-emerald-300">
-                                          <i className="fa-solid fa-check"></i>
-                                        </button>
-                                        <button onClick={() => setEditingPriceId(null)} className="text-red-400 hover:text-red-300">
-                                          <i className="fa-solid fa-xmark"></i>
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <span className="font-bold text-white">${(price || 0).toFixed(2)}<span className="text-xs text-slate-400 font-normal">{unit}</span></span>
-                                        <button onClick={() => startEditPrice(mat)} className="text-slate-500 hover:text-white ml-3 text-xs focus:outline-none">
-                                          <i className="fa-solid fa-pen"></i>
-                                        </button>
-                                      </>
-                                    )}
+                                    {(() => {
+                                      const publicField = mat.is_import ? 'price_per_ton' : 'price_per_cy';
+                                      const isEditing = editingPriceField?.matId === mat.id && editingPriceField?.field === publicField;
+                                      return isEditing ? (
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-white">$</span>
+                                          <input
+                                            type="number"
+                                            value={editPriceVal}
+                                            onChange={(e) => setEditPriceVal(e.target.value)}
+                                            className="w-20 bg-slate-900 border border-orange-500 rounded px-2 py-1 text-sm text-white focus:outline-none"
+                                            step="0.01"
+                                          />
+                                          <button onClick={() => { savePriceField(mat.id, publicField, parseFloat(editPriceVal)); setEditingPriceField(null); }} className="text-emerald-400 hover:text-emerald-300">
+                                            <i className="fa-solid fa-check"></i>
+                                          </button>
+                                          <button onClick={() => setEditingPriceField(null)} className="text-red-400 hover:text-red-300">
+                                            <i className="fa-solid fa-xmark"></i>
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <span className="font-bold text-white">${(price || 0).toFixed(2)}<span className="text-xs text-slate-400 font-normal">{unit}</span></span>
+                                          <button onClick={() => { setEditingPriceField({ matId: mat.id, field: publicField }); setEditPriceVal(String(price || 0)); }} className="text-slate-500 hover:text-white ml-3 text-xs focus:outline-none">
+                                            <i className="fa-solid fa-pen"></i>
+                                          </button>
+                                        </>
+                                      );
+                                    })()}
                                   </div>
                                 </td>
                                 <td className="px-5 py-4 text-center">
@@ -734,23 +779,35 @@ export default function SupplierView({
                             ))}
                           </div>
 
-                          {/* Right: price + edit + delete */}
-                          <div className="flex items-center space-x-2 flex-shrink-0 justify-end w-1/4">
-                            {editingPriceId === mat.id ? (
-                              <div className="flex items-center space-x-1">
-                                <input type="number" value={editPriceVal} onChange={e => setEditPriceVal(e.target.value)}
-                                  className="w-20 bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500" />
-                                <button onClick={() => savePrice(mat)} className="text-emerald-400 hover:text-emerald-300 text-xs"><i className="fa-solid fa-check"></i></button>
-                                <button onClick={() => setEditingPriceId(null)} className="text-slate-500 hover:text-slate-300 text-xs"><i className="fa-solid fa-xmark"></i></button>
-                              </div>
-                            ) : (
-                              <button onClick={() => startEditPrice(mat)} className="flex items-center space-x-1 text-right group">
-                                <span className="text-sm font-semibold text-white">${mat.is_import ? (mat.price_per_ton || 0).toFixed(2) : (mat.price_per_cy || 0).toFixed(2)}</span>
-                                <span className="text-[10px] text-slate-500">{mat.is_import ? '/ton' : '/cy'}</span>
-                                <i className="fa-solid fa-pen text-[10px] text-slate-600 group-hover:text-orange-400 transition-colors ml-1"></i>
-                              </button>
-                            )}
-                            <button onClick={() => deleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500 transition-colors ml-1">
+                          {/* Right: 3-tier pricing + delete */}
+                          <div className="flex items-center space-x-4 flex-shrink-0 justify-end">
+                            {(['public', 'contractor', 'customer'] as const).map(tier => {
+                              const fieldBase = mat.is_import ? 'price_per_ton' : 'price_per_cy';
+                              const field = tier === 'public' ? fieldBase : `${fieldBase}_${tier}`;
+                              const value = mat[field] || 0;
+                              const isEditing = editingPriceField?.matId === mat.id && editingPriceField?.field === field;
+                              const tierLabel = tier === 'public' ? 'Public' : tier === 'contractor' ? 'Contr' : 'Cust';
+                              const tierColor = tier === 'public' ? 'text-slate-400' : tier === 'contractor' ? 'text-orange-400' : 'text-emerald-400';
+                              return (
+                                <div key={tier} className="flex flex-col items-end min-w-[60px]">
+                                  <span className={`text-[9px] font-bold uppercase tracking-wider ${tierColor}`}>{tierLabel}</span>
+                                  {isEditing ? (
+                                    <div className="flex items-center space-x-1 mt-0.5">
+                                      <input type="number" step="0.01" value={editPriceVal} onChange={e => setEditPriceVal(e.target.value)}
+                                        className="w-16 bg-slate-900 border border-slate-600 rounded px-1 py-0.5 text-xs text-white focus:outline-none focus:border-orange-500" />
+                                      <button onClick={() => { savePriceField(mat.id, field, parseFloat(editPriceVal)); setEditingPriceField(null); }} className="text-emerald-400 text-xs"><i className="fa-solid fa-check"></i></button>
+                                      <button onClick={() => setEditingPriceField(null)} className="text-slate-500 text-xs"><i className="fa-solid fa-xmark"></i></button>
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => { setEditingPriceField({ matId: mat.id, field }); setEditPriceVal(String(value)); }}
+                                      className="text-sm font-semibold text-white hover:text-orange-400 transition-colors mt-0.5">
+                                      ${value.toFixed(2)}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            <button onClick={() => deleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500 transition-colors ml-2">
                               <i className="fa-solid fa-trash text-xs"></i>
                             </button>
                           </div>
@@ -787,6 +844,80 @@ export default function SupplierView({
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/*        CUSTOMER MANAGEMENT TAB        */}
+          {activeTab === 'customers' && (
+            <div className="space-y-6">
+
+              {/* Pending Requests */}
+              {tierRequests.filter(r => r.status === 'pending').length > 0 && (
+                <div className="bg-slate-800 border border-orange-500/30 rounded-xl overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-700 bg-orange-500/5 flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-white">Pending Tier Upgrade Requests</h2>
+                    <span className="bg-orange-500/20 text-orange-400 text-xs font-bold px-2 py-0.5 rounded-full border border-orange-500/30">
+                      {tierRequests.filter(r => r.status === 'pending').length}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-700/50">
+                    {tierRequests.filter(r => r.status === 'pending').map(req => (
+                      <div key={req.id} className="px-5 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-white">{req.contractor?.company_name}</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              Requesting <span className="text-slate-300 capitalize">{req.current_tier}</span>
+                              <i className="fa-solid fa-arrow-right mx-2 text-slate-500"></i>
+                              <span className={req.requested_tier === 'customer' ? 'text-emerald-400' : 'text-orange-400'}>
+                                {req.requested_tier.charAt(0).toUpperCase() + req.requested_tier.slice(1)}
+                              </span>
+                            </p>
+                            {req.message && <p className="text-xs text-slate-500 italic mt-2">&ldquo;{req.message}&rdquo;</p>}
+                          </div>
+                          <div className="flex space-x-2">
+                            <button onClick={() => handleTierRequest(req, 'reject')} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-400 hover:border-red-500/50 hover:text-red-400 transition-all">Reject</button>
+                            <button onClick={() => handleTierRequest(req, 'approve')} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">Approve</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All Customers */}
+              <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
+                  <h2 className="text-sm font-semibold text-white">Customer Tiers ({contractors.length})</h2>
+                  <p className="text-xs text-slate-500 mt-0.5">Set pricing tier for each contractor. Defaults to Public.</p>
+                </div>
+                <div className="divide-y divide-slate-700/50">
+                  {contractors.map(c => {
+                    const rel = relationships.find(r => r.contractor_id === c.id);
+                    const currentTier = rel?.tier || 'public';
+                    return (
+                      <div key={c.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-white">{c.company_name}</p>
+                          {rel && <p className="text-[10px] text-slate-500 mt-0.5">Set {new Date(rel.updated_at).toLocaleDateString()}</p>}
+                        </div>
+                        <div className="flex space-x-1">
+                          {(['public', 'contractor', 'customer'] as const).map(tier => {
+                            const tierColor = tier === 'public' ? 'bg-slate-700/50 text-slate-300 border-slate-600' : tier === 'contractor' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40';
+                            return (
+                              <button key={tier} onClick={() => setContractorTier(c.id, tier)}
+                                className={`px-3 py-1 rounded-md text-[10px] font-semibold border transition-all ${currentTier === tier ? tierColor : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-500'}`}>
+                                {tier.charAt(0).toUpperCase() + tier.slice(1)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1013,6 +1144,12 @@ export default function SupplierView({
               className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'materials' ? 'text-orange-400' : 'text-slate-500'}`}>
               <i className="fa-solid fa-cubes text-lg"></i>
               <span className="text-[10px] font-medium">Materials</span>
+            </button>
+            <button onClick={() => setActiveTab('customers')}
+              className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all relative ${activeTab === 'customers' ? 'text-orange-400' : 'text-slate-500'}`}>
+              <i className="fa-solid fa-handshake text-lg"></i>
+              {tierRequests.filter(r => r.status === 'pending').length > 0 && <span className="absolute top-0 right-0.5 bg-orange-500 text-white text-[9px] font-bold px-1 rounded-full">{tierRequests.filter(r => r.status === 'pending').length}</span>}
+              <span className="text-[10px] font-medium">Customers</span>
             </button>
             <button onClick={() => setActiveTab('add')}
               className={`flex flex-col items-center space-y-1 px-3 py-1.5 rounded-lg transition-all ${activeTab === 'add' ? 'text-orange-400' : 'text-slate-500'}`}>

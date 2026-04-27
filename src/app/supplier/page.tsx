@@ -28,9 +28,26 @@ export default async function SupplierPage() {
 
   const { data: materials } = await supabase
     .from('materials')
-    .select('id, name, price_per_ton, price_per_cy, price_10w_load, price_sd_load, is_import, stock_status, auto_decline_below, facility_id')
+    .select('id, name, price_per_ton, price_per_ton_contractor, price_per_ton_customer, price_per_cy, price_per_cy_contractor, price_per_cy_customer, price_10w_load, price_sd_load, is_import, stock_status, auto_decline_below, facility_id')
     .in('facility_id', facilityIds.length > 0 ? facilityIds : ['none'])
     .order('name');
+
+  const { data: contractors } = await supabase
+    .from('profiles')
+    .select('id, company_name')
+    .eq('role', 'contractor')
+    .order('company_name');
+
+  const { data: relationships } = await supabase
+    .from('supplier_relationships')
+    .select('*')
+    .eq('supplier_id', user.id);
+
+  const { data: tierRequests } = await supabase
+    .from('tier_requests')
+    .select('*, contractor:profiles!tier_requests_contractor_id_fkey(company_name)')
+    .eq('supplier_id', user.id)
+    .order('created_at', { ascending: false });
 
   // All unique material names for the add material dropdown
   const { data: allMatsRaw } = await supabase
@@ -45,9 +62,13 @@ export default async function SupplierPage() {
   return (
     <SupplierView
       profile={profile}
+      profileId={user.id}
       facilities={facilities || []}
       materials={materials || []}
       allMaterialNames={allMaterialNames}
+      contractors={contractors || []}
+      relationships={relationships || []}
+      tierRequests={tierRequests || []}
     />
   );
 }
