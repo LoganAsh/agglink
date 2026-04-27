@@ -197,6 +197,30 @@ export default function ContractorView({
     else alert('Failed to remove from network: ' + error.message);
   };
 
+  const addAllCompanyFacilities = async (ownerId: string) => {
+    if (!ownerId) return;
+    const ownerFacilities = (allFacilities || []).filter((f: any) => f.owner_id === ownerId);
+    const networkIds = new Set(networkFacilities.map((f: any) => f.id));
+    const toAdd = ownerFacilities.filter((f: any) => !networkIds.has(f.id));
+    if (toAdd.length === 0) {
+      alert("All of this company's facilities are already in your network.");
+      return;
+    }
+    const rows = toAdd.map((f: any) => ({ contractor_id: profileId, facility_id: f.id }));
+    const { data, error } = await supabase
+      .from('contractor_facility_network')
+      .insert(rows)
+      .select('*, facility:facilities(*)');
+    if (error) {
+      alert('Failed to add facilities: ' + error.message);
+      return;
+    }
+    if (data) {
+      const newFacilities = data.map((d: any) => d.facility).filter(Boolean);
+      setNetworkFacilities(prev => [...prev, ...newFacilities]);
+    }
+  };
+
   //        Tier upgrade requests
   const openTierRequest = (res: any) => {
     setTierRequestRes(res);
@@ -1467,6 +1491,57 @@ export default function ContractorView({
           <div>
             <h1 className="text-2xl font-bold text-white">Facility Network</h1>
             <p className="text-sm text-slate-400 mt-1">Add facilities to your network to see them in the estimator and on your map.</p>
+          </div>
+
+          {/* All facilities map with custom popups */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[460px]">
+            <MapComponent
+              facilities={allFacilities || []}
+              renderFacilityPopup={(fac: any) => {
+                const owner = (suppliers || []).find((s: any) => s.id === fac.owner_id);
+                const ownerName = owner?.company_name || 'Unknown supplier';
+                const inNetwork = networkFacilities.some((n: any) => n.id === fac.id);
+                const ownerFacilityCount = (allFacilities || []).filter((f: any) => f.owner_id === fac.owner_id).length;
+                const typeLabel =
+                  fac.type === 'dump' ? 'Dump / Recycle Site' :
+                  fac.type === 'both' ? 'Pit & Dump Site' :
+                  'Material Pit';
+                return (
+                  <div style={{ background: '#1e293b', color: '#f1f5f9', padding: '8px 10px', borderRadius: '6px', minWidth: '200px' }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px' }}>{fac.name}</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{typeLabel}</div>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '6px' }}>
+                      <span style={{ color: '#64748b' }}>Owner: </span>{ownerName}
+                    </div>
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {inNetwork ? (
+                        <button
+                          onClick={() => removeFromNetwork(fac.id)}
+                          style={{ background: 'transparent', color: '#f87171', border: '1px solid rgba(239,68,68,0.4)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <i className="fa-solid fa-minus" style={{ marginRight: 4 }}></i>Remove from Network
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => addToNetwork(fac.id)}
+                          style={{ background: '#f97316', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          <i className="fa-solid fa-plus" style={{ marginRight: 4 }}></i>Add to Network
+                        </button>
+                      )}
+                      {fac.owner_id && ownerFacilityCount > 1 && (
+                        <button
+                          onClick={() => addAllCompanyFacilities(fac.owner_id)}
+                          style={{ background: 'transparent', color: '#fb923c', border: '1px solid rgba(249,115,22,0.4)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          + Add all of {ownerName}&apos;s {ownerFacilityCount} facilities
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              }}
+            />
           </div>
 
           <div className="relative max-w-md">

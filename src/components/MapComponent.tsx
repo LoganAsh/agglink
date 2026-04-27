@@ -64,6 +64,7 @@ export default function MapComponent({
   facilities = [],
   onMapClick,
   interactive = false,
+  renderFacilityPopup,
 }: {
   jobLat?: number;
   jobLon?: number;
@@ -71,6 +72,7 @@ export default function MapComponent({
   facilities?: any[];
   onMapClick?: (lat: number, lon: number) => void;
   interactive?: boolean;
+  renderFacilityPopup?: (facility: any) => React.ReactNode;
 }) {
   const hasJob = !!(jobLat && jobLon);
   const center: [number, number] = hasJob ? [jobLat!, jobLon!] : [40.7608, -111.891];
@@ -117,10 +119,12 @@ export default function MapComponent({
         return (
           <Marker key={fac.id ?? idx} position={[lat, lon]} icon={getFacilityIcon(fac)}>
             <Popup>
-              <div style={{ background: '#1e293b', color: '#f1f5f9', padding: '6px 8px', borderRadius: '6px', minWidth: '120px' }}>
-                <div style={{ fontWeight: 600, fontSize: '13px' }}>{fac.name}</div>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>{typeLabel}</div>
-              </div>
+              {renderFacilityPopup ? renderFacilityPopup(fac) : (
+                <div style={{ background: '#1e293b', color: '#f1f5f9', padding: '6px 8px', borderRadius: '6px', minWidth: '120px' }}>
+                  <div style={{ fontWeight: 600, fontSize: '13px' }}>{fac.name}</div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>{typeLabel}</div>
+                </div>
+              )}
             </Popup>
           </Marker>
         );
