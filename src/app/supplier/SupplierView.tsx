@@ -810,6 +810,8 @@ export default function SupplierView({
                               const fieldBase = mat.is_import ? 'price_per_ton' : 'price_per_cy';
                               const field = tier === 'public' ? fieldBase : `${fieldBase}_${tier}`;
                               const value = mat[field] || 0;
+                              const publicValue = mat[fieldBase] || 0;
+                              const matchesPublic = tier !== 'public' && value === publicValue;
                               const isEditing = editingPriceField?.matId === mat.id && editingPriceField?.field === field;
                               const tierLabel = tier === 'public' ? 'Public' : tier === 'contractor' ? 'Contr' : 'Cust';
                               const tierColor = tier === 'public' ? 'text-slate-400' : tier === 'contractor' ? 'text-orange-400' : 'text-emerald-400';
@@ -825,7 +827,7 @@ export default function SupplierView({
                                     </div>
                                   ) : (
                                     <button onClick={() => { setEditingPriceField({ matId: mat.id, field }); setEditPriceVal(String(value)); }}
-                                      className="text-sm font-semibold text-white hover:text-orange-400 transition-colors mt-0.5">
+                                      className={`text-sm font-semibold hover:text-orange-400 transition-colors mt-0.5 ${matchesPublic ? 'text-slate-500' : 'text-white'}`}>
                                       ${value.toFixed(2)}
                                     </button>
                                   )}
