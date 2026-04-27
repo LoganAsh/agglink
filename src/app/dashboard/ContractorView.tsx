@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import dynamic from 'next/dynamic';
+import InvoicePaymentForm from '@/components/InvoicePaymentForm';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 
@@ -20,6 +21,8 @@ export default function ContractorView({
   allFacilities = [],
   suppliers = [],
   relationships = [],
+  contractorInvoices: initialContractorInvoices = [],
+  invoiceLineItems = [],
 }: {
   profileName?: string,
   companyName?: string,
@@ -32,6 +35,8 @@ export default function ContractorView({
   allFacilities?: any[],
   suppliers?: any[],
   relationships?: any[],
+  contractorInvoices?: any[],
+  invoiceLineItems?: any[],
 }) {
 
   const supabase = createClient();
@@ -63,12 +68,19 @@ export default function ContractorView({
       return next;
     });
   };
-  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'calculator'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'invoices' | 'calculator'>('dashboard');
   const [networkSearch, setNetworkSearch] = useState('');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'in' | 'out'>('all');
   const [tierRequestRes, setTierRequestRes] = useState<any>(null);
   const [tierRequestMessage, setTierRequestMessage] = useState('');
   const [tierRequestSending, setTierRequestSending] = useState(false);
+
+  // Contractor invoices
+  const [contractorInvoices] = useState<any[]>(initialContractorInvoices);
+  const [invoiceFilter, setInvoiceFilter] = useState<'all' | 'unpaid' | 'paid' | 'overdue'>('all');
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [showInvoiceDetail, setShowInvoiceDetail] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
@@ -958,6 +970,18 @@ export default function ContractorView({
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'facility_management' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-network-wired mr-3 w-4 text-center"></i>Facility Network
           </button>
+          {(() => {
+            const unpaidCount = contractorInvoices.filter((i: any) => i.status !== 'paid').length;
+            return (
+              <button type="button" onClick={() => setActiveView('invoices')}
+                className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'invoices' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                <i className="fa-solid fa-file-invoice-dollar mr-3 w-4 text-center"></i>Invoices
+                {unpaidCount > 0 && (
+                  <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{unpaidCount}</span>
+                )}
+              </button>
+            );
+          })()}
           <button type="button" onClick={() => setActiveView('calculator')}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'calculator' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-calculator mr-3 w-4 text-center"></i>Calculator
@@ -1641,6 +1665,114 @@ export default function ContractorView({
           );
         })()}
 
+        {activeView === 'invoices' && (() => {
+          const totalOutstanding = contractorInvoices
+            .filter((i: any) => i.status !== 'paid')
+            .reduce((sum: number, i: any) => sum + (Number(i.total_amount) - Number(i.amount_paid || 0)), 0);
+          const thisYear = new Date().getFullYear();
+          const paidThisYear = contractorInvoices
+            .filter((i: any) => i.status === 'paid' && i.paid_date && new Date(i.paid_date).getFullYear() === thisYear)
+            .reduce((sum: number, i: any) => sum + Number(i.amount_paid || i.total_amount || 0), 0);
+          const overdueCount = contractorInvoices.filter((i: any) => i.status === 'overdue').length;
+          const filtered = contractorInvoices.filter((i: any) =>
+            invoiceFilter === 'all'     ? true :
+            invoiceFilter === 'unpaid'  ? i.status !== 'paid' :
+            invoiceFilter === 'paid'    ? i.status === 'paid' :
+            i.status === 'overdue'
+          );
+          return (
+        <div className="p-4 md:p-8 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Invoices</h1>
+            <p className="text-sm text-slate-400 mt-1">Bills from your suppliers. Click to view details and pay online.</p>
+          </div>
+
+          {/* Summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Outstanding</p>
+              <h3 className={`text-3xl font-bold mt-1 ${totalOutstanding > 0 ? 'text-orange-400' : 'text-slate-500'}`}>
+                ${totalOutstanding.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </h3>
+              <p className="text-xs text-slate-400 mt-3">{contractorInvoices.filter((i: any) => i.status !== 'paid').length} unpaid invoice(s)</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Paid This Year</p>
+              <h3 className="text-3xl font-bold text-emerald-400 mt-1">
+                ${paidThisYear.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </h3>
+              <p className="text-xs text-slate-400 mt-3">{thisYear} year-to-date</p>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Overdue</p>
+              <h3 className={`text-3xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-400' : 'text-slate-500'}`}>{overdueCount}</h3>
+              <p className="text-xs text-slate-400 mt-3">past their due date</p>
+            </div>
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700 inline-flex">
+            {(['all', 'unpaid', 'paid', 'overdue'] as const).map(f => (
+              <button key={f} onClick={() => setInvoiceFilter(f)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all capitalize ${invoiceFilter === f ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Invoice list */}
+          <div className="space-y-3">
+            {filtered.length === 0 ? (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">
+                <i className="fa-solid fa-file-invoice-dollar text-4xl text-slate-600 mb-3"></i>
+                <p className="text-slate-400 text-sm">No invoices {invoiceFilter !== 'all' ? `with status "${invoiceFilter}"` : 'yet'}.</p>
+              </div>
+            ) : filtered.map((inv: any) => {
+              const statusColor =
+                inv.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-400' :
+                inv.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
+                inv.status === 'sent'    ? 'bg-blue-500/20 text-blue-400' :
+                                           'bg-slate-600/30 text-slate-400';
+              const owed = Number(inv.total_amount) - Number(inv.amount_paid || 0);
+              return (
+                <div key={inv.id}
+                  onClick={() => { setSelectedInvoice(inv); setShowInvoiceDetail(true); }}
+                  className="bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-slate-600 transition-colors cursor-pointer">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-base font-bold text-white">{inv.invoice_number}</span>
+                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{inv.status}</span>
+                      </div>
+                      <p className="text-sm text-slate-300">{inv.supplier?.company_name || 'Unknown Supplier'}</p>
+                      {inv.project?.name && <p className="text-xs text-slate-500 mt-0.5">{inv.project.name}</p>}
+                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                        {inv.issued_date && <span><i className="fa-solid fa-calendar mr-1"></i>{new Date(inv.issued_date).toLocaleDateString()}</span>}
+                        {inv.due_date    && <span><i className="fa-solid fa-clock mr-1"></i>Due {new Date(inv.due_date).toLocaleDateString()}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 flex flex-col items-end">
+                      <div className="text-xl font-bold text-white">${Number(inv.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      {inv.amount_paid > 0 && inv.amount_paid < inv.total_amount && (
+                        <div className="text-xs text-emerald-400 mt-1">${Number(inv.amount_paid).toFixed(2)} paid</div>
+                      )}
+                      {inv.status !== 'paid' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); setShowPaymentModal(true); }}
+                          className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                          Pay ${owed.toFixed(2)}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+          );
+        })()}
+
         {activeView === 'calculator' && (
         <div className="p-4 md:p-8 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1992,6 +2124,169 @@ export default function ContractorView({
                 {submittingQuoteModal ? 'Sending...' : `Send Request (${quoteModalSelected.size})`}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Detail Modal */}
+      {showInvoiceDetail && selectedInvoice && (() => {
+        const items = (invoiceLineItems || []).filter((li: any) => li.invoice_id === selectedInvoice.id);
+        const owed = Number(selectedInvoice.total_amount) - Number(selectedInvoice.amount_paid || 0);
+        const statusColor =
+          selectedInvoice.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
+          selectedInvoice.status === 'overdue' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+          selectedInvoice.status === 'sent'    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                                 'bg-slate-600/30 text-slate-400 border-slate-600';
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowInvoiceDetail(false)}>
+            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-bold text-white">{selectedInvoice.invoice_number}</h2>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider border ${statusColor}`}>{selectedInvoice.status}</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">{selectedInvoice.supplier?.company_name}</p>
+                </div>
+                <button onClick={() => setShowInvoiceDetail(false)} className="text-slate-400 hover:text-white p-1.5">
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              <div className="overflow-y-auto p-6 space-y-5">
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  {selectedInvoice.project?.name && (
+                    <div>
+                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Project</p>
+                      <p className="text-slate-200 mt-0.5">{selectedInvoice.project.name}</p>
+                    </div>
+                  )}
+                  {selectedInvoice.issued_date && (
+                    <div>
+                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Issued</p>
+                      <p className="text-slate-200 mt-0.5">{new Date(selectedInvoice.issued_date).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                  {selectedInvoice.due_date && (
+                    <div>
+                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Due</p>
+                      <p className="text-slate-200 mt-0.5">{new Date(selectedInvoice.due_date).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                  {selectedInvoice.paid_date && (
+                    <div>
+                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Paid</p>
+                      <p className="text-emerald-400 mt-0.5">{new Date(selectedInvoice.paid_date).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Line items */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Line Items</p>
+                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg overflow-hidden">
+                    {items.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic text-center py-6">No line items.</p>
+                    ) : (
+                      <table className="w-full text-xs">
+                        <thead className="bg-slate-900/40 text-slate-500 uppercase tracking-wider">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-semibold">Description</th>
+                            <th className="px-3 py-2 text-right font-semibold w-20">Qty</th>
+                            <th className="px-3 py-2 text-right font-semibold w-24">Unit Price</th>
+                            <th className="px-3 py-2 text-right font-semibold w-28">Line Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/60">
+                          {items.map((it: any, i: number) => (
+                            <tr key={it.id || i}>
+                              <td className="px-3 py-2 text-slate-200">{it.description}{it.material_name && it.material_name !== it.description && <span className="text-slate-500 text-[10px] block">{it.material_name}</span>}</td>
+                              <td className="px-3 py-2 text-right text-slate-300">{Number(it.quantity).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right text-slate-300">${Number(it.unit_price).toFixed(2)}</td>
+                              <td className="px-3 py-2 text-right text-white font-semibold">${Number(it.line_total).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div className="flex justify-end">
+                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg px-5 py-3 min-w-[260px] space-y-1">
+                    <div className="flex justify-between text-xs text-slate-400">
+                      <span>Subtotal</span>
+                      <span className="text-white">${Number(selectedInvoice.subtotal).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-400">
+                      <span>Tax</span>
+                      <span className="text-white">${Number(selectedInvoice.tax_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="border-t border-slate-700 my-1" />
+                    <div className="flex justify-between text-base font-bold text-white">
+                      <span>Total</span>
+                      <span>${Number(selectedInvoice.total_amount).toFixed(2)}</span>
+                    </div>
+                    {Number(selectedInvoice.amount_paid || 0) > 0 && (
+                      <>
+                        <div className="flex justify-between text-xs text-emerald-400 mt-1">
+                          <span>Paid</span>
+                          <span>−${Number(selectedInvoice.amount_paid).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-bold text-orange-400">
+                          <span>Owed</span>
+                          <span>${owed.toFixed(2)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {selectedInvoice.notes && (
+                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg px-4 py-3">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Notes</p>
+                    <p className="text-xs text-slate-300 whitespace-pre-wrap mt-1">{selectedInvoice.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-end space-x-2 flex-shrink-0">
+                <button onClick={() => setShowInvoiceDetail(false)}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">
+                  Close
+                </button>
+                {selectedInvoice.status !== 'paid' && (
+                  <button onClick={() => { setShowInvoiceDetail(false); setShowPaymentModal(true); }}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">
+                    Pay ${owed.toFixed(2)}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-base font-bold text-white">Pay Invoice</h2>
+                <p className="text-xs text-slate-400">{selectedInvoice.invoice_number}</p>
+              </div>
+              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+            </div>
+            <InvoicePaymentForm
+              invoiceId={selectedInvoice.id}
+              onClose={() => setShowPaymentModal(false)}
+              onSuccess={() => {
+                setShowPaymentModal(false);
+                window.location.reload();
+              }}
+            />
           </div>
         </div>
       )}

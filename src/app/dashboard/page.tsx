@@ -72,6 +72,23 @@ export default async function DashboardPage() {
     .select('*')
     .eq('contractor_id', user.id)
 
+  // Contractor's invoices (excluding drafts that haven't been sent yet)
+  const { data: contractorInvoices } = await supabase
+    .from('invoices')
+    .select('*, supplier:profiles!invoices_supplier_id_fkey(company_name), project:projects(name)')
+    .eq('contractor_id', user.id)
+    .neq('status', 'draft')
+    .order('created_at', { ascending: false })
+
+  const invoiceIds = contractorInvoices?.map((i: any) => i.id) || []
+  const { data: invoiceLineItems } = invoiceIds.length > 0
+    ? await supabase
+        .from('invoice_line_items')
+        .select('*')
+        .in('invoice_id', invoiceIds)
+        .order('display_order')
+    : { data: [] }
+
   if (error || !profile) {
     return <ContractorView />
   }
@@ -123,6 +140,8 @@ export default async function DashboardPage() {
       allFacilities={allFacilities || []}
       suppliers={suppliers || []}
       relationships={relationships || []}
+      contractorInvoices={contractorInvoices || []}
+      invoiceLineItems={invoiceLineItems || []}
     />
   )
 }
