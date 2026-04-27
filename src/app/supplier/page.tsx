@@ -59,6 +59,48 @@ export default async function SupplierPage() {
     ? Array.from(new Set(allMatsRaw.map((m: any) => m.name))).sort() as string[]
     : [];
 
+  // Invoices for this supplier
+  const { data: invoices } = await supabase
+    .from('invoices')
+    .select('*, contractor:profiles!invoices_contractor_id_fkey(company_name), project:projects(name)')
+    .eq('supplier_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const invoiceIds = invoices?.map((i: any) => i.id) || [];
+  const { data: lineItems } = invoiceIds.length > 0
+    ? await supabase
+        .from('invoice_line_items')
+        .select('*')
+        .in('invoice_id', invoiceIds)
+        .order('display_order')
+    : { data: [] };
+
+  // Available source estimates from contractors who have a relationship with this supplier
+  const { data: contractorIdRows } = await supabase
+    .from('supplier_relationships')
+    .select('contractor_id')
+    .eq('supplier_id', user.id);
+  const relatedContractorIds = contractorIdRows?.map((c: any) => c.contractor_id) || [];
+
+  const { data: availableEstimates } = relatedContractorIds.length > 0
+    ? await supabase
+        .from('project_estimates')
+        .select('*, project:projects!inner(id, name, contractor_id, contractor:profiles!projects_contractor_id_fkey(company_name)), facility:facilities(name, owner_id)')
+        .in('project.contractor_id', relatedContractorIds)
+    : { data: [] };
+
+  // Filter to only estimates at this supplier's facilities
+  const filteredEstimates = (availableEstimates || []).filter((e: any) => facilityIds.includes(e.facility_id));
+
+  // Projects from related contractors (for the invoice project dropdown)
+  const { data: contractorProjects } = relatedContractorIds.length > 0
+    ? await supabase
+        .from('projects')
+        .select('id, name, contractor_id')
+        .in('contractor_id', relatedContractorIds)
+        .order('name')
+    : { data: [] };
+
   return (
     <SupplierView
       profile={profile}
@@ -69,6 +111,10 @@ export default async function SupplierPage() {
       contractors={contractors || []}
       relationships={relationships || []}
       tierRequests={tierRequests || []}
+      invoices={invoices || []}
+      lineItems={lineItems || []}
+      availableEstimates={filteredEstimates}
+      contractorProjects={contractorProjects || []}
     />
   );
 }
