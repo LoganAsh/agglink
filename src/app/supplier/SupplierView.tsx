@@ -783,10 +783,10 @@ export default function SupplierView({
                   <div className="divide-y divide-slate-700/50">
                     {facMats.map((mat: any) => (
                       <div key={mat.id} className="py-3 px-4 space-y-2">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
 
                           {/* Left: name + badge */}
-                          <div className="flex flex-col min-w-0 flex-shrink-0 w-1/3">
+                          <div className="flex flex-col min-w-0 w-1/3">
                             <span className="text-sm font-medium text-white truncate">{mat.name}</span>
                             <span className={`text-[10px] font-bold uppercase mt-0.5 ${mat.is_import ? 'text-orange-400' : 'text-blue-400'}`}>
                               {mat.is_import ? 'Import' : 'Export'}
@@ -794,18 +794,18 @@ export default function SupplierView({
                           </div>
 
                           {/* Center: stock status */}
-                          <div className="flex items-center space-x-1 flex-shrink-0">
+                          <div className="flex items-center justify-center space-x-1 flex-1">
                             {STATUS_OPTIONS.map(opt => (
                               <button key={opt.value} onClick={() => updateStockStatus(mat.id, opt.value)}
                                 disabled={savingId === mat.id}
-                                className={`px-2 py-1 rounded-md text-[10px] font-semibold border transition-all disabled:opacity-50 ${mat.stock_status === opt.value ? opt.color : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-500'}`}>
+                                className={`flex-1 max-w-[110px] px-3 py-1.5 rounded-md text-[10px] font-semibold border transition-all disabled:opacity-50 ${mat.stock_status === opt.value ? opt.color : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-500'}`}>
                                 {opt.label}
                               </button>
                             ))}
                           </div>
 
                           {/* Right: 3-tier pricing + delete */}
-                          <div className="flex items-center space-x-4 flex-shrink-0 justify-end">
+                          <div className="flex items-center justify-end flex-1 space-x-4">
                             {(['public', 'contractor', 'customer'] as const).map(tier => {
                               const fieldBase = mat.is_import ? 'price_per_ton' : 'price_per_cy';
                               const field = tier === 'public' ? fieldBase : `${fieldBase}_${tier}`;
@@ -816,7 +816,7 @@ export default function SupplierView({
                               const tierLabel = tier === 'public' ? 'Public' : tier === 'contractor' ? 'Contr' : 'Cust';
                               const tierColor = tier === 'public' ? 'text-slate-400' : tier === 'contractor' ? 'text-orange-400' : 'text-emerald-400';
                               return (
-                                <div key={tier} className="flex flex-col items-end min-w-[60px]">
+                                <div key={tier} className="flex flex-col items-end flex-1 max-w-[110px]">
                                   <span className={`text-[9px] font-bold uppercase tracking-wider ${tierColor}`}>{tierLabel}</span>
                                   {isEditing ? (
                                     <div className="flex items-center space-x-1 mt-0.5">
@@ -834,7 +834,7 @@ export default function SupplierView({
                                 </div>
                               );
                             })}
-                            <button onClick={() => deleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500 transition-colors ml-2">
+                            <button onClick={() => deleteMaterial(mat.id)} className="text-slate-600 hover:text-red-500 transition-colors flex-shrink-0">
                               <i className="fa-solid fa-trash text-xs"></i>
                             </button>
                           </div>
