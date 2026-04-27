@@ -48,13 +48,12 @@ export async function POST(request: Request) {
 
     const isImport = jobType === "Import (Delivery)";
 
-    // 2. Fetch Materials
-    // Avoid supabase-js .in() — it fails to escape embedded `"` when wrapping
-    // values containing `()` or `,`, which breaks names like `1" Gravel (Recycled Concrete)`.
-    // Filter by is_import server-side, then match the name list in JS.
+    // 2. Fetch Materials (with all tier price columns + facility owner_id)
     const { data: allForImport, error } = await supabase.from('materials').select(`
-      price_per_ton, price_per_cy, price_10w_load, price_sd_load, name, stock_status,
-      facility:facilities(id, name, address, latitude, longitude, accepts_quote_requests)
+      price_per_ton, price_per_ton_contractor, price_per_ton_customer,
+      price_per_cy, price_per_cy_contractor, price_per_cy_customer,
+      price_10w_load, price_sd_load, name, stock_status,
+      facility:facilities(id, name, address, latitude, longitude, owner_id, accepts_quote_requests)
     `).eq('is_import', isImport);
 
     const availableMaterials = error || !allForImport
@@ -65,6 +64,30 @@ export async function POST(request: Request) {
 
     if (!availableMaterials || availableMaterials.length === 0) {
       return NextResponse.json({ success: false, error: 'No facilities found.', data: [] }, { status: 200 });
+    }
+
+    // 2b. Network filter — only include facilities the contractor has added to their network.
+    // Also load the contractor's per-supplier tier so we can pick the right price column.
+    const userId = user.id;
+    const { data: network } = await supabase
+      .from('contractor_facility_network')
+      .select('facility_id')
+      .eq('contractor_id', userId);
+    const networkFacilityIds: string[] = network?.map((n: any) => n.facility_id) || [];
+
+    const { data: rels } = await supabase
+      .from('supplier_relationships')
+      .select('supplier_id, tier')
+      .eq('contractor_id', userId);
+    const relationships: any[] = rels || [];
+
+    const networkFiltered = availableMaterials.filter((m: any) => {
+      const fac = Array.isArray(m.facility) ? m.facility[0] : m.facility;
+      return networkFacilityIds.includes(fac?.id);
+    });
+
+    if (networkFiltered.length === 0) {
+      return NextResponse.json({ success: true, jobLat, jobLon, data: [], grouped: {} });
     }
 
     // 3. Build truck list     filter by truckType if specified
@@ -98,9 +121,14 @@ export async function POST(request: Request) {
     // 5. Process routing & costs     group results by material name
     const resultsByMaterial: Record<string, any[]> = {};
 
-    for (const mat of availableMaterials) {
+    for (const mat of networkFiltered) {
       const fac: any = mat.facility;
       if (!fac?.latitude || !fac?.longitude) continue;
+
+      // Tier with this facility's owning supplier (default 'public')
+      const facOwnerId = fac?.owner_id;
+      const rel = relationships.find(r => r.supplier_id === facOwnerId);
+      const tier = rel?.tier || 'public';
 
       const rawDist = haversineDistance(jobLat, jobLon, fac.latitude, fac.longitude);
       let dist = rawDist;
@@ -168,16 +196,22 @@ export async function POST(request: Request) {
           basePriceLabel = respondedQuote.offered_price;
           isCustomQuote  = true;
         } else if (isImport) {
-          materialCost   = mat.price_per_ton * qty;
-          basePriceLabel = mat.price_per_ton;
+          let priceField = 'price_per_ton';
+          if (tier === 'contractor' && mat.price_per_ton_contractor > 0) priceField = 'price_per_ton_contractor';
+          else if (tier === 'customer' && mat.price_per_ton_customer > 0) priceField = 'price_per_ton_customer';
+          basePriceLabel = (mat as any)[priceField];
+          materialCost   = basePriceLabel * qty;
         } else {
           const dumpFee = truck.type === '10-Wheeler' ? mat.price_10w_load : mat.price_sd_load;
           if (dumpFee > 0) {
             materialCost   = trips * dumpFee;
             basePriceLabel = dumpFee;
           } else {
-            materialCost   = mat.price_per_cy * qty;
-            basePriceLabel = mat.price_per_cy;
+            let priceField = 'price_per_cy';
+            if (tier === 'contractor' && mat.price_per_cy_contractor > 0) priceField = 'price_per_cy_contractor';
+            else if (tier === 'customer' && mat.price_per_cy_customer > 0) priceField = 'price_per_cy_customer';
+            basePriceLabel = (mat as any)[priceField];
+            materialCost   = basePriceLabel * qty;
           }
         }
 
@@ -199,6 +233,8 @@ export async function POST(request: Request) {
           isQuotePending,
           stockStatus:  mat.stock_status || 'in_stock',
           acceptsQuotes: fac.accepts_quote_requests !== false,
+          pricingTier:  tier,
+          supplierId:   facOwnerId,
         };
 
         if (!resultsByMaterial[mat.name]) resultsByMaterial[mat.name] = [];

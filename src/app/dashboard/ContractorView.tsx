@@ -14,8 +14,25 @@ export default function ContractorView({
   pitsCount = 14,
   dumpsCount = 14,
   importMaterials = [],
-  exportMaterials = []
-}: { profileName?: string, companyName?: string, pitsCount?: number, dumpsCount?: number, importMaterials?: string[], exportMaterials?: string[] }) {
+  exportMaterials = [],
+  profileId = "",
+  networkFacilities: initialNetworkFacilities = [],
+  allFacilities = [],
+  suppliers = [],
+  relationships = [],
+}: {
+  profileName?: string,
+  companyName?: string,
+  pitsCount?: number,
+  dumpsCount?: number,
+  importMaterials?: string[],
+  exportMaterials?: string[],
+  profileId?: string,
+  networkFacilities?: any[],
+  allFacilities?: any[],
+  suppliers?: any[],
+  relationships?: any[],
+}) {
 
   const supabase = createClient();
 
@@ -46,7 +63,11 @@ export default function ContractorView({
       return next;
     });
   };
-  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'calculator'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'calculator'>('dashboard');
+  const [networkSearch, setNetworkSearch] = useState('');
+  const [tierRequestRes, setTierRequestRes] = useState<any>(null);
+  const [tierRequestMessage, setTierRequestMessage] = useState('');
+  const [tierRequestSending, setTierRequestSending] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
@@ -83,7 +104,7 @@ export default function ContractorView({
   const [jobLat, setJobLat] = useState<number | undefined>(undefined);
   const [jobLon, setJobLon] = useState<number | undefined>(undefined);
   const [jobAddress, setJobAddress] = useState<string | undefined>(undefined);
-  const [allFacilities, setAllFacilities] = useState<any[]>([]);
+  const [networkFacilities, setNetworkFacilities] = useState<any[]>(initialNetworkFacilities);
   const [modalJobLat, setModalJobLat] = useState<number | undefined>(undefined);
   const [modalJobLon, setModalJobLon] = useState<number | undefined>(undefined);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
@@ -124,7 +145,6 @@ export default function ContractorView({
 
   useEffect(() => {
     fetchProjects();
-    fetchAllFacilities();
     fetchAllSavedEstimates();
     fetchCategoriesAndTrucks();
   }, []);
@@ -134,11 +154,6 @@ export default function ContractorView({
     if (!user) return;
     const { data } = await supabase.from('projects').select('*').eq('contractor_id', user.id).order('created_at', { ascending: false });
     if (data) setProjects(data);
-  };
-
-  const fetchAllFacilities = async () => {
-    const { data } = await supabase.from('facilities').select('id, name, type, latitude, longitude');
-    if (data) setAllFacilities(data);
   };
 
   const fetchAllSavedEstimates = async () => {
@@ -160,6 +175,49 @@ export default function ContractorView({
     if (cats) setCategories(cats);
     if (map) setCategoryMap(map);
     if (trucks) setTruckTypes(trucks);
+  };
+
+  //        Facility network management
+  const addToNetwork = async (facilityId: string) => {
+    const { data, error } = await supabase
+      .from('contractor_facility_network')
+      .insert({ contractor_id: profileId, facility_id: facilityId })
+      .select('*, facility:facilities(*)')
+      .single();
+    if (data && !error) setNetworkFacilities(prev => [...prev, data.facility]);
+    else alert('Failed to add to network: ' + (error?.message || 'unknown'));
+  };
+
+  const removeFromNetwork = async (facilityId: string) => {
+    const { error } = await supabase
+      .from('contractor_facility_network')
+      .delete()
+      .match({ contractor_id: profileId, facility_id: facilityId });
+    if (!error) setNetworkFacilities(prev => prev.filter(f => f.id !== facilityId));
+    else alert('Failed to remove from network: ' + error.message);
+  };
+
+  //        Tier upgrade requests
+  const openTierRequest = (res: any) => {
+    setTierRequestRes(res);
+    setTierRequestMessage('');
+  };
+
+  const submitTierRequest = async (requestedTier: 'contractor' | 'customer') => {
+    if (!tierRequestRes) return;
+    setTierRequestSending(true);
+    const { error } = await supabase.from('tier_requests').insert({
+      contractor_id: profileId,
+      supplier_id: tierRequestRes.supplierId,
+      current_tier: tierRequestRes.pricingTier,
+      requested_tier: requestedTier,
+      message: tierRequestMessage || null,
+    });
+    if (!error) {
+      alert('Request sent!');
+      setTierRequestRes(null);
+    } else alert('Failed to send request: ' + error.message);
+    setTierRequestSending(false);
   };
 
   // Materials available for selected category
@@ -795,6 +853,22 @@ export default function ContractorView({
                         title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
                         {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                       </button>
+                      {(() => {
+                        const tier = res.pricingTier || 'public';
+                        const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+                        const tierColor =
+                          tier === 'public' ? 'border-slate-600 text-slate-400 hover:bg-slate-700' :
+                          tier === 'contractor' ? 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10' :
+                                                  'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10';
+                        return (
+                          <button onClick={() => openTierRequest(res)}
+                            disabled={tier === 'customer'}
+                            className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${tierColor} disabled:cursor-default disabled:opacity-100`}
+                            title={tier === 'customer' ? 'You are a Customer of this supplier' : 'Click to request upgrade'}>
+                            {tierLabel}
+                          </button>
+                        );
+                      })()}
                       {res.isCustomQuote ? (
                         <span title="Custom quote accepted"
                           className="px-2 py-1 rounded text-[10px] font-bold border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 inline-flex items-center">
@@ -852,6 +926,10 @@ export default function ContractorView({
             }}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'projects' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-folder mr-3 w-4 text-center"></i>Projects
+          </button>
+          <button type="button" onClick={() => setActiveView('facility_management')}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'facility_management' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-network-wired mr-3 w-4 text-center"></i>Facility Network
           </button>
           <button type="button" onClick={() => setActiveView('calculator')}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'calculator' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
@@ -1100,7 +1178,7 @@ export default function ContractorView({
               <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-[420px]">
                 <div className="flex-1 bg-slate-900 w-full relative">
                   <MapComponent jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
-                    facilities={allFacilities}
+                    facilities={networkFacilities}
                   />
                 </div>
                 <div className="px-4 py-2 border-t border-slate-700 flex items-center space-x-5">
@@ -1384,6 +1462,80 @@ export default function ContractorView({
         </div>
         )}
 
+        {activeView === 'facility_management' && (
+        <div className="p-4 md:p-8 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Facility Network</h1>
+            <p className="text-sm text-slate-400 mt-1">Add facilities to your network to see them in the estimator and on your map.</p>
+          </div>
+
+          <div className="relative max-w-md">
+            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <input
+              type="text"
+              value={networkSearch}
+              onChange={e => setNetworkSearch(e.target.value)}
+              placeholder="Search facilities by name..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+            />
+          </div>
+
+          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-700 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
+              <span>{(allFacilities || []).filter((f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase())).length} facilities</span>
+              <span>{networkFacilities.length} in your network</span>
+            </div>
+            <div className="divide-y divide-slate-700/60">
+              {(allFacilities || [])
+                .filter((f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase()))
+                .map((f: any) => {
+                  const inNetwork = networkFacilities.some((n: any) => n.id === f.id);
+                  const owner = (suppliers || []).find((s: any) => s.id === f.owner_id);
+                  const rel = (relationships || []).find((r: any) => r.supplier_id === f.owner_id);
+                  const tier = rel?.tier || 'public';
+                  const tierColor =
+                    tier === 'customer' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                    tier === 'contractor' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
+                    'bg-slate-700/40 text-slate-400 border-slate-600';
+                  const typeColor =
+                    f.type === 'pit'  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                    f.type === 'dump' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                  return (
+                    <div key={f.id} className="px-5 py-4 flex items-center justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm font-semibold text-white truncate">{f.name}</p>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${typeColor}`}>{f.type}</span>
+                        </div>
+                        {f.address && <p className="text-xs text-slate-400 mt-1 truncate">{f.address}</p>}
+                        <div className="flex items-center space-x-2 mt-1.5">
+                          <span className="text-[10px] text-slate-500">Owner: <span className="text-slate-400">{owner?.company_name || '—'}</span></span>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tierColor}`}>{tier}</span>
+                        </div>
+                      </div>
+                      {inNetwork ? (
+                        <button onClick={() => removeFromNetwork(f.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-400 hover:border-red-500/50 hover:text-red-400 transition-all whitespace-nowrap">
+                          <i className="fa-solid fa-minus mr-1.5"></i>Remove
+                        </button>
+                      ) : (
+                        <button onClick={() => addToNetwork(f.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white transition-all whitespace-nowrap">
+                          <i className="fa-solid fa-plus mr-1.5"></i>Add to Network
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              {(allFacilities || []).filter((f: any) => !networkSearch || f.name?.toLowerCase().includes(networkSearch.toLowerCase())).length === 0 && (
+                <div className="px-5 py-10 text-center text-sm text-slate-500 italic">No facilities match your search.</div>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
+
         {activeView === 'calculator' && (
         <div className="p-4 md:p-8 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1408,7 +1560,7 @@ export default function ContractorView({
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Job Site <span className="text-xs text-slate-500 font-normal ml-1">Click map to drop pin</span></label>
                 <div className="h-48 rounded-lg overflow-hidden border border-slate-700">
-                  <MapComponent jobLat={calcLat} jobLon={calcLon} facilities={allFacilities} onMapClick={handleCalcMapClick} interactive={true} />
+                  <MapComponent jobLat={calcLat} jobLon={calcLon} facilities={networkFacilities} onMapClick={handleCalcMapClick} interactive={true} />
                 </div>
               </div>
 
@@ -1550,7 +1702,7 @@ export default function ContractorView({
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span></label>
                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
-                  <MapComponent jobLat={modalJobLat} jobLon={modalJobLon} facilities={allFacilities} onMapClick={handleMapClick} interactive={true} />
+                  <MapComponent jobLat={modalJobLat} jobLon={modalJobLon} facilities={networkFacilities} onMapClick={handleMapClick} interactive={true} />
                 </div>
               </div>
               <div>
@@ -1584,7 +1736,7 @@ export default function ContractorView({
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span></label>
                 <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
-                  <MapComponent jobLat={editJobLat} jobLon={editJobLon} facilities={allFacilities} onMapClick={handleEditMapClick} interactive={true} />
+                  <MapComponent jobLat={editJobLat} jobLon={editJobLon} facilities={networkFacilities} onMapClick={handleEditMapClick} interactive={true} />
                 </div>
               </div>
               <div>
@@ -1733,6 +1885,37 @@ export default function ContractorView({
               <button onClick={submitQuoteModal} disabled={submittingQuoteModal || quoteModalSelected.size === 0}
                 className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                 {submittingQuoteModal ? 'Sending...' : `Send Request (${quoteModalSelected.size})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tier Request Modal */}
+      {tierRequestRes && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-base font-bold text-white">Request Better Pricing</h2>
+              <button onClick={() => setTierRequestRes(null)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+            </div>
+            <p className="text-sm text-slate-400 mb-4">
+              You are currently receiving <span className="font-semibold capitalize text-white">{tierRequestRes.pricingTier}</span> pricing from <span className="font-semibold text-white">{tierRequestRes.supplier}</span>.
+            </p>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Message (optional)</label>
+            <textarea value={tierRequestMessage} onChange={e => setTierRequestMessage(e.target.value)}
+              placeholder="Introduce yourself or explain your typical volume..."
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-24 resize-none mb-4" />
+            <div className="space-y-2">
+              {tierRequestRes.pricingTier === 'public' && (
+                <button onClick={() => submitTierRequest('contractor')} disabled={tierRequestSending}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                  Request Contractor Pricing
+                </button>
+              )}
+              <button onClick={() => submitTierRequest('customer')} disabled={tierRequestSending}
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                Request Customer Pricing
               </button>
             </div>
           </div>

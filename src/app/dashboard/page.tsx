@@ -46,9 +46,31 @@ export default async function DashboardPage() {
     ? Array.from(new Set(allMatsData.filter(m => m.is_import).map(m => m.name))).sort() 
     : []
     
-  const exportMaterials = allMatsData 
-    ? Array.from(new Set(allMatsData.filter(m => !m.is_import).map(m => m.name))).sort() 
+  const exportMaterials = allMatsData
+    ? Array.from(new Set(allMatsData.filter(m => !m.is_import).map(m => m.name))).sort()
     : []
+
+  // Contractor's facility network + relationships
+  const { data: networkData } = await supabase
+    .from('contractor_facility_network')
+    .select('facility_id, facility:facilities(id, name, type, latitude, longitude, owner_id, address)')
+    .eq('contractor_id', user.id)
+
+  const networkFacilities = networkData?.map((n: any) => n.facility).filter(Boolean) || []
+
+  const { data: allFacilities } = await supabase
+    .from('facilities')
+    .select('id, name, type, latitude, longitude, owner_id, address')
+
+  const { data: suppliers } = await supabase
+    .from('profiles')
+    .select('id, company_name')
+    .eq('role', 'supplier')
+
+  const { data: relationships } = await supabase
+    .from('supplier_relationships')
+    .select('*')
+    .eq('contractor_id', user.id)
 
   if (error || !profile) {
     return <ContractorView />
@@ -89,13 +111,18 @@ export default async function DashboardPage() {
   }
 
   return (
-    <ContractorView 
+    <ContractorView
       profileName={user.email?.split('@')[0]}
       companyName={profile.company_name}
       pitsCount={pitsCount || 0}
       dumpsCount={dumpsCount || 0}
       importMaterials={importMaterials}
       exportMaterials={exportMaterials}
+      profileId={user.id}
+      networkFacilities={networkFacilities}
+      allFacilities={allFacilities || []}
+      suppliers={suppliers || []}
+      relationships={relationships || []}
     />
   )
 }
