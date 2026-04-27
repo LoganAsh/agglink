@@ -8,6 +8,7 @@ import dynamic from 'next/dynamic';
 import InvoicePaymentForm from '@/components/InvoicePaymentForm';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
+const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
 export default function ContractorView({
   profileName = "Logan Ash",
@@ -2251,17 +2252,25 @@ export default function ContractorView({
                 )}
               </div>
 
-              <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-end space-x-2 flex-shrink-0">
-                <button onClick={() => setShowInvoiceDetail(false)}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">
-                  Close
-                </button>
-                {selectedInvoice.status !== 'paid' && (
-                  <button onClick={() => { setShowInvoiceDetail(false); setShowPaymentModal(true); }}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">
-                    Pay ${owed.toFixed(2)}
+              <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between gap-2 flex-shrink-0">
+                <InvoicePDFButton
+                  invoice={selectedInvoice}
+                  lineItems={(invoiceLineItems || []).filter((li: any) => li.invoice_id === selectedInvoice.id)}
+                  supplier={selectedInvoice.supplier}
+                  contractor={{ company_name: companyName }}
+                />
+                <div className="flex items-center space-x-2">
+                  <button onClick={() => setShowInvoiceDetail(false)}
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">
+                    Close
                   </button>
-                )}
+                  {selectedInvoice.status !== 'paid' && (
+                    <button onClick={() => { setShowInvoiceDetail(false); setShowPaymentModal(true); }}
+                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">
+                      Pay ${owed.toFixed(2)}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>

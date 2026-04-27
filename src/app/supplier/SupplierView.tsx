@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
+
+const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
 const STATUS_OPTIONS = [
   { value: 'in_stock', label: 'In Stock', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' },
@@ -1463,6 +1466,14 @@ export default function SupplierView({
                   {editingInvoice && <p className="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wider">Status: {editingInvoice.status}</p>}
                 </div>
                 <div className="flex items-center space-x-2">
+                  {editingInvoice && (
+                    <InvoicePDFButton
+                      invoice={editingInvoice}
+                      lineItems={lineItems.filter(li => li.invoice_id === editingInvoice.id)}
+                      supplier={{ company_name: profile.company_name }}
+                      contractor={editingInvoice.contractor}
+                    />
+                  )}
                   {editingInvoice && (
                     <button onClick={() => deleteInvoice(editingInvoice.id)}
                       className="text-red-400 hover:text-red-300 p-1.5 rounded hover:bg-red-500/10 transition-colors" title="Delete invoice">
