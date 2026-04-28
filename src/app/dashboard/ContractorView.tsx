@@ -27,6 +27,7 @@ export default function ContractorView({
   truckingNetwork: initialTruckingNetwork = [],
   allTruckers = [],
   truckerRates = [],
+  contractorJobRequests: initialContractorJobRequests = [],
 }: {
   profileName?: string,
   companyName?: string,
@@ -44,6 +45,7 @@ export default function ContractorView({
   truckingNetwork?: any[],
   allTruckers?: any[],
   truckerRates?: any[],
+  contractorJobRequests?: any[],
 }) {
 
   const supabase = createClient();
@@ -91,6 +93,42 @@ export default function ContractorView({
 
   // Trucking network
   const [truckingNetwork, setTruckingNetwork] = useState<any[]>(initialTruckingNetwork);
+  const [contractorJobRequests, setContractorJobRequests] = useState<any[]>(initialContractorJobRequests);
+
+  // Trucker quote request modal state
+  const [showJobRequestModal, setShowJobRequestModal] = useState(false);
+  const [jobRequestEstimate, setJobRequestEstimate] = useState<any>(null);
+  const [selectedTruckerId, setSelectedTruckerId] = useState('');
+  const [jobRequestMessage, setJobRequestMessage] = useState('');
+  const [sendingJobRequest, setSendingJobRequest] = useState(false);
+
+  const submitJobRequest = async () => {
+    if (!jobRequestEstimate || !selectedTruckerId) return;
+    setSendingJobRequest(true);
+    const payload = {
+      contractor_id: profileId,
+      trucker_id: selectedTruckerId,
+      project_id: jobRequestEstimate.project_id,
+      project_estimate_id: jobRequestEstimate.id,
+      material_name: jobRequestEstimate.material_name,
+      quantity: jobRequestEstimate.quantity,
+      truck_type: jobRequestEstimate.truck_fleet,
+      pickup_facility_id: jobRequestEstimate.facility_id,
+      dropoff_address: activeProject?.address || null,
+      message: jobRequestMessage || null,
+    };
+    const { data, error } = await supabase
+      .from('trucker_job_requests')
+      .insert(payload)
+      .select('*, trucker:profiles!trucker_job_requests_trucker_id_fkey(company_name), pickup:facilities(name)')
+      .single();
+    if (data && !error) {
+      setContractorJobRequests([data, ...contractorJobRequests]);
+      setShowJobRequestModal(false);
+      alert('Quote request sent!');
+    } else alert('Failed to send: ' + (error?.message || 'unknown'));
+    setSendingJobRequest(false);
+  };
 
   const addTruckerToNetwork = async (truckerId: string) => {
     const { data, error } = await supabase
@@ -1296,7 +1334,10 @@ export default function ContractorView({
                   {!activeProject ? (
                     <p className="text-slate-500 text-sm text-center py-4">Select a project to view the feed.</p>
                   ) : activeTab === 'locked' ? (
-                    savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => (
+                    savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => {
+                      const existingReq = contractorJobRequests.find((r: any) => r.project_estimate_id === est.id);
+                      const reqStatusColor = existingReq?.status === 'quoted' ? 'text-emerald-400' : existingReq?.status === 'declined' ? 'text-red-400' : 'text-orange-400';
+                      return (
                       <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
                         <div className="flex justify-between items-start">
                           <div>
@@ -1308,8 +1349,30 @@ export default function ContractorView({
                             <div className="text-lg font-bold text-emerald-400">${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span></div>
                           </div>
                         </div>
+
+                        {existingReq && (
+                          <div className={`mt-2 text-[10px] ${reqStatusColor} font-semibold`}>
+                            <i className="fa-solid fa-truck mr-1"></i>
+                            {existingReq.trucker?.company_name}: {existingReq.status.toUpperCase()}
+                            {existingReq.status === 'quoted' && existingReq.offered_hourly_rate && (
+                              <span className="ml-1 text-white">${Number(existingReq.offered_hourly_rate).toFixed(2)}/hr</span>
+                            )}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            setJobRequestEstimate(est);
+                            setSelectedTruckerId('');
+                            setJobRequestMessage('');
+                            setShowJobRequestModal(true);
+                          }}
+                          className="mt-3 w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                          <i className="fa-solid fa-truck mr-1.5"></i>{existingReq ? 'Send Another Quote Request' : 'Request Trucker Quote'}
+                        </button>
                       </div>
-                    )) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
+                      );
+                    }) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
                   ) : (
                     projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => {
                       const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
@@ -2423,6 +2486,66 @@ export default function ContractorView({
                 window.location.reload();
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Trucker Job Request Modal */}
+      {showJobRequestModal && jobRequestEstimate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-base font-bold text-white">Request Trucker Quote</h2>
+              <button onClick={() => setShowJobRequestModal(false)} className="text-slate-400 hover:text-white">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-4 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Material</span>
+                <span className="text-white font-semibold">{jobRequestEstimate.material_name}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-slate-400">Quantity</span>
+                <span className="text-white font-semibold">{Number(jobRequestEstimate.quantity).toLocaleString()} {importMaterials?.includes(jobRequestEstimate.material_name) ? 'Tons' : 'CY'}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-slate-400">Truck Type</span>
+                <span className="text-white font-semibold">{jobRequestEstimate.truck_fleet}</span>
+              </div>
+            </div>
+
+            <label className="block text-sm font-medium text-slate-300 mb-1">Send to Trucker</label>
+            <select value={selectedTruckerId} onChange={e => setSelectedTruckerId(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 mb-4">
+              <option value="">-- Select Trucking Company --</option>
+              {truckingNetwork.map((t: any) => (
+                <option key={t.trucker_id} value={t.trucker_id}>{t.trucker?.company_name}</option>
+              ))}
+            </select>
+
+            {truckingNetwork.length === 0 && (
+              <p className="text-xs text-slate-500 italic mb-4">
+                You don&apos;t have any trucking companies in your network yet. Add some from the Trucking Network tab first.
+              </p>
+            )}
+
+            <label className="block text-sm font-medium text-slate-300 mb-1">Message (optional)</label>
+            <textarea value={jobRequestMessage} onChange={e => setJobRequestMessage(e.target.value)}
+              placeholder="Project timeline, special requirements, etc."
+              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 h-20 resize-none mb-4" />
+
+            <div className="flex space-x-3">
+              <button onClick={() => setShowJobRequestModal(false)} disabled={sendingJobRequest}
+                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all disabled:opacity-40">
+                Cancel
+              </button>
+              <button onClick={submitJobRequest} disabled={sendingJobRequest || !selectedTruckerId || truckingNetwork.length === 0}
+                className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                {sendingJobRequest ? 'Sending...' : 'Send Request'}
+              </button>
+            </div>
           </div>
         </div>
       )}

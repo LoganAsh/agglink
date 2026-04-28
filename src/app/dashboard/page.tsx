@@ -111,6 +111,13 @@ export default async function DashboardPage() {
     .select('*, trucker:profiles!trucking_company_rates_trucker_id_fkey(id, company_name)')
     .eq('active', true)
 
+  // Job requests this contractor has sent to truckers
+  const { data: contractorJobRequests } = await supabase
+    .from('trucker_job_requests')
+    .select('*, trucker:profiles!trucker_job_requests_trucker_id_fkey(company_name), pickup:facilities(name)')
+    .eq('contractor_id', user.id)
+    .order('created_at', { ascending: false })
+
   if (error || !profile) {
     return <ContractorView />
   }
@@ -167,6 +174,7 @@ export default async function DashboardPage() {
       truckingNetwork={truckingNetwork || []}
       allTruckers={allTruckers || []}
       truckerRates={truckerRates || []}
+      contractorJobRequests={contractorJobRequests || []}
     />
   )
 }
