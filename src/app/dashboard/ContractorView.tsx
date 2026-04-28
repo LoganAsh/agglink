@@ -1932,7 +1932,17 @@ export default function ContractorView({
                         <span className="text-base font-bold text-white">{inv.invoice_number}</span>
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{inv.status}</span>
                       </div>
-                      <p className="text-sm text-slate-300">{inv.supplier?.company_name || 'Unknown Supplier'}</p>
+                      {(() => {
+                        const issuer = inv.supplier?.company_name || inv.trucker?.company_name || 'Unknown';
+                        const issuerType = inv.supplier_id ? 'Supplier' : inv.trucker_id ? 'Trucking' : null;
+                        const issuerColor = inv.supplier_id ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
+                        return (
+                          <p className="text-sm text-slate-300 flex items-center gap-2">
+                            <span>{issuer}</span>
+                            {issuerType && <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${issuerColor}`}>{issuerType}</span>}
+                          </p>
+                        );
+                      })()}
                       {inv.project?.name && <p className="text-xs text-slate-500 mt-0.5">{inv.project.name}</p>}
                       <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
                         {inv.issued_date && <span><i className="fa-solid fa-calendar mr-1"></i>{new Date(inv.issued_date).toLocaleDateString()}</span>}
@@ -2337,7 +2347,17 @@ export default function ContractorView({
                     <h2 className="text-lg font-bold text-white">{selectedInvoice.invoice_number}</h2>
                     <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider border ${statusColor}`}>{selectedInvoice.status}</span>
                   </div>
-                  <p className="text-xs text-slate-400 mt-0.5">{selectedInvoice.supplier?.company_name}</p>
+                  {(() => {
+                    const issuer = selectedInvoice.supplier?.company_name || selectedInvoice.trucker?.company_name || 'Unknown';
+                    const issuerType = selectedInvoice.supplier_id ? 'Supplier' : selectedInvoice.trucker_id ? 'Trucking' : null;
+                    const issuerColor = selectedInvoice.supplier_id ? 'text-orange-400' : 'text-cyan-400';
+                    return (
+                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                        <span>{issuer}</span>
+                        {issuerType && <span className={`text-[9px] font-bold uppercase tracking-wider ${issuerColor}`}>· {issuerType}</span>}
+                      </p>
+                    );
+                  })()}
                 </div>
                 <button onClick={() => setShowInvoiceDetail(false)} className="text-slate-400 hover:text-white p-1.5">
                   <i className="fa-solid fa-xmark"></i>
@@ -2446,7 +2466,7 @@ export default function ContractorView({
                 <InvoicePDFButton
                   invoice={selectedInvoice}
                   lineItems={(invoiceLineItems || []).filter((li: any) => li.invoice_id === selectedInvoice.id)}
-                  supplier={selectedInvoice.supplier}
+                  supplier={selectedInvoice.supplier || selectedInvoice.trucker}
                   contractor={{ company_name: companyName }}
                 />
                 <div className="flex items-center space-x-2">

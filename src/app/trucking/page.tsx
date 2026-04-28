@@ -43,6 +43,38 @@ export default async function TruckingPage() {
     .eq('trucker_id', user.id)
     .order('created_at', { ascending: false });
 
+  // Invoices issued by this trucker
+  const { data: truckerInvoices } = await supabase
+    .from('invoices')
+    .select('*, contractor:profiles!invoices_contractor_id_fkey(company_name), project:projects(name)')
+    .eq('trucker_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const truckerInvoiceIds = truckerInvoices?.map((i: any) => i.id) || [];
+  const { data: truckerLineItems } = truckerInvoiceIds.length > 0
+    ? await supabase
+        .from('invoice_line_items')
+        .select('*')
+        .in('invoice_id', truckerInvoiceIds)
+        .order('display_order')
+    : { data: [] };
+
+  // Contractors who have this trucker in their network — these are who they can invoice
+  const { data: networkContractorsRaw } = await supabase
+    .from('contractor_trucking_network')
+    .select('contractor_id, contractor:profiles!contractor_trucking_network_contractor_id_fkey(id, company_name)')
+    .eq('trucker_id', user.id);
+  const networkContractors = (networkContractorsRaw || [])
+    .map((n: any) => n.contractor)
+    .filter(Boolean);
+
+  // Accepted job requests this trucker can pull line items from
+  const { data: acceptedJobRequests } = await supabase
+    .from('trucker_job_requests')
+    .select('*, contractor:profiles!trucker_job_requests_contractor_id_fkey(id, company_name), pickup:facilities(name)')
+    .eq('trucker_id', user.id)
+    .eq('status', 'accepted');
+
   return (
     <TruckingView
       profileId={user.id}
@@ -51,6 +83,10 @@ export default async function TruckingPage() {
       rates={rates || []}
       networkLinks={networkLinks || []}
       jobRequests={jobRequests || []}
+      invoices={truckerInvoices || []}
+      lineItems={truckerLineItems || []}
+      networkContractors={networkContractors}
+      acceptedJobRequests={acceptedJobRequests || []}
     />
   );
 }

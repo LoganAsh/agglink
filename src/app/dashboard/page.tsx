@@ -79,7 +79,7 @@ export default async function DashboardPage() {
   // Contractor's invoices (excluding drafts that haven't been sent yet)
   const { data: contractorInvoices } = await supabase
     .from('invoices')
-    .select('*, supplier:profiles!invoices_supplier_id_fkey(company_name), project:projects(name)')
+    .select('*, supplier:profiles!invoices_supplier_id_fkey(company_name), trucker:profiles!invoices_trucker_id_fkey(company_name), project:projects(name)')
     .eq('contractor_id', user.id)
     .neq('status', 'draft')
     .order('created_at', { ascending: false })
