@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 type Mode = 'login' | 'request';
-type RequestedRole = 'contractor' | 'supplier';
+type RequestedRole = 'contractor' | 'supplier' | 'trucking';
 
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login');
@@ -197,10 +197,19 @@ export default function LoginPage() {
                       >
                         Supplier / Pit
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setReqRole('trucking')}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'trucking' ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                      >
+                        Trucking Company
+                      </button>
                     </div>
                     <p className="text-xs text-slate-500 mt-2">
                       {reqRole === 'contractor'
                         ? 'Contractors can create projects, run estimates, and request quotes.'
+                        : reqRole === 'trucking'
+                        ? 'Trucking companies set hauling rates and respond to job requests from contractors.'
                         : 'Suppliers can list materials and respond to quote requests.'}
                     </p>
                   </div>

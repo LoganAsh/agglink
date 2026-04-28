@@ -28,6 +28,10 @@ export default async function DashboardPage() {
     redirect('/supplier')
   }
 
+  if (profile?.role === 'trucking') {
+    redirect('/trucking')
+  }
+
   const { count: pitsCount } = await supabase
     .from('facilities')
     .select('*', { count: 'exact', head: true })

@@ -5,11 +5,12 @@ import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 
 type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes' | 'requests' | 'categories' | 'trucks';
-type Role = 'contractor' | 'supplier' | 'admin';
+type Role = 'contractor' | 'supplier' | 'admin' | 'trucking';
 
 function roleBadgeClasses(role: string, facilityType?: string) {
   if (role === 'admin')      return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
   if (role === 'contractor') return 'bg-red-500/20 text-red-400 border border-red-500/30';
+  if (role === 'trucking')   return 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30';
   if (role === 'supplier') {
     if (facilityType === 'dump') return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
     if (facilityType === 'both') return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
@@ -21,6 +22,7 @@ function roleBadgeClasses(role: string, facilityType?: string) {
 function roleLabel(role: string, facilityType?: string) {
   if (role === 'admin')      return 'Admin';
   if (role === 'contractor') return 'Contractor';
+  if (role === 'trucking')   return 'Trucking';
   if (role === 'supplier') {
     if (facilityType === 'dump') return 'Supplier (Dump)';
     if (facilityType === 'both') return 'Supplier (Pit & Dump)';
@@ -371,7 +373,7 @@ export default function AdminView({
                         <div className="space-y-1 flex-1">
                           <div className="flex items-center space-x-2">
                             <span className="font-semibold text-white text-sm">{req.full_name}</span>
-                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.requested_role === 'contractor' ? 'bg-red-500/20 text-red-400' : 'bg-orange-500/20 text-orange-400'}`}>{req.requested_role}</span>
+                            <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.requested_role === 'contractor' ? 'bg-red-500/20 text-red-400' : req.requested_role === 'trucking' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-orange-500/20 text-orange-400'}`}>{req.requested_role}</span>
                           </div>
                           <p className="text-xs text-slate-400">{req.email}</p>
                           <p className="text-xs text-slate-400">{req.company_name}</p>
@@ -438,7 +440,7 @@ export default function AdminView({
                             {isEditing ? (
                               <div className="flex items-center space-x-2">
                                 <select defaultValue={p.role} disabled={isSaving} onChange={(e) => handleRoleChange(p.id, e.target.value as Role)} className="bg-slate-700 border border-slate-600 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-orange-500 disabled:opacity-50">
-                                  <option value="contractor">Contractor</option><option value="supplier">Supplier</option><option value="admin">Admin</option>
+                                  <option value="contractor">Contractor</option><option value="supplier">Supplier</option><option value="trucking">Trucking</option><option value="admin">Admin</option>
                                 </select>
                                 <button onClick={() => setEditingRoleId(null)} disabled={isSaving} className="text-slate-500 hover:text-slate-300 text-xs transition-colors">Cancel</button>
                               </div>
