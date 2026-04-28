@@ -93,6 +93,24 @@ export default async function DashboardPage() {
         .order('display_order')
     : { data: [] }
 
+  // Trucking network: this contractor's trucker links + the universe of trucking
+  // companies + every active trucker rate for rate-card display.
+  const { data: truckingNetwork } = await supabase
+    .from('contractor_trucking_network')
+    .select('*, trucker:profiles!contractor_trucking_network_trucker_id_fkey(id, company_name)')
+    .eq('contractor_id', user.id)
+
+  const { data: allTruckers } = await supabase
+    .from('profiles')
+    .select('id, company_name')
+    .eq('role', 'trucking')
+    .order('company_name')
+
+  const { data: truckerRates } = await supabase
+    .from('trucking_company_rates')
+    .select('*, trucker:profiles!trucking_company_rates_trucker_id_fkey(id, company_name)')
+    .eq('active', true)
+
   if (error || !profile) {
     return <ContractorView />
   }
@@ -146,6 +164,9 @@ export default async function DashboardPage() {
       relationships={relationships || []}
       contractorInvoices={contractorInvoices || []}
       invoiceLineItems={invoiceLineItems || []}
+      truckingNetwork={truckingNetwork || []}
+      allTruckers={allTruckers || []}
+      truckerRates={truckerRates || []}
     />
   )
 }

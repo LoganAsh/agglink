@@ -90,11 +90,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, jobLat, jobLon, data: [], grouped: {} });
     }
 
-    // 3. Build truck list     filter by truckType if specified
-    const allTrucks = [
-      { type: 'Side Dump',   rate: 155, cap: isImport ? 25 : 12 },
-      { type: '10-Wheeler',  rate: 135, cap: isImport ? 15 : 8  },
+    // 3. Build truck list — prefer rates from the contractor's trucking network
+    //    when available, falling back to platform defaults per truck type.
+    let networkTruckerRates: any[] = [];
+    {
+      const { data: truckerNetwork } = await supabase
+        .from('contractor_trucking_network')
+        .select('trucker_id')
+        .eq('contractor_id', userId);
+      const truckerIds = truckerNetwork?.map((t: any) => t.trucker_id) || [];
+      if (truckerIds.length > 0) {
+        const { data: rs } = await supabase
+          .from('trucking_company_rates')
+          .select('*, trucker:profiles!trucking_company_rates_trucker_id_fkey(id, company_name)')
+          .in('trucker_id', truckerIds)
+          .eq('active', true);
+        networkTruckerRates = rs || [];
+      }
+    }
+
+    const HARDCODED_TRUCKS = [
+      { type: 'Side Dump',   rate: 155, cap: isImport ? 25 : 12, minHours: 2.0 },
+      { type: '10-Wheeler',  rate: 135, cap: isImport ? 15 : 8,  minHours: 2.0 },
     ];
+
+    const getTruckConfig = (tt: string) => {
+      const matching = networkTruckerRates.filter(r => r.truck_type === tt);
+      if (matching.length > 0) {
+        const cheapest = matching.reduce((min, r) => r.hourly_rate < min.hourly_rate ? r : min);
+        return {
+          type: tt,
+          rate: Number(cheapest.hourly_rate),
+          cap: isImport ? Number(cheapest.capacity_tons || 25) : Number(cheapest.capacity_cy || 12),
+          minHours: Number(cheapest.minimum_hours_per_day || 2.0),
+          truckerName: cheapest.trucker?.company_name as string | null,
+          truckerId: cheapest.trucker_id as string | null,
+        };
+      }
+      const hardcoded = HARDCODED_TRUCKS.find(t => t.type === tt);
+      if (hardcoded) return { ...hardcoded, truckerName: null, truckerId: null };
+      return null;
+    };
+
+    const allTrucks = HARDCODED_TRUCKS.map(t => getTruckConfig(t.type)).filter(Boolean) as any[];
     const trucks = truckType
       ? allTrucks.filter(t => t.type === truckType)
       : allTrucks;
@@ -103,7 +141,6 @@ export async function POST(request: Request) {
     const loadTimeHr    = 15 / 60.0;
     const unloadTimeHr  = (isImport ? 8 : 10) / 60.0;
     const loadUnloadHr  = loadTimeHr + unloadTimeHr;
-    const minHours      = 2.0;
     const apiKey        = process.env.ORS_API_KEY;
 
     // 4. Fetch custom quotes (responded with offered_price) and declined quotes
@@ -169,10 +206,11 @@ export async function POST(request: Request) {
 
         const roundHalfHr = (hrs: number) => Math.ceil(hrs * 2) / 2.0;
 
+        const minHoursForTruck = Number(truck.minHours ?? 2.0);
         let fullShiftHrs  = roundHalfHr(maxTripsPerDay * cycleTimeHr);
-        if (fullShifts > 0 && fullShiftHrs < minHours) fullShiftHrs = minHours;
+        if (fullShifts > 0 && fullShiftHrs < minHoursForTruck) fullShiftHrs = minHoursForTruck;
         let leftoverHrs   = leftoverTrips > 0 ? roundHalfHr(leftoverTrips * cycleTimeHr) : 0.0;
-        if (leftoverHrs > 0 && leftoverHrs < minHours) leftoverHrs = minHours;
+        if (leftoverHrs > 0 && leftoverHrs < minHoursForTruck) leftoverHrs = minHoursForTruck;
 
         const totalBilledHrs    = (fullShifts * fullShiftHrs) + leftoverHrs;
         const totalTruckingCost = totalBilledHrs * truck.rate;
@@ -235,6 +273,8 @@ export async function POST(request: Request) {
           acceptsQuotes: fac.accepts_quote_requests !== false,
           pricingTier:  tier,
           supplierId:   facOwnerId,
+          truckerName:  truck.truckerName,
+          truckerId:    truck.truckerId,
         };
 
         if (!resultsByMaterial[mat.name]) resultsByMaterial[mat.name] = [];

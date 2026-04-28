@@ -24,6 +24,9 @@ export default function ContractorView({
   relationships = [],
   contractorInvoices: initialContractorInvoices = [],
   invoiceLineItems = [],
+  truckingNetwork: initialTruckingNetwork = [],
+  allTruckers = [],
+  truckerRates = [],
 }: {
   profileName?: string,
   companyName?: string,
@@ -38,6 +41,9 @@ export default function ContractorView({
   relationships?: any[],
   contractorInvoices?: any[],
   invoiceLineItems?: any[],
+  truckingNetwork?: any[],
+  allTruckers?: any[],
+  truckerRates?: any[],
 }) {
 
   const supabase = createClient();
@@ -69,7 +75,7 @@ export default function ContractorView({
       return next;
     });
   };
-  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'invoices' | 'calculator'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'trucking_network' | 'invoices' | 'calculator'>('dashboard');
   const [networkSearch, setNetworkSearch] = useState('');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'in' | 'out'>('all');
   const [tierRequestRes, setTierRequestRes] = useState<any>(null);
@@ -82,6 +88,28 @@ export default function ContractorView({
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [showInvoiceDetail, setShowInvoiceDetail] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Trucking network
+  const [truckingNetwork, setTruckingNetwork] = useState<any[]>(initialTruckingNetwork);
+
+  const addTruckerToNetwork = async (truckerId: string) => {
+    const { data, error } = await supabase
+      .from('contractor_trucking_network')
+      .insert({ contractor_id: profileId, trucker_id: truckerId })
+      .select('*, trucker:profiles!contractor_trucking_network_trucker_id_fkey(id, company_name)')
+      .single();
+    if (data && !error) setTruckingNetwork(prev => [...prev, data]);
+    else alert('Failed to add trucker: ' + (error?.message || 'unknown'));
+  };
+
+  const removeTruckerFromNetwork = async (truckerId: string) => {
+    const { error } = await supabase
+      .from('contractor_trucking_network')
+      .delete()
+      .match({ contractor_id: profileId, trucker_id: truckerId });
+    if (!error) setTruckingNetwork(prev => prev.filter(t => t.trucker_id !== truckerId));
+    else alert('Failed to remove: ' + error.message);
+  };
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
@@ -876,7 +904,10 @@ export default function ContractorView({
                     </div>
                   </td>
                   <td className="px-4 py-2 text-slate-300">{res.materialName || req.material_name}</td>
-                  <td className="px-4 py-2 text-slate-400">{res.truckFleet}</td>
+                  <td className="px-4 py-2 text-slate-400">
+                    <div>{res.truckFleet}</div>
+                    {res.truckerName && <div className="text-[9px] text-cyan-400 mt-0.5"><i className="fa-solid fa-truck mr-1"></i>{res.truckerName}</div>}
+                  </td>
                   <td className="px-4 py-2 text-right text-slate-400">
                     ${res.basePrice.toFixed(2)}
                     {savingsSpan(baseSavingsPct)}
@@ -970,6 +1001,10 @@ export default function ContractorView({
           <button type="button" onClick={() => setActiveView('facility_management')}
             className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'facility_management' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <i className="fa-solid fa-network-wired mr-3 w-4 text-center"></i>Facility Network
+          </button>
+          <button type="button" onClick={() => setActiveView('trucking_network')}
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'trucking_network' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            <i className="fa-solid fa-truck mr-3 w-4 text-center"></i>Trucking Network
           </button>
           {(() => {
             const unpaidCount = contractorInvoices.filter((i: any) => i.status !== 'paid').length;
@@ -1666,6 +1701,95 @@ export default function ContractorView({
           );
         })()}
 
+        {activeView === 'trucking_network' && (() => {
+          const networkTruckerIds = truckingNetwork.map((t: any) => t.trucker_id);
+          const inNetwork = (allTruckers || []).filter((t: any) => networkTruckerIds.includes(t.id));
+          const notInNetwork = (allTruckers || []).filter((t: any) => !networkTruckerIds.includes(t.id));
+          return (
+        <div className="p-4 md:p-8 space-y-6 pb-24 md:pb-8">
+
+          <div>
+            <h1 className="text-2xl font-bold text-white">Trucking Network</h1>
+            <p className="text-sm text-slate-400 mt-1">Add trucking companies to use their rates in your project estimates.</p>
+          </div>
+
+          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white">My Trucking Network ({inNetwork.length})</h2>
+            </div>
+            {inNetwork.length === 0 ? (
+              <p className="p-8 text-center text-slate-500 text-sm">No trucking companies in your network yet. Add some below to use their rates.</p>
+            ) : (
+              <div className="divide-y divide-slate-700/50">
+                {inNetwork.map((trucker: any) => {
+                  const truckerSpecificRates = (truckerRates || []).filter((r: any) => r.trucker_id === trucker.id);
+                  return (
+                    <div key={trucker.id} className="px-5 py-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <i className="fa-solid fa-truck text-cyan-400"></i>
+                            <span className="text-sm font-semibold text-white">{trucker.company_name}</span>
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {truckerSpecificRates.map((rate: any) => (
+                              <div key={rate.id} className="bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{rate.truck_type}</p>
+                                <p className="text-sm text-white font-bold mt-0.5">${Number(rate.hourly_rate).toFixed(2)}<span className="text-[10px] text-slate-500 font-normal">/hr</span></p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Min {rate.minimum_hours_per_day}hr/day</p>
+                              </div>
+                            ))}
+                            {truckerSpecificRates.length === 0 && (
+                              <span className="text-xs text-slate-500 italic">No rates published yet</span>
+                            )}
+                          </div>
+                        </div>
+                        <button onClick={() => removeTruckerFromNetwork(trucker.id)}
+                          className="text-slate-500 hover:text-red-500 transition-colors text-xs">
+                          <i className="fa-solid fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
+              <h2 className="text-sm font-semibold text-white">Available Trucking Companies ({notInNetwork.length})</h2>
+            </div>
+            {notInNetwork.length === 0 ? (
+              <p className="p-8 text-center text-slate-500 text-sm">No additional trucking companies available.</p>
+            ) : (
+              <div className="divide-y divide-slate-700/50">
+                {notInNetwork.map((trucker: any) => {
+                  const truckerSpecificRates = (truckerRates || []).filter((r: any) => r.trucker_id === trucker.id);
+                  return (
+                    <div key={trucker.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <i className="fa-solid fa-truck text-slate-500"></i>
+                          <span className="text-sm font-semibold text-white">{trucker.company_name}</span>
+                          <span className="text-xs text-slate-500">({truckerSpecificRates.length} truck type{truckerSpecificRates.length !== 1 ? 's' : ''})</span>
+                        </div>
+                      </div>
+                      <button onClick={() => addTruckerToNetwork(trucker.id)}
+                        className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                        + Add to Network
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+          );
+        })()}
+
         {activeView === 'invoices' && (() => {
           const totalOutstanding = contractorInvoices
             .filter((i: any) => i.status !== 'paid')
@@ -1885,7 +2009,10 @@ export default function ContractorView({
                           <tr key={idx} className="hover:bg-slate-700/30 transition-colors">
                             <td className="px-4 py-3 text-slate-300">{res.supplier}</td>
                             <td className="px-4 py-3 text-slate-400">{res.materialName}</td>
-                            <td className="px-4 py-3 text-slate-400">{res.truckFleet}</td>
+                            <td className="px-4 py-3 text-slate-400">
+                              <div>{res.truckFleet}</div>
+                              {res.truckerName && <div className="text-[9px] text-cyan-400 mt-0.5"><i className="fa-solid fa-truck mr-1"></i>{res.truckerName}</div>}
+                            </td>
                             <td className="px-4 py-3 text-right text-slate-400">${res.basePrice.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right font-bold text-orange-400">
