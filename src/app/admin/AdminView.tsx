@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import { toast } from 'sonner';
 import EmptyState from '@/components/EmptyState';
+import AmbientBackground from '@/components/AmbientBackground';
 
 type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes' | 'requests' | 'categories' | 'trucks';
 type Role = 'contractor' | 'supplier' | 'admin' | 'trucking';
@@ -318,11 +319,15 @@ export default function AdminView({
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
-      <aside className="w-60 bg-white border-r border-zinc-200 hidden md:flex flex-col flex-shrink-0">
+    <div className="relative flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+      <AmbientBackground variant="purple" intensity="subtle" />
+      <aside className="relative z-10 w-60 bg-white border-r border-zinc-200 hidden md:flex flex-col flex-shrink-0">
         <div className="h-16 flex items-center px-6 border-b border-zinc-200 space-x-2">
           <span className="text-xl font-bold text-zinc-900 tracking-wide">AggLink<span className="text-orange-500">.</span></span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-orange-500 bg-orange-500/10 border border-orange-500/30 rounded px-1.5 py-0.5">Admin</span>
+          <div className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">
+            <span className="w-1 h-1 rounded-full bg-purple-500 animate-pulse" />
+            <span className="text-[10px] font-semibold text-purple-700 uppercase tracking-widest">Admin</span>
+          </div>
         </div>
         <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
           {tabs.map(t => (
@@ -347,7 +352,7 @@ export default function AdminView({
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
+      <main className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto">
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 flex-shrink-0">
           <div className="flex items-center">
             <span className="md:hidden text-base font-bold text-zinc-900 mr-3">AggLink<span className="text-orange-500">.</span></span>
@@ -367,16 +372,16 @@ export default function AdminView({
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Users</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalUsers)} className="inline-block kpi-fade">{stats.totalUsers}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.contractors} contractors | {stats.suppliers} suppliers</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Projects</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalProjects)} className="inline-block kpi-fade">{stats.totalProjects}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.totalEstimates} estimates generated</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Est. Platform Value</p><h3 className="text-2xl font-bold text-emerald-700 mt-1"><span key={String(fmtCurrency(stats.totalEstValue))} className="inline-block kpi-fade">{fmtCurrency(stats.totalEstValue)}</span></h3><p className="text-xs text-zinc-500 mt-2">across all project estimates</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Price / Unit</p><h3 className="text-2xl font-bold text-orange-600 mt-1"><span key={String(fmtCurrency(stats.avgEstPrice))} className="inline-block kpi-fade">{fmtCurrency(stats.avgEstPrice)}</span></h3><p className="text-xs text-zinc-500 mt-2">blended material + freight</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Users</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalUsers)} className="inline-block kpi-fade">{stats.totalUsers}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.contractors} contractors | {stats.suppliers} suppliers</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Projects</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalProjects)} className="inline-block kpi-fade">{stats.totalProjects}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.totalEstimates} estimates generated</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Est. Platform Value</p><h3 className="text-2xl font-bold text-emerald-700 mt-1"><span key={String(fmtCurrency(stats.totalEstValue))} className="inline-block kpi-fade">{fmtCurrency(stats.totalEstValue)}</span></h3><p className="text-xs text-zinc-500 mt-2">across all project estimates</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Price / Unit</p><h3 className="text-2xl font-bold text-orange-600 mt-1"><span key={String(fmtCurrency(stats.avgEstPrice))} className="inline-block kpi-fade">{fmtCurrency(stats.avgEstPrice)}</span></h3><p className="text-xs text-zinc-500 mt-2">blended material + freight</p></div>
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Facilities</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalFacilities)} className="inline-block kpi-fade">{stats.totalFacilities}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.pits} pits | {stats.dumps} dumps | {stats.both} both</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Materials Listed</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalMaterials)} className="inline-block kpi-fade">{stats.totalMaterials}</span></h3><p className="text-xs text-zinc-500 mt-2">across all facilities</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Quote Requests</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalQuotes)} className="inline-block kpi-fade">{stats.totalQuotes}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.pendingQuotes} pending | {stats.acceptedQuotes} accepted</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending Access</p><h3 className={`text-2xl font-bold mt-1 ${pendingCount > 0 ? 'text-orange-600' : 'text-zinc-500'}`}><span key={pendingCount} className="inline-block kpi-fade">{pendingCount}</span></h3><p className="text-xs text-zinc-500 mt-2">signup requests awaiting review</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Facilities</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalFacilities)} className="inline-block kpi-fade">{stats.totalFacilities}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.pits} pits | {stats.dumps} dumps | {stats.both} both</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Materials Listed</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalMaterials)} className="inline-block kpi-fade">{stats.totalMaterials}</span></h3><p className="text-xs text-zinc-500 mt-2">across all facilities</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Quote Requests</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalQuotes)} className="inline-block kpi-fade">{stats.totalQuotes}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.pendingQuotes} pending | {stats.acceptedQuotes} accepted</p></div>
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 hover:bg-white hover:border-zinc-300 transition-all"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending Access</p><h3 className={`text-2xl font-bold mt-1 ${pendingCount > 0 ? 'text-orange-600' : 'text-zinc-500'}`}><span key={pendingCount} className="inline-block kpi-fade">{pendingCount}</span></h3><p className="text-xs text-zinc-500 mt-2">signup requests awaiting review</p></div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">

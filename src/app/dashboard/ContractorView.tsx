@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import InvoicePaymentForm from '@/components/InvoicePaymentForm';
 import EmptyState from '@/components/EmptyState';
 import Sparkline from '@/components/Sparkline';
+import AmbientBackground from '@/components/AmbientBackground';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
@@ -1043,9 +1044,10 @@ export default function ContractorView({
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+    <div className="relative flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+      <AmbientBackground variant="orange" intensity="subtle" />
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
+      <aside className="relative z-10 w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-zinc-200">
           <span className="text-xl font-bold text-zinc-900 tracking-wide">AggLink<span className="text-orange-500">.</span></span>
         </div>
@@ -1098,7 +1100,7 @@ export default function ContractorView({
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
+      <main className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto">
         {/* Header */}
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-8 sticky top-0 z-10">
           <div className="relative w-full md:w-96 flex items-center space-x-3">
@@ -1106,9 +1108,15 @@ export default function ContractorView({
               <>
                 <h2 className="text-lg font-semibold text-zinc-900">{activeProject.name}</h2>
                 {activeProject.status === 'archived' ? (
-                  <span className="px-2 py-0.5 bg-red-500/20 text-red-700 border border-red-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Archived Project</span>
+                  <div className="hidden sm:inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    <span className="text-[10px] font-semibold text-red-700 uppercase tracking-wider">Archived Project</span>
+                  </div>
                 ) : (
-                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
+                  <div className="hidden sm:inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Active Project</span>
+                  </div>
                 )}
                 <button onClick={openEditModal} className="ml-1 p-1.5 text-zinc-400 hover:text-orange-600 hover:bg-orange-500/10 rounded-md transition-all" title="Edit project">
                   <i className="fa-solid fa-pen-to-square text-xs"></i>
@@ -1152,7 +1160,7 @@ export default function ContractorView({
         <div className="p-4 md:p-8 space-y-6">
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="relative overflow-hidden bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+            <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
               <div className="relative z-10">
                 <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
                 <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-zinc-500' : accountSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>
@@ -1166,7 +1174,7 @@ export default function ContractorView({
                 </div>
               )}
             </div>
-            <div className="relative overflow-hidden bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+            <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
               <div className="relative z-10">
                 <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Network</p>
                 <h3 className="text-3xl font-bold text-zinc-900 mt-1">
@@ -1180,7 +1188,7 @@ export default function ContractorView({
                 </div>
               )}
             </div>
-            <div className="relative overflow-hidden bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+            <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
               <div className="relative z-10">
                 <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Est. Value</p>
                 <h3 className={`text-3xl font-bold mt-1 ${accountTotalValue.total > 0 ? 'text-zinc-900' : 'text-zinc-500'}`}>
@@ -1196,7 +1204,7 @@ export default function ContractorView({
                 </div>
               )}
             </div>
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+            <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
               <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Most Requested Material</p>
               {mostRequestedMaterial.name ? (
                 <>
@@ -1708,7 +1716,7 @@ export default function ContractorView({
           return (
         <div className="p-4 md:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Facility Network</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-zinc-900 to-zinc-900 bg-clip-text text-transparent">Facility Network</h1>
             <p className="text-sm text-zinc-600 mt-1">Add facilities to your network to see them in the estimator and on your map.</p>
           </div>
 
@@ -1951,7 +1959,7 @@ export default function ContractorView({
         <div className="p-4 md:p-8 space-y-6 pb-24 md:pb-8">
 
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Trucking Network</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-zinc-900 to-zinc-900 bg-clip-text text-transparent">Trucking Network</h1>
             <p className="text-sm text-zinc-600 mt-1">Add trucking companies to use their rates in your project estimates.</p>
           </div>
 
@@ -2050,7 +2058,7 @@ export default function ContractorView({
           return (
         <div className="p-4 md:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-zinc-900">Invoices</h1>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-zinc-900 to-zinc-900 bg-clip-text text-transparent">Invoices</h1>
             <p className="text-sm text-zinc-600 mt-1">Bills from your suppliers. Click to view details and pay online.</p>
           </div>
 

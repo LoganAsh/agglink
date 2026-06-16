@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import { toast } from 'sonner';
 import EmptyState from '@/components/EmptyState';
+import AmbientBackground from '@/components/AmbientBackground';
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
@@ -276,12 +277,17 @@ export default function TruckingView({
   );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+    <div className="relative flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+      <AmbientBackground variant="cyan" intensity="subtle" />
 
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-zinc-200">
+      <aside className="relative z-10 w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
+        <div className="h-16 flex items-center px-6 border-b border-zinc-200 space-x-2">
           <span className="text-xl font-bold text-zinc-900 tracking-wide">AggLink<span className="text-cyan-700">.</span></span>
+          <div className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">
+            <span className="w-1 h-1 rounded-full bg-cyan-500 animate-pulse" />
+            <span className="text-[10px] font-semibold text-cyan-700 uppercase tracking-widest">Trucking</span>
+          </div>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button onClick={() => setActiveTab('rates')}
@@ -324,7 +330,7 @@ export default function TruckingView({
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
+      <main className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto">
 
         {/* Header */}
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">

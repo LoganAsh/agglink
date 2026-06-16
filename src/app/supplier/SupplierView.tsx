@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import { toast } from 'sonner';
 import EmptyState from '@/components/EmptyState';
+import AmbientBackground from '@/components/AmbientBackground';
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
@@ -639,12 +640,17 @@ export default function SupplierView({
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+    <div className="relative flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
+      <AmbientBackground variant="orange" intensity="subtle" />
 
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-zinc-200">
+      <aside className="relative z-10 w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
+        <div className="h-16 flex items-center px-6 border-b border-zinc-200 space-x-2">
           <span className="text-xl font-bold text-zinc-900 tracking-wide">AggLink<span className="text-orange-500">.</span></span>
+          <div className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-orange-500/10 border border-orange-500/20">
+            <span className="w-1 h-1 rounded-full bg-orange-500 animate-pulse" />
+            <span className="text-[10px] font-semibold text-orange-600 uppercase tracking-widest">Supplier</span>
+          </div>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button onClick={() => setActiveTab('dashboard')}
@@ -708,7 +714,7 @@ export default function SupplierView({
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto">
+      <main className="relative z-10 flex-1 flex flex-col h-screen overflow-y-auto">
 
         {/* Header */}
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
@@ -736,7 +742,7 @@ export default function SupplierView({
             <div className="space-y-6">
               <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-3">
                 <div>
-                  <h1 className="text-2xl font-bold text-zinc-900">Live Catalog Management</h1>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-zinc-900 to-zinc-900 bg-clip-text text-transparent">Live Catalog Management</h1>
                   <p className="text-zinc-600 text-sm mt-1">Manage public pricing, stock levels, and project-specific contractor rates.</p>
                 </div>
                 <div className="flex space-x-3">
@@ -748,7 +754,7 @@ export default function SupplierView({
 
               {/* KPI Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Today&apos;s Volume</p>
@@ -760,7 +766,7 @@ export default function SupplierView({
                   </div>
                 </div>
 
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending Quotes</p>
@@ -774,7 +780,7 @@ export default function SupplierView({
                   </div>
                 </div>
 
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Top Moving Mat.</p>
@@ -786,7 +792,7 @@ export default function SupplierView({
                   </div>
                 </div>
 
-                <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+                <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Market Position</p>

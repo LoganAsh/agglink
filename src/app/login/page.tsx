@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import AmbientBackground from '@/components/AmbientBackground';
 
 type Mode = 'login' | 'request';
 type RequestedRole = 'contractor' | 'supplier' | 'trucking';
@@ -73,15 +74,16 @@ function LoginPageInner() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-700 font-sans flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <div className="relative min-h-screen bg-zinc-50 text-zinc-700 font-sans flex flex-col justify-center py-12 sm:px-6 lg:px-8 overflow-hidden">
+      <AmbientBackground variant="multi" intensity="medium" />
+      <div className="relative z-10 sm:mx-auto sm:w-full sm:max-w-md text-center">
         <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
           AggLink<span className="text-orange-500">.</span>
         </h2>
         <p className="mt-2 text-sm text-zinc-600">The Utah Aggregate Logistics Network</p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="relative z-10 mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         {/* Mode toggle */}
         <div className="flex mb-4 bg-white border border-zinc-200 rounded-xl p-1">
           <button
