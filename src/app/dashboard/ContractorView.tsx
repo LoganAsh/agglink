@@ -1566,28 +1566,44 @@ export default function ContractorView({
                     <div className="space-y-6">
                       {requirements.map((req: any) => {
                         const result = manifestResults[req.id];
-                        const comparedMats = req.compared_materials || [req.material_name];
+                        const comparedMats = (req.compared_materials && req.compared_materials.length > 0)
+                          ? req.compared_materials
+                          : (req.material_name ? [req.material_name] : []);
+                        const unit = req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY';
                         return (
                           <div key={req.id} className="border border-zinc-200 rounded-lg overflow-hidden">
                             {/* Header */}
-                            <div className={`px-4 py-3 flex justify-between items-center ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
-                              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-700'}`}>
-                                  {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
-                                </span>
-                                {comparedMats.length === 1 ? (
-                                  <span className="font-semibold text-zinc-900 text-sm">{comparedMats[0]}</span>
-                                ) : (
-                                  <div className="flex flex-wrap gap-1">
-                                    {comparedMats.map((m: string) => (
-                                      <span key={m} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-700 rounded text-[10px]">{m}</span>
-                                    ))}
-                                  </div>
-                                )}
-                                <span className="text-zinc-600 text-xs">({req.quantity.toLocaleString()} {req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY'})</span>
-                                {req.truck_type && <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px]">{req.truck_type}</span>}
+                            <div className={`px-4 py-3 flex justify-between items-start gap-3 ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center flex-wrap gap-2">
+                                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-700'}`}>
+                                    {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
+                                  </span>
+                                  <span className="text-sm font-semibold text-zinc-900">
+                                    {req.quantity.toLocaleString()} {unit}
+                                  </span>
+                                  {req.truck_type && (
+                                    <span className="px-1.5 py-0.5 bg-white border border-zinc-200 text-zinc-700 rounded text-[10px] font-medium">{req.truck_type}</span>
+                                  )}
+                                </div>
+                                <div className="mt-2 flex items-baseline flex-wrap gap-1.5">
+                                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                    {comparedMats.length > 1 ? 'Materials:' : 'Material:'}
+                                  </span>
+                                  {comparedMats.length === 0 ? (
+                                    <span className="text-xs italic text-zinc-400">none selected</span>
+                                  ) : comparedMats.length === 1 ? (
+                                    <span className="text-sm font-semibold text-zinc-900">{comparedMats[0]}</span>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {comparedMats.map((m: string) => (
+                                        <span key={m} className="px-2 py-0.5 bg-white border border-zinc-200 rounded text-xs font-medium text-zinc-800">{m}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <button onClick={() => removeRequirement(req.id)} className="text-zinc-500 hover:text-red-500 transition-colors ml-2">
+                              <button onClick={() => removeRequirement(req.id)} className="text-zinc-500 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5" title="Remove requirement">
                                 <i className="fa-solid fa-trash"></i>
                               </button>
                             </div>
