@@ -54,6 +54,21 @@ export default async function DashboardPage() {
     ? Array.from(new Set(allMatsData.filter(m => !m.is_import).map(m => m.name))).sort()
     : []
 
+  // Full materials with prices for the Facility Network expandable cards
+  const { data: facilityMaterials } = await supabase
+    .from('materials')
+    .select('id, name, facility_id, is_import, price_per_ton, price_per_ton_contractor, price_per_ton_customer, price_per_cy, price_per_cy_contractor, price_per_cy_customer, price_10w_load, price_sd_load, stock_status')
+    .order('name')
+
+  const { data: allMaterialCategories } = await supabase
+    .from('material_categories')
+    .select('*')
+    .order('name')
+
+  const { data: allMaterialCategoryMap } = await supabase
+    .from('material_category_map')
+    .select('*')
+
   // Contractor's facility network + relationships
   const { data: networkData } = await supabase
     .from('contractor_facility_network')
@@ -175,6 +190,9 @@ export default async function DashboardPage() {
       allTruckers={allTruckers || []}
       truckerRates={truckerRates || []}
       contractorJobRequests={contractorJobRequests || []}
+      facilityMaterials={facilityMaterials || []}
+      allMaterialCategories={allMaterialCategories || []}
+      allMaterialCategoryMap={allMaterialCategoryMap || []}
     />
   )
 }

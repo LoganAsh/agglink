@@ -28,6 +28,9 @@ export default function ContractorView({
   allTruckers = [],
   truckerRates = [],
   contractorJobRequests: initialContractorJobRequests = [],
+  facilityMaterials = [],
+  allMaterialCategories = [],
+  allMaterialCategoryMap = [],
 }: {
   profileName?: string,
   companyName?: string,
@@ -46,6 +49,9 @@ export default function ContractorView({
   allTruckers?: any[],
   truckerRates?: any[],
   contractorJobRequests?: any[],
+  facilityMaterials?: any[],
+  allMaterialCategories?: any[],
+  allMaterialCategoryMap?: any[],
 }) {
 
   const supabase = createClient();
@@ -80,6 +86,7 @@ export default function ContractorView({
   const [activeView, setActiveView] = useState<'dashboard' | 'projects' | 'facility_management' | 'trucking_network' | 'invoices' | 'calculator'>('dashboard');
   const [networkSearch, setNetworkSearch] = useState('');
   const [networkFilter, setNetworkFilter] = useState<'all' | 'in' | 'out'>('all');
+  const [expandedFacilityIds, setExpandedFacilityIds] = useState<Set<string>>(new Set());
   const [tierRequestRes, setTierRequestRes] = useState<any>(null);
   const [tierRequestMessage, setTierRequestMessage] = useState('');
   const [tierRequestSending, setTierRequestSending] = useState(false);
@@ -1728,29 +1735,125 @@ export default function ContractorView({
                     f.type === 'pit'  ? 'bg-orange-500/20 text-orange-600 border-orange-500/30' :
                     f.type === 'dump' ? 'bg-blue-500/20 text-blue-700 border-blue-500/30' :
                                         'bg-emerald-500/20 text-emerald-700 border-emerald-500/30';
+                  const isExpanded = expandedFacilityIds.has(f.id);
+                  const facMats = (facilityMaterials || []).filter((m: any) => m.facility_id === f.id);
+
+                  // Group materials by category name (a material can belong to multiple
+                  // categories via material_category_map). Materials with no category
+                  // entry land in "Uncategorized".
+                  const catNameById = new Map<string, string>((allMaterialCategories || []).map((c: any) => [c.id, c.name]));
+                  const groupedMats: Record<string, any[]> = {};
+                  for (const mat of facMats) {
+                    const mappings = (allMaterialCategoryMap || []).filter((m: any) => m.material_name === mat.name);
+                    if (mappings.length === 0) {
+                      (groupedMats['Uncategorized'] ||= []).push(mat);
+                    } else {
+                      for (const m of mappings) {
+                        const catName = catNameById.get(m.category_id) || 'Uncategorized';
+                        (groupedMats[catName] ||= []).push(mat);
+                      }
+                    }
+                  }
+                  const groupNames = Object.keys(groupedMats).sort((a, b) =>
+                    a === 'Uncategorized' ? 1 : b === 'Uncategorized' ? -1 : a.localeCompare(b)
+                  );
+
+                  const priceForMaterial = (mat: any) => {
+                    if (mat.is_import) {
+                      const c = Number(mat.price_per_ton_contractor) || 0;
+                      const cu = Number(mat.price_per_ton_customer) || 0;
+                      const pu = Number(mat.price_per_ton) || 0;
+                      const v = tier === 'customer' && cu > 0 ? cu : tier === 'contractor' && c > 0 ? c : pu;
+                      return { value: v, unit: '/ton' };
+                    }
+                    const c = Number(mat.price_per_cy_contractor) || 0;
+                    const cu = Number(mat.price_per_cy_customer) || 0;
+                    const pu = Number(mat.price_per_cy) || 0;
+                    const v = tier === 'customer' && cu > 0 ? cu : tier === 'contractor' && c > 0 ? c : pu;
+                    return { value: v, unit: '/CY' };
+                  };
+
                   return (
-                    <div key={f.id} className="px-5 py-4 flex items-center justify-between gap-4">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-sm font-semibold text-zinc-900 truncate">{f.name}</p>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${typeColor}`}>{f.type}</span>
-                        </div>
-                        {f.address && <p className="text-xs text-zinc-600 mt-1 truncate">{f.address}</p>}
-                        <div className="flex items-center space-x-2 mt-1.5">
-                          <span className="text-[10px] text-zinc-500">Owner: <span className="text-zinc-600">{owner?.company_name || '—'}</span></span>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tierColor}`}>{tier}</span>
-                        </div>
+                    <div key={f.id} className="px-5 py-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <button
+                          onClick={() => {
+                            setExpandedFacilityIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(f.id)) next.delete(f.id); else next.add(f.id);
+                              return next;
+                            });
+                          }}
+                          className="min-w-0 flex-1 text-left flex items-start gap-3 group"
+                          aria-expanded={isExpanded}
+                          aria-label={isExpanded ? 'Collapse materials' : 'Expand materials'}
+                        >
+                          <i className={`fa-solid fa-chevron-${isExpanded ? 'down' : 'right'} text-[10px] text-zinc-500 group-hover:text-zinc-700 mt-1.5 w-3 flex-shrink-0 transition-transform`}></i>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-semibold text-zinc-900 truncate">{f.name}</p>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${typeColor}`}>{f.type}</span>
+                              <span className="text-[10px] text-zinc-500">· {facMats.length} material{facMats.length === 1 ? '' : 's'}</span>
+                            </div>
+                            {f.address && <p className="text-xs text-zinc-600 mt-1 truncate">{f.address}</p>}
+                            <div className="flex items-center space-x-2 mt-1.5">
+                              <span className="text-[10px] text-zinc-500">Owner: <span className="text-zinc-600">{owner?.company_name || '—'}</span></span>
+                              <span className="text-[10px] text-zinc-500">Price Tier:</span>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tierColor}`}>{tier}</span>
+                            </div>
+                          </div>
+                        </button>
+                        {inNetwork ? (
+                          <button onClick={() => removeFromNetwork(f.id)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-300 text-zinc-600 hover:border-red-500/50 hover:text-red-700 transition-all whitespace-nowrap flex-shrink-0">
+                            <i className="fa-solid fa-minus mr-1.5"></i>Remove
+                          </button>
+                        ) : (
+                          <button onClick={() => addToNetwork(f.id)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white transition-all whitespace-nowrap flex-shrink-0">
+                            <i className="fa-solid fa-plus mr-1.5"></i>Add to Network
+                          </button>
+                        )}
                       </div>
-                      {inNetwork ? (
-                        <button onClick={() => removeFromNetwork(f.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-300 text-zinc-600 hover:border-red-500/50 hover:text-red-700 transition-all whitespace-nowrap">
-                          <i className="fa-solid fa-minus mr-1.5"></i>Remove
-                        </button>
-                      ) : (
-                        <button onClick={() => addToNetwork(f.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-zinc-900 transition-all whitespace-nowrap">
-                          <i className="fa-solid fa-plus mr-1.5"></i>Add to Network
-                        </button>
+
+                      {isExpanded && (
+                        <div className="mt-3 ml-6 bg-zinc-50/80 border border-zinc-200 rounded-lg overflow-hidden">
+                          {facMats.length === 0 ? (
+                            <p className="px-4 py-6 text-center text-xs text-zinc-500 italic">No materials listed at this facility.</p>
+                          ) : (
+                            groupNames.map(catName => (
+                              <div key={catName} className="border-b border-zinc-200 last:border-b-0">
+                                <div className="px-4 py-2 bg-white/60 border-b border-zinc-200">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-600">{catName}</p>
+                                </div>
+                                <div className="divide-y divide-zinc-200/70">
+                                  {groupedMats[catName].map((mat: any) => {
+                                    const { value, unit } = priceForMaterial(mat);
+                                    const has10w = Number(mat.price_10w_load) > 0;
+                                    const hasSd = Number(mat.price_sd_load) > 0;
+                                    return (
+                                      <div key={mat.id} className="px-4 py-2 flex items-center justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-xs font-medium text-zinc-900 truncate">{mat.name}</p>
+                                          {(has10w || hasSd) && (
+                                            <p className="text-[10px] text-zinc-500 mt-0.5">
+                                              {has10w && <span>10-Wheeler: <span className="text-zinc-700">${Number(mat.price_10w_load).toFixed(2)}</span></span>}
+                                              {has10w && hasSd && <span> · </span>}
+                                              {hasSd && <span>Side Dump: <span className="text-zinc-700">${Number(mat.price_sd_load).toFixed(2)}</span></span>}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                          <p className="text-sm font-bold text-zinc-900">${value.toFixed(2)}<span className="text-[10px] text-zinc-500 font-normal">{unit}</span></p>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       )}
                     </div>
                   );
