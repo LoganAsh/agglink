@@ -1,14 +1,19 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 type Mode = 'login' | 'request';
 type RequestedRole = 'contractor' | 'supplier' | 'trucking';
 
-export default function LoginPage() {
-  const [mode, setMode] = useState<Mode>('login');
+function LoginPageInner() {
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<Mode>(searchParams?.get('signup') === 'true' ? 'request' : 'login');
+
+  useEffect(() => {
+    if (searchParams?.get('signup') === 'true') setMode('request');
+  }, [searchParams]);
 
   // Login state
   const [email, setEmail] = useState('');
@@ -239,5 +244,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-zinc-50" />}>
+      <LoginPageInner />
+    </Suspense>
   );
 }
