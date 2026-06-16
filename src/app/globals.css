@@ -80,3 +80,9 @@ body {
 .kpi-fade {
   animation: kpiFade 0.5s ease-out;
 }
+
+/* Bump map tile contrast/saturation so roads, water, and labels pop
+   against the light UI without switching to a fully dark basemap. */
+.leaflet-tile-pane {
+  filter: contrast(1.12) saturate(1.15);
+}
