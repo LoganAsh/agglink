@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
+import { toast } from 'sonner';
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
@@ -73,14 +74,14 @@ export default function TruckingView({
         .eq('id', existing.id)
         .select().single();
       if (data && !error) setRates(prev => prev.map(r => r.id === existing.id ? data : r));
-      else if (error) alert('Failed to save: ' + error.message);
+      else if (error) toast.error('Failed to save: ' + error.message);
     } else {
       const { data, error } = await supabase
         .from('trucking_company_rates')
         .insert({ trucker_id: profileId, truck_type: truckType, ...fields })
         .select().single();
       if (data && !error) setRates(prev => [...prev, data]);
-      else if (error) alert('Failed to save: ' + error.message);
+      else if (error) toast.error('Failed to save: ' + error.message);
     }
     setSavingTruckType(null);
   };
@@ -92,7 +93,7 @@ export default function TruckingView({
       .from('trucker_job_requests')
       .update({ status: 'declined', responded_at: new Date().toISOString() })
       .eq('id', req.id);
-    if (error) { alert('Failed to decline: ' + error.message); return; }
+    if (error) { toast.error('Failed to decline: ' + error.message); return; }
     setJobRequests(prev => prev.map(j => j.id === req.id ? { ...j, status: 'declined', responded_at: new Date().toISOString() } : j));
   };
 
@@ -106,7 +107,7 @@ export default function TruckingView({
   const submitQuote = async () => {
     if (!quoteFor) return;
     const rate = parseFloat(quoteRate);
-    if (isNaN(rate) || rate <= 0) { alert('Enter a valid hourly rate.'); return; }
+    if (isNaN(rate) || rate <= 0) { toast.error('Enter a valid hourly rate.'); return; }
     setSubmittingQuote(true);
     const update = {
       status: 'quoted',
@@ -118,7 +119,7 @@ export default function TruckingView({
       .from('trucker_job_requests')
       .update(update)
       .eq('id', quoteFor.id);
-    if (error) { alert('Failed to submit quote: ' + error.message); setSubmittingQuote(false); return; }
+    if (error) { toast.error('Failed to submit quote: ' + error.message); setSubmittingQuote(false); return; }
     setJobRequests(prev => prev.map(j => j.id === quoteFor.id ? { ...j, ...update } : j));
     setQuoteFor(null);
     setSubmittingQuote(false);
@@ -207,7 +208,7 @@ export default function TruckingView({
 
   const saveInvoice = async (status: 'draft' | 'sent') => {
     if (!invContractor || invItems.length === 0) {
-      alert('Please select a contractor and add at least one line item.');
+      toast.error('Please select a contractor and add at least one line item.');
       return;
     }
     setSavingInvoice(true);
@@ -228,14 +229,14 @@ export default function TruckingView({
     let invoiceId = editingInvoice?.id;
     if (editingInvoice) {
       const { error } = await supabase.from('invoices').update(payload).eq('id', editingInvoice.id);
-      if (error) { alert('Failed: ' + error.message); setSavingInvoice(false); return; }
+      if (error) { toast.error('Failed: ' + error.message); setSavingInvoice(false); return; }
       await supabase.from('invoice_line_items').delete().eq('invoice_id', editingInvoice.id);
     } else {
       const { data: numData, error: numErr } = await supabase.rpc('next_invoice_number', { p_supplier_id: profileId });
-      if (numErr) { alert('Failed to generate invoice number: ' + numErr.message); setSavingInvoice(false); return; }
+      if (numErr) { toast.error('Failed to generate invoice number: ' + numErr.message); setSavingInvoice(false); return; }
       payload.invoice_number = numData;
       const { data: newInv, error } = await supabase.from('invoices').insert(payload).select().single();
-      if (error || !newInv) { alert('Failed: ' + error?.message); setSavingInvoice(false); return; }
+      if (error || !newInv) { toast.error('Failed: ' + error?.message); setSavingInvoice(false); return; }
       invoiceId = newInv.id;
     }
 
@@ -262,7 +263,7 @@ export default function TruckingView({
   const deleteInvoice = async (id: string) => {
     if (!confirm('Delete this invoice permanently?')) return;
     const { error } = await supabase.from('invoices').delete().eq('id', id);
-    if (error) { alert('Failed to delete: ' + error.message); return; }
+    if (error) { toast.error('Failed to delete: ' + error.message); return; }
     setInvoices(invoices.filter(i => i.id !== id));
     setLineItems(lineItems.filter(li => li.invoice_id !== id));
     setShowInvoiceModal(false);

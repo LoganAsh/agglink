@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Skeleton } from '@/components/Skeleton';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -44,10 +45,10 @@ function PaymentForm({ invoiceId, amount, onSuccess, onCancel }: { invoiceId: st
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <PaymentElement />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-red-700">{error}</p>}
       <div className="flex space-x-3 pt-2">
         <button type="button" onClick={onCancel} disabled={isProcessing}
-          className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all disabled:opacity-40">
+          className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-all disabled:opacity-40">
           Cancel
         </button>
         <button type="submit" disabled={!stripe || isProcessing}
@@ -78,11 +79,19 @@ export default function InvoicePaymentForm({ invoiceId, onClose, onSuccess }: { 
       .catch(err => setError(err.message || 'Failed to load payment form'));
   }, [invoiceId]);
 
-  if (error) return <div className="text-red-400 text-sm py-3">{error}</div>;
-  if (!clientSecret) return <div className="text-center py-8 text-slate-400">Loading payment form...</div>;
+  if (error) return <div className="text-red-700 text-sm py-3">{error}</div>;
+  if (!clientSecret) {
+    return (
+      <div className="space-y-3 py-2" aria-label="Loading payment form">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-10 w-3/4" />
+        <Skeleton className="h-10 w-1/2" />
+      </div>
+    );
+  }
 
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'night' } }}>
+    <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: 'flat' } }}>
       <PaymentForm invoiceId={invoiceId} amount={amount} onSuccess={onSuccess} onCancel={onClose} />
     </Elements>
   );

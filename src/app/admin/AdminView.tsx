@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
+import { toast } from 'sonner';
 
 type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes' | 'requests' | 'categories' | 'trucks';
 type Role = 'contractor' | 'supplier' | 'admin' | 'trucking';
@@ -80,7 +81,7 @@ export default function AdminView({
     const { error } = await supabase.from('facilities').update({ owner_id: ownerId }).eq('id', facilityId);
     if (!error) {
       setFacilities(prev => prev.map(f => f.id === facilityId ? { ...f, owner_id: ownerId } : f));
-    } else alert('Failed to update facility owner');
+    } else toast.error('Failed to update facility owner');
     setAssigningFacilityId(null);
   };
 
@@ -128,7 +129,7 @@ export default function AdminView({
       setFacilities(prev => prev.map(f => f.id === editingFacility.id ? { ...f, ...data } : f));
       setEditingFacility(null);
     } else {
-      alert('Failed to update facility: ' + error?.message);
+      toast.error('Failed to update facility: ' + error?.message);
     }
     setSavingEditFacility(false);
   };
@@ -155,7 +156,7 @@ export default function AdminView({
     if (data && !error) {
       setFacilities([...facilities, data]);
       setNewFacName(''); setNewFacAddress(''); setNewFacLat(''); setNewFacLon(''); setNewFacOwner('');
-    } else alert('Failed to create facility: ' + error?.message);
+    } else toast.error('Failed to create facility: ' + error?.message);
     setSavingFacility(false);
   };
 
@@ -178,7 +179,7 @@ export default function AdminView({
     setSavingRoleId(profileId);
     const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', profileId);
     if (!error) setProfiles(prev => prev.map(p => p.id === profileId ? { ...p, role: newRole } : p));
-    else alert('Failed to update role: ' + error.message);
+    else toast.error('Failed to update role: ' + error.message);
     setSavingRoleId(null);
     setEditingRoleId(null);
   };
@@ -205,7 +206,7 @@ export default function AdminView({
       }
       else {
         setSignupRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected', reviewed_at: new Date().toISOString() } : r));
-        if (action === 'approve' && data.tempPassword) alert(`Account created for ${req.email}.\n\nA password reset email has been sent.\n\nTemp password (if needed): ${data.tempPassword}`);
+        if (action === 'approve' && data.tempPassword) toast.success(`Account created for ${req.email}.\n\nA password reset email has been sent.\n\nTemp password (if needed): ${data.tempPassword}`);
       }
     } catch (e: any) { setActionError(e.message); }
     setProcessingId(null);
@@ -218,7 +219,7 @@ export default function AdminView({
     setSavingCat(true);
     const { data, error } = await supabase.from('material_categories').insert([{ name: newCatName.trim(), type: newCatType }]).select().single();
     if (data && !error) { setCategories([...categories, data]); setNewCatName(''); }
-    else alert('Failed to create category: ' + error?.message);
+    else toast.error('Failed to create category: ' + error?.message);
     setSavingCat(false);
   };
 
@@ -226,7 +227,7 @@ export default function AdminView({
     if (!confirm('Delete this category? All material assignments will also be removed.')) return;
     const { error } = await supabase.from('material_categories').delete().eq('id', catId);
     if (!error) { setCategories(categories.filter(c => c.id !== catId)); setCategoryMap(categoryMap.filter(m => m.category_id !== catId)); if (selectedCatId === catId) setSelectedCatId(null); }
-    else alert('Failed to delete: ' + error.message);
+    else toast.error('Failed to delete: ' + error.message);
   };
 
   const toggleMaterialAssignment = async (catId: string, matName: string) => {
@@ -235,11 +236,11 @@ export default function AdminView({
     if (existing) {
       const { error } = await supabase.from('material_category_map').delete().eq('id', existing.id);
       if (!error) setCategoryMap(categoryMap.filter(m => m.id !== existing.id));
-      else alert('Failed to remove assignment');
+      else toast.error('Failed to remove assignment');
     } else {
       const { data, error } = await supabase.from('material_category_map').insert([{ category_id: catId, material_name: matName }]).select().single();
       if (data && !error) setCategoryMap([...categoryMap, data]);
-      else alert('Failed to assign material');
+      else toast.error('Failed to assign material');
     }
     setAssigningMat(false);
   };
@@ -251,21 +252,21 @@ export default function AdminView({
     setSavingTruck(true);
     const { data, error } = await supabase.from('truck_types').insert([{ name: newTruckName.trim() }]).select().single();
     if (data && !error) { setTruckTypes([...truckTypes, data]); setNewTruckName(''); }
-    else alert('Failed to create truck type: ' + error?.message);
+    else toast.error('Failed to create truck type: ' + error?.message);
     setSavingTruck(false);
   };
 
   const toggleTruckActive = async (truck: any) => {
     const { error } = await supabase.from('truck_types').update({ active: !truck.active }).eq('id', truck.id);
     if (!error) setTruckTypes(truckTypes.map(t => t.id === truck.id ? { ...t, active: !t.active } : t));
-    else alert('Failed to update truck type');
+    else toast.error('Failed to update truck type');
   };
 
   const deleteTruckType = async (truckId: string) => {
     if (!confirm('Delete this truck type?')) return;
     const { error } = await supabase.from('truck_types').delete().eq('id', truckId);
     if (!error) setTruckTypes(truckTypes.filter(t => t.id !== truckId));
-    else alert('Failed to delete truck type');
+    else toast.error('Failed to delete truck type');
   };
 
   const selectedCat = categories.find(c => c.id === selectedCatId);

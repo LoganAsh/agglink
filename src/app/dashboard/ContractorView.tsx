@@ -4,6 +4,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
+import { toast } from 'sonner';
+import { Skeleton } from '@/components/Skeleton';
 import dynamic from 'next/dynamic';
 import InvoicePaymentForm from '@/components/InvoicePaymentForm';
 
@@ -132,8 +134,8 @@ export default function ContractorView({
     if (data && !error) {
       setContractorJobRequests([data, ...contractorJobRequests]);
       setShowJobRequestModal(false);
-      alert('Quote request sent!');
-    } else alert('Failed to send: ' + (error?.message || 'unknown'));
+      toast.success('Quote request sent!');
+    } else toast.error('Failed to send: ' + (error?.message || 'unknown'));
     setSendingJobRequest(false);
   };
 
@@ -144,7 +146,7 @@ export default function ContractorView({
       .select('*, trucker:profiles!contractor_trucking_network_trucker_id_fkey(id, company_name)')
       .single();
     if (data && !error) setTruckingNetwork(prev => [...prev, data]);
-    else alert('Failed to add trucker: ' + (error?.message || 'unknown'));
+    else toast.error('Failed to add trucker: ' + (error?.message || 'unknown'));
   };
 
   const removeTruckerFromNetwork = async (truckerId: string) => {
@@ -153,7 +155,7 @@ export default function ContractorView({
       .delete()
       .match({ contractor_id: profileId, trucker_id: truckerId });
     if (!error) setTruckingNetwork(prev => prev.filter(t => t.trucker_id !== truckerId));
-    else alert('Failed to remove: ' + error.message);
+    else toast.error('Failed to remove: ' + error.message);
   };
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -272,7 +274,7 @@ export default function ContractorView({
       .select('*, facility:facilities(*)')
       .single();
     if (data && !error) setNetworkFacilities(prev => [...prev, data.facility]);
-    else alert('Failed to add to network: ' + (error?.message || 'unknown'));
+    else toast.error('Failed to add to network: ' + (error?.message || 'unknown'));
   };
 
   const removeFromNetwork = async (facilityId: string) => {
@@ -281,7 +283,7 @@ export default function ContractorView({
       .delete()
       .match({ contractor_id: profileId, facility_id: facilityId });
     if (!error) setNetworkFacilities(prev => prev.filter(f => f.id !== facilityId));
-    else alert('Failed to remove from network: ' + error.message);
+    else toast.error('Failed to remove from network: ' + error.message);
   };
 
   const addAllCompanyFacilities = async (ownerId: string) => {
@@ -290,7 +292,7 @@ export default function ContractorView({
     const networkIds = new Set(networkFacilities.map((f: any) => f.id));
     const toAdd = ownerFacilities.filter((f: any) => !networkIds.has(f.id));
     if (toAdd.length === 0) {
-      alert("All of this company's facilities are already in your network.");
+      toast("All of this company's facilities are already in your network.");
       return;
     }
     const rows = toAdd.map((f: any) => ({ contractor_id: profileId, facility_id: f.id }));
@@ -299,7 +301,7 @@ export default function ContractorView({
       .insert(rows)
       .select('*, facility:facilities(*)');
     if (error) {
-      alert('Failed to add facilities: ' + error.message);
+      toast.error('Failed to add facilities: ' + error.message);
       return;
     }
     if (data) {
@@ -325,9 +327,9 @@ export default function ContractorView({
       message: tierRequestMessage || null,
     });
     if (!error) {
-      alert('Request sent!');
+      toast.success('Request sent!');
       setTierRequestRes(null);
-    } else alert('Failed to send request: ' + error.message);
+    } else toast.error('Failed to send request: ' + error.message);
     setTierRequestSending(false);
   };
 
@@ -442,7 +444,7 @@ export default function ContractorView({
     setArchivingProject(true);
     const { error } = await supabase.from('projects').update({ status: nextStatus }).eq('id', activeProject.id);
     if (error) {
-      alert('Failed to ' + (isArchived ? 'unarchive' : 'archive') + ' project: ' + error.message);
+      toast.error('Failed to ' + (isArchived ? 'unarchive' : 'archive') + ' project: ' + error.message);
       setArchivingProject(false);
       return;
     }
@@ -601,7 +603,7 @@ export default function ContractorView({
         await fetchAllSavedEstimates();
       }
       closeEditModal();
-    } else alert("Failed to save project.");
+    } else toast.error("Failed to save project.");
   };
 
   const createProject = async (e: React.FormEvent) => {
@@ -614,7 +616,7 @@ export default function ContractorView({
       setProjects([data, ...projects]); setActiveProject(data);
       if (modalJobLat && modalJobLon) { setJobLat(modalJobLat); setJobLon(modalJobLon); setJobAddress(newProjAddr); }
       closeModal(); setSavedEstimates([]); setRequirements([]); setManifestResults({});
-    } else alert("Failed to create project");
+    } else toast.error("Failed to create project");
   };
 
   const deleteProject = async () => {
@@ -629,7 +631,7 @@ export default function ContractorView({
       setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({});
       setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
       await fetchAllSavedEstimates();
-    } else alert("Failed to delete project.");
+    } else toast.error("Failed to delete project.");
     setIsDeletingProject(false); setShowDeleteConfirm(false);
   };
 
@@ -657,8 +659,8 @@ export default function ContractorView({
   //        Requirements
   const addRequirement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeProject || selectedMaterials.length === 0 || !qty) { alert("Please select at least one material and fill out all fields."); return; }
-    if (!selectedTruckType) { alert("Please select a truck type."); return; }
+    if (!activeProject || selectedMaterials.length === 0 || !qty) { toast.error("Please select at least one material and fill out all fields."); return; }
+    if (!selectedTruckType) { toast.error("Please select a truck type."); return; }
 
     // Insert one requirement per selected material (or one with compared_materials for multi)
     const primaryMaterial = selectedMaterials[0];
@@ -674,7 +676,7 @@ export default function ContractorView({
     if (data && !error) {
       setRequirements([...requirements, data]);
       setSelectedMaterials([]);
-    } else { alert("Failed to add requirement."); console.error(error); }
+    } else { toast.error("Failed to add requirement."); console.error(error); }
   };
 
   const removeRequirement = async (reqId: string) => {
@@ -751,7 +753,7 @@ export default function ContractorView({
     if (existingExact) {
       const { error } = await supabase.from('project_estimates').delete().eq('id', existingExact.id);
       if (!error) { setSavedEstimates(savedEstimates.filter(se => se.id !== existingExact.id)); await fetchAllSavedEstimates(); }
-      else alert("Failed to remove saved estimate.");
+      else toast.error("Failed to remove saved estimate.");
     } else {
       const matName = res.materialName || req.material_name;
       const existingForMat = savedEstimates.find(se => se.material_name === matName);
@@ -763,7 +765,7 @@ export default function ContractorView({
         freight_price: res.frtPerUnit, total_price: res.totalPerUnit
       }]).select().single();
       if (data && !error) { setSavedEstimates([...savedEstimates.filter(se => se.material_name !== matName), { ...data, facility: { name: res.supplier } }]); await fetchAllSavedEstimates(); }
-      else alert("Failed to save estimate.");
+      else toast.error("Failed to save estimate.");
     }
     setSavingEstimateId(null);
   };
@@ -817,7 +819,7 @@ export default function ContractorView({
       setMessagingQuoteId(null);
       setFollowupText('');
     } else {
-      alert('Failed to send message: ' + error.message);
+      toast.error('Failed to send message: ' + error.message);
     }
     setSendingFollowup(false);
   };
@@ -828,7 +830,7 @@ export default function ContractorView({
       const fac = quoteModalFacilities.find(f => f.facilityId === id);
       return fac?.acceptsQuotes !== false;
     });
-    if (ids.length === 0) { alert('Select at least one facility.'); return; }
+    if (ids.length === 0) { toast.error('Select at least one facility.'); return; }
     setSubmittingQuoteModal(true);
     try {
       const response = await fetch('/api/quotes', {
@@ -886,17 +888,17 @@ export default function ContractorView({
 
         const declinedCount = data.autoDeclined ?? 0;
         if (declinedCount > 0) {
-          alert(`Sent ${results.length - declinedCount} request${results.length - declinedCount === 1 ? '' : 's'}. ${declinedCount} were auto-declined for being below the supplier's minimum.`);
+          toast.success(`Sent ${results.length - declinedCount} request${results.length - declinedCount === 1 ? '' : 's'}. ${declinedCount} were auto-declined for being below the supplier's minimum.`);
         }
 
         setActiveTab('pending');
         closeQuoteModal();
       } else {
         const d = await response.json().catch(() => ({}));
-        alert('Error: ' + (d.error || response.statusText));
+        toast.error('Error: ' + (d.error || response.statusText));
       }
     } catch (e: any) {
-      alert('Error: ' + e.message);
+      toast.error('Error: ' + e.message);
     }
     setSubmittingQuoteModal(false);
   };
@@ -1609,7 +1611,19 @@ export default function ContractorView({
                             </div>
 
                             {/* Results */}
-                            {result && (
+                            {isCalculating && !result ? (
+                              <div className="bg-white border-t border-zinc-200 p-4 space-y-2" aria-label="Calculating routing">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <div key={i} className="flex items-center gap-3">
+                                    <Skeleton className="h-4 flex-1" />
+                                    <Skeleton className="h-4 w-16" />
+                                    <Skeleton className="h-4 w-20" />
+                                    <Skeleton className="h-4 w-20" />
+                                    <Skeleton className="h-4 w-16" />
+                                  </div>
+                                ))}
+                              </div>
+                            ) : result ? (
                               <div className="bg-white border-t border-zinc-200">
                                 {Array.isArray(result) && result.length > 0 ? (
                                   <ResultsTable options={result} req={req} />
@@ -1617,7 +1631,7 @@ export default function ContractorView({
                                   <p className="p-3 text-center text-xs text-red-700">No facilities found or routing failed.</p>
                                 )}
                               </div>
-                            )}
+                            ) : null}
                           </div>
                         );
                       })}

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
+import { toast } from 'sonner';
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
@@ -106,7 +107,7 @@ export default function SupplierView({
     setSavingId(materialId);
     const { error } = await supabase.from('materials').update({ stock_status: status }).eq('id', materialId);
     if (!error) setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, stock_status: status } : m));
-    else alert('Failed to update stock status');
+    else toast.error('Failed to update stock status');
     setSavingId(null);
   };
 
@@ -134,7 +135,7 @@ export default function SupplierView({
 
     const { error } = await supabase.from('materials').update(updates).eq('id', materialId);
     if (!error) setMaterials(prev => prev.map(m => m.id === materialId ? { ...m, ...updates } : m));
-    else alert('Failed to update price');
+    else toast.error('Failed to update price');
   };
 
   const setContractorTier = async (contractorId: string, tier: string) => {
@@ -152,7 +153,7 @@ export default function SupplierView({
         const filtered = prev.filter(r => r.contractor_id !== contractorId);
         return [...filtered, data];
       });
-    } else alert('Failed to update tier: ' + error?.message);
+    } else toast.error('Failed to update tier: ' + error?.message);
   };
 
   const handleTierRequest = async (req: any, action: 'approve' | 'reject') => {
@@ -254,7 +255,7 @@ export default function SupplierView({
 
   const saveInvoice = async (status: 'draft' | 'sent') => {
     if (!invContractor || invItems.length === 0) {
-      alert('Please select a contractor and add at least one line item.');
+      toast.error('Please select a contractor and add at least one line item.');
       return;
     }
     setSavingInvoice(true);
@@ -275,14 +276,14 @@ export default function SupplierView({
     let invoiceId = editingInvoice?.id;
     if (editingInvoice) {
       const { error } = await supabase.from('invoices').update(payload).eq('id', editingInvoice.id);
-      if (error) { alert('Failed: ' + error.message); setSavingInvoice(false); return; }
+      if (error) { toast.error('Failed: ' + error.message); setSavingInvoice(false); return; }
       await supabase.from('invoice_line_items').delete().eq('invoice_id', editingInvoice.id);
     } else {
       const { data: numData, error: numErr } = await supabase.rpc('next_invoice_number', { p_supplier_id: profileId });
-      if (numErr) { alert('Failed to generate invoice number: ' + numErr.message); setSavingInvoice(false); return; }
+      if (numErr) { toast.error('Failed to generate invoice number: ' + numErr.message); setSavingInvoice(false); return; }
       payload.invoice_number = numData;
       const { data: newInv, error } = await supabase.from('invoices').insert(payload).select().single();
-      if (error || !newInv) { alert('Failed: ' + error?.message); setSavingInvoice(false); return; }
+      if (error || !newInv) { toast.error('Failed: ' + error?.message); setSavingInvoice(false); return; }
       invoiceId = newInv.id;
     }
 
@@ -310,7 +311,7 @@ export default function SupplierView({
   const deleteInvoice = async (id: string) => {
     if (!confirm('Delete this invoice permanently?')) return;
     const { error } = await supabase.from('invoices').delete().eq('id', id);
-    if (error) { alert('Failed to delete: ' + error.message); return; }
+    if (error) { toast.error('Failed to delete: ' + error.message); return; }
     setInvoices(invoices.filter(i => i.id !== id));
     setLineItems(lineItems.filter(li => li.invoice_id !== id));
     setShowInvoiceModal(false);
@@ -343,7 +344,7 @@ export default function SupplierView({
       setNewMatName(''); setNewMatPricePerTon(''); setNewMatPricePerCy('');
       setNewMat10wLoad(''); setNewMatSdLoad(''); setNewMatStock('in_stock');
       setActiveTab('materials');
-    } else alert('Failed to add material: ' + error?.message);
+    } else toast.error('Failed to add material: ' + error?.message);
     setAddingMaterial(false);
   };
 
@@ -358,7 +359,7 @@ export default function SupplierView({
       .eq('id', facilityId);
     if (error) {
       setFacilitySettings(prev);
-      alert('Failed to update facility setting: ' + error.message);
+      toast.error('Failed to update facility setting: ' + error.message);
     }
     setSavingFacilityId(null);
   };
@@ -367,12 +368,12 @@ export default function SupplierView({
   const saveAutoDeclineMessage = async () => {
     setSavingAutoMsg(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setSavingAutoMsg(false); alert('Not signed in.'); return; }
+    if (!user) { setSavingAutoMsg(false); toast.error('Not signed in.'); return; }
     const { error } = await supabase
       .from('profiles')
       .update({ auto_decline_message: autoDeclineMessage.trim() || null })
       .eq('id', user.id);
-    if (error) alert('Failed to save: ' + error.message);
+    if (error) toast.error('Failed to save: ' + error.message);
     else setAutoDeclineMsgSavedAt(Date.now());
     setSavingAutoMsg(false);
   };
@@ -386,7 +387,7 @@ export default function SupplierView({
       .from('materials')
       .update({ auto_decline_below: newVal })
       .eq('id', mat.id);
-    if (error) alert('Failed to update threshold: ' + error.message);
+    if (error) toast.error('Failed to update threshold: ' + error.message);
     else setMaterials(prev => prev.map(m => m.id === mat.id ? { ...m, auto_decline_below: newVal } : m));
     setSavingThresholdId(null);
   };
@@ -417,7 +418,7 @@ export default function SupplierView({
     if (!confirm('Remove this material from your supply list?')) return;
     const { error } = await supabase.from('materials').delete().eq('id', materialId);
     if (!error) setMaterials(prev => prev.filter(m => m.id !== materialId));
-    else alert('Failed to remove material');
+    else toast.error('Failed to remove material');
   };
 
   //        Quote requests — fetch all statuses once on mount; updates locally after responding
@@ -462,7 +463,7 @@ export default function SupplierView({
       setRespondingTo(null);
       setOfferPrice('');
       setResponseMessage('');
-    } else alert('Failed to submit quote.');
+    } else toast.error('Failed to submit quote.');
     setSubmittingQuote(false);
   };
 
@@ -478,7 +479,7 @@ export default function SupplierView({
       setRespondingTo(null);
       setOfferPrice('');
       setResponseMessage('');
-    } else alert('Failed to decline quote.');
+    } else toast.error('Failed to decline quote.');
     setSubmittingQuote(false);
   };
 
@@ -491,7 +492,7 @@ export default function SupplierView({
       setQuotes(prev => prev.map(q => q.id === quote.id ? { ...q, ...update } : q));
       setMessagingTo(null);
       setResponseMessage('');
-    } else alert('Failed to send message.');
+    } else toast.error('Failed to send message.');
     setSubmittingQuote(false);
   };
 
