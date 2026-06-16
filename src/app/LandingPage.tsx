@@ -28,7 +28,7 @@ export default function LandingPage() {
           <Link href="/login" className="text-sm text-slate-300 hover:text-white px-4 py-2 transition-colors">
             Sign In
           </Link>
-          <Link href="/login?signup=true" className="text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-orange-500/20 transition-all">
+          <Link href="/login?signup=true" className="text-sm font-semibold bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-4 py-2 rounded-lg shadow-lg shadow-orange-500/20 transition-all">
             Request Access
           </Link>
         </div>
@@ -58,7 +58,7 @@ export default function LandingPage() {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Link href="/login?signup=true"
-              className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold shadow-xl shadow-orange-500/30 transition-all hover:scale-[1.02] hover:-translate-y-0.5">
+              className="inline-flex items-center justify-center px-6 py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white font-semibold shadow-xl shadow-orange-500/30 transition-all hover:scale-[1.02] hover:-translate-y-0.5">
               Request Access
               <i className="fa-solid fa-arrow-right ml-2 text-sm"></i>
             </Link>
@@ -166,7 +166,7 @@ export default function LandingPage() {
               Join the platform built specifically for Utah&apos;s aggregate industry.
             </p>
             <Link href="/login?signup=true"
-              className="inline-flex items-center px-7 py-4 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-lg shadow-2xl shadow-orange-500/40 transition-all hover:scale-[1.02]">
+              className="inline-flex items-center px-7 py-4 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white font-semibold text-lg shadow-2xl shadow-orange-500/40 transition-all hover:scale-[1.02]">
               Request Access
               <i className="fa-solid fa-arrow-right ml-2"></i>
             </Link>

@@ -594,7 +594,7 @@ export default function SupplierView({
                     <button onClick={() => { setRespondingTo(null); setOfferPrice(''); setResponseMessage(''); }}
                       className="text-zinc-600 hover:text-zinc-900 text-xs font-semibold px-2">Cancel</button>
                     <button disabled={submittingQuote || !offerPrice} onClick={() => submitQuote(q)}
-                      className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50">
+                      className="bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-3 py-1.5 rounded text-xs font-bold transition-all disabled:opacity-50">
                       {submittingQuote ? '...' : 'Send Quote'}
                     </button>
                   </div>
@@ -647,7 +647,7 @@ export default function SupplierView({
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-chart-line w-4 text-center"></i>
             <span>Dashboard</span>
             {pendingQuotes.length > 0 && (
@@ -655,7 +655,7 @@ export default function SupplierView({
             )}
           </button>
           <button onClick={() => setActiveTab('quotes')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'quotes' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'quotes' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-handshake w-4 text-center"></i>
             <span>Quote Requests</span>
             {pendingQuotes.length > 0 && (
@@ -663,12 +663,12 @@ export default function SupplierView({
             )}
           </button>
           <button onClick={() => setActiveTab('materials')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'materials' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'materials' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-cubes w-4 text-center"></i>
             <span>My Materials</span>
           </button>
           <button onClick={() => setActiveTab('customers')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'customers' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'customers' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-handshake w-4 text-center"></i>
             <span>Customer Management</span>
             {tierRequests.filter(r => r.status === 'pending').length > 0 && (
@@ -676,7 +676,7 @@ export default function SupplierView({
             )}
           </button>
           <button onClick={() => setActiveTab('invoices')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'invoices' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'invoices' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-file-invoice-dollar w-4 text-center"></i>
             <span>Invoices</span>
             {overdueInvoiceCount > 0 && (
@@ -684,12 +684,12 @@ export default function SupplierView({
             )}
           </button>
           <button onClick={() => setActiveTab('add')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'add' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'add' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-plus w-4 text-center"></i>
             <span>Add Material</span>
           </button>
           <button onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'settings' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'settings' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-gear w-4 text-center"></i>
             <span>Settings</span>
           </button>
@@ -720,7 +720,7 @@ export default function SupplierView({
           <div className="flex items-center space-x-3">
             {activeTab === 'materials' && (
               <button onClick={() => setActiveTab('add')}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all">
+                className="bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all">
                 + Add Material
               </button>
             )}
@@ -739,7 +739,7 @@ export default function SupplierView({
                   <p className="text-zinc-600 text-sm mt-1">Manage public pricing, stock levels, and project-specific contractor rates.</p>
                 </div>
                 <div className="flex space-x-3">
-                  <button onClick={() => setActiveTab('add')} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all whitespace-nowrap">
+                  <button onClick={() => setActiveTab('add')} className="bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all whitespace-nowrap">
                     <i className="fa-solid fa-plus mr-2"></i> Add Material
                   </button>
                 </div>
@@ -763,7 +763,9 @@ export default function SupplierView({
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending Quotes</p>
-                      <h3 className="text-3xl font-bold text-zinc-900 mt-1">{pendingQuotes.length} <span className="text-sm font-normal text-orange-500">{pendingQuotes.length === 1 ? 'Request' : 'Requests'}</span></h3>
+                      <h3 className="text-3xl font-bold text-zinc-900 mt-1">
+                        <span key={pendingQuotes.length} className="inline-block kpi-fade">{pendingQuotes.length}</span> <span className="text-sm font-normal text-orange-500">{pendingQuotes.length === 1 ? 'Request' : 'Requests'}</span>
+                      </h3>
                     </div>
                     <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-500">
                       <i className="fa-solid fa-hand-holding-dollar text-lg"></i>
@@ -827,7 +829,7 @@ export default function SupplierView({
                             const unit = mat.is_import ? '/T' : '/CY';
                             const price = mat.is_import ? mat.price_per_ton : mat.price_per_cy;
                             return (
-                              <tr key={mat.id} className="hover:bg-white transition-colors">
+                              <tr key={mat.id} className="hover:bg-white transition-colors duration-150">
                                 <td className="px-5 py-4 font-medium text-zinc-900">{mat.name}</td>
                                 <td className="px-5 py-4">
                                   <div className="w-full bg-zinc-100 rounded-full h-2 mb-1">
@@ -950,7 +952,7 @@ export default function SupplierView({
                 <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
                   <i className="fa-solid fa-cubes text-4xl text-zinc-400 mb-3"></i>
                   <p className="text-zinc-600 text-sm">No materials added yet.</p>
-                  <button onClick={() => setActiveTab('add')} className="mt-4 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all">
+                  <button onClick={() => setActiveTab('add')} className="mt-4 bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all">
                     Add Your First Material
                   </button>
                 </div>
@@ -1093,7 +1095,7 @@ export default function SupplierView({
                           </div>
                           <div className="flex space-x-2">
                             <button onClick={() => handleTierRequest(req, 'reject')} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-300 text-zinc-600 hover:border-red-500/50 hover:text-red-700 transition-all">Reject</button>
-                            <button onClick={() => handleTierRequest(req, 'approve')} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">Approve</button>
+                            <button onClick={() => handleTierRequest(req, 'approve')} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] text-white transition-all">Approve</button>
                           </div>
                         </div>
                       </div>
@@ -1150,7 +1152,7 @@ export default function SupplierView({
                   ))}
                 </div>
                 <button onClick={() => { setEditingInvoice(null); resetInvoiceForm(); setShowInvoiceModal(true); }}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all">
+                  className="bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all">
                   + New Invoice
                 </button>
               </div>
@@ -1170,7 +1172,7 @@ export default function SupplierView({
                   return (
                     <div key={inv.id}
                       onClick={() => { setEditingInvoice(inv); loadInvoiceForEdit(inv); setShowInvoiceModal(true); }}
-                      className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-zinc-300 transition-colors cursor-pointer">
+                      className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-zinc-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-zinc-900/10 transition-all duration-200 cursor-pointer">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -1289,7 +1291,7 @@ export default function SupplierView({
                       Cancel
                     </button>
                     <button type="submit" disabled={addingMaterial || !newMatName || !newMatFacilityId}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 active:scale-[0.97] disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                       {addingMaterial ? 'Adding...' : 'Add Material'}
                     </button>
                   </div>
@@ -1671,7 +1673,7 @@ export default function SupplierView({
                   {savingInvoice ? 'Saving…' : 'Save as Draft'}
                 </button>
                 <button onClick={() => saveInvoice('sent')} disabled={savingInvoice || !invContractor || invItems.length === 0}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white transition-all">
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-orange-500 hover:bg-orange-600 active:scale-[0.97] disabled:opacity-50 text-white transition-all">
                   {savingInvoice ? 'Saving…' : 'Save & Send'}
                 </button>
               </div>

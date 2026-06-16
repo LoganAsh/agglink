@@ -25,3 +25,58 @@ body {
     text-wrap: balance;
   }
 }
+
+@layer base {
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.4);
+    transition: box-shadow 0.15s ease;
+  }
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.4);
+    transition: box-shadow 0.15s ease;
+  }
+}
+
+/* Custom scrollbar — light zinc palette */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgb(244 244 245); /* zinc-100 */
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(212 212 216); /* zinc-300 */
+  border-radius: 5px;
+  border: 2px solid rgb(244 244 245);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(161 161 170); /* zinc-400 */
+}
+
+@keyframes markerPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes kpiFade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.kpi-fade {
+  animation: kpiFade 0.5s ease-out;
+}

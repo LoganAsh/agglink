@@ -52,7 +52,7 @@ function PaymentForm({ invoiceId, amount, onSuccess, onCancel }: { invoiceId: st
           Cancel
         </button>
         <button type="submit" disabled={!stripe || isProcessing}
-          className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+          className="flex-1 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
           {isProcessing ? 'Processing...' : `Pay $${(amount / 100).toFixed(2)}`}
         </button>
       </div>

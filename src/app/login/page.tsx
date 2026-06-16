@@ -124,7 +124,7 @@ function LoginPageInner() {
               </div>
               <button
                 type="submit" disabled={loading}
-                className="flex w-full justify-center rounded-lg bg-orange-500 py-2 px-4 text-sm font-semibold text-white hover:bg-orange-600 transition-all disabled:opacity-50"
+                className="flex w-full justify-center rounded-lg bg-orange-500 py-2 px-4 text-sm font-semibold text-white hover:bg-orange-600 active:scale-[0.97] transition-all disabled:opacity-50"
               >
                 {loading ? 'Authenticating...' : 'Sign In'}
               </button>
@@ -233,7 +233,7 @@ function LoginPageInner() {
 
                   <button
                     type="submit" disabled={reqLoading}
-                    className="flex w-full justify-center rounded-lg bg-orange-500 py-2 px-4 text-sm font-semibold text-white hover:bg-orange-600 transition-all disabled:opacity-50 mt-2"
+                    className="flex w-full justify-center rounded-lg bg-orange-500 py-2 px-4 text-sm font-semibold text-white hover:bg-orange-600 active:scale-[0.97] transition-all disabled:opacity-50 mt-2"
                   >
                     {reqLoading ? 'Submitting...' : 'Submit Request'}
                   </button>

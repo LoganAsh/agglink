@@ -284,17 +284,17 @@ export default function TruckingView({
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button onClick={() => setActiveTab('rates')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'rates' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'rates' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-dollar-sign w-4 text-center"></i>
             <span>My Rates</span>
           </button>
           <button onClick={() => setActiveTab('customers')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'customers' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'customers' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-users w-4 text-center"></i>
             <span>Customers</span>
           </button>
           <button onClick={() => setActiveTab('jobs')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'jobs' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'jobs' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-truck-fast w-4 text-center"></i>
             <span>Job Requests</span>
             {pendingJobCount > 0 && (
@@ -302,7 +302,7 @@ export default function TruckingView({
             )}
           </button>
           <button onClick={() => setActiveTab('invoices')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeTab === 'invoices' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg font-medium transition-all duration-150 text-left hover:translate-x-0.5 ${activeTab === 'invoices' ? 'bg-cyan-500/10 text-cyan-700' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-file-invoice-dollar w-4 text-center"></i>
             <span>Invoices</span>
             {overdueInvoiceCount > 0 && (
@@ -538,7 +538,7 @@ export default function TruckingView({
                                 Decline
                               </button>
                               <button onClick={() => openQuote(req)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-600 text-white transition-all">
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500 hover:bg-cyan-600 active:scale-[0.97] text-white transition-all">
                                 Quote
                               </button>
                             </div>
@@ -565,7 +565,7 @@ export default function TruckingView({
                   ))}
                 </div>
                 <button onClick={() => { setEditingInvoice(null); resetInvoiceForm(); setShowInvoiceModal(true); }}
-                  className="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-cyan-500/20 transition-all">
+                  className="bg-cyan-500 hover:bg-cyan-600 active:scale-[0.97] text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-cyan-500/20 transition-all">
                   + New Invoice
                 </button>
               </div>
@@ -585,7 +585,7 @@ export default function TruckingView({
                   return (
                     <div key={inv.id}
                       onClick={() => { setEditingInvoice(inv); loadInvoiceForEdit(inv); setShowInvoiceModal(true); }}
-                      className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-zinc-300 transition-colors cursor-pointer">
+                      className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-zinc-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-zinc-900/10 transition-all duration-200 cursor-pointer">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -848,7 +848,7 @@ export default function TruckingView({
                   {savingInvoice ? 'Saving…' : 'Save as Draft'}
                 </button>
                 <button onClick={() => saveInvoice('sent')} disabled={savingInvoice || !invContractor || invItems.length === 0}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white transition-all">
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan-500 hover:bg-cyan-600 active:scale-[0.97] disabled:opacity-50 text-white transition-all">
                   {savingInvoice ? 'Saving…' : 'Save & Send'}
                 </button>
               </div>
@@ -891,7 +891,7 @@ export default function TruckingView({
                 Cancel
               </button>
               <button onClick={submitQuote} disabled={submittingQuote || !quoteRate}
-                className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                className="flex-1 bg-cyan-500 hover:bg-cyan-600 active:scale-[0.97] disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                 {submittingQuote ? 'Sending...' : 'Send Quote'}
               </button>
             </div>

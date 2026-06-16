@@ -326,7 +326,7 @@ export default function AdminView({
         <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
-              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.id ? 'bg-orange-500/10 text-orange-600' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
+              className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 hover:translate-x-0.5 ${activeTab === t.id ? 'bg-orange-500/10 text-orange-600' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
               <div className="flex items-center space-x-3">
                 <i className={`fa-solid ${t.icon} w-4 text-center`}></i>
                 <span>{t.label}</span>
@@ -366,16 +366,16 @@ export default function AdminView({
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Users</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{stats.totalUsers}</h3><p className="text-xs text-zinc-500 mt-2">{stats.contractors} contractors | {stats.suppliers} suppliers</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Projects</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{stats.totalProjects}</h3><p className="text-xs text-zinc-500 mt-2">{stats.totalEstimates} estimates generated</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Est. Platform Value</p><h3 className="text-2xl font-bold text-emerald-700 mt-1">{fmtCurrency(stats.totalEstValue)}</h3><p className="text-xs text-zinc-500 mt-2">across all project estimates</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Price / Unit</p><h3 className="text-2xl font-bold text-orange-600 mt-1">{fmtCurrency(stats.avgEstPrice)}</h3><p className="text-xs text-zinc-500 mt-2">blended material + freight</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Users</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalUsers)} className="inline-block kpi-fade">{stats.totalUsers}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.contractors} contractors | {stats.suppliers} suppliers</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Projects</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalProjects)} className="inline-block kpi-fade">{stats.totalProjects}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.totalEstimates} estimates generated</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Est. Platform Value</p><h3 className="text-2xl font-bold text-emerald-700 mt-1"><span key={String(fmtCurrency(stats.totalEstValue))} className="inline-block kpi-fade">{fmtCurrency(stats.totalEstValue)}</span></h3><p className="text-xs text-zinc-500 mt-2">across all project estimates</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Price / Unit</p><h3 className="text-2xl font-bold text-orange-600 mt-1"><span key={String(fmtCurrency(stats.avgEstPrice))} className="inline-block kpi-fade">{fmtCurrency(stats.avgEstPrice)}</span></h3><p className="text-xs text-zinc-500 mt-2">blended material + freight</p></div>
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Facilities</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{stats.totalFacilities}</h3><p className="text-xs text-zinc-500 mt-2">{stats.pits} pits | {stats.dumps} dumps | {stats.both} both</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Materials Listed</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{stats.totalMaterials}</h3><p className="text-xs text-zinc-500 mt-2">across all facilities</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Quote Requests</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{stats.totalQuotes}</h3><p className="text-xs text-zinc-500 mt-2">{stats.pendingQuotes} pending | {stats.acceptedQuotes} accepted</p></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending Access</p><h3 className={`text-2xl font-bold mt-1 ${pendingCount > 0 ? 'text-orange-600' : 'text-zinc-500'}`}>{pendingCount}</h3><p className="text-xs text-zinc-500 mt-2">signup requests awaiting review</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Facilities</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalFacilities)} className="inline-block kpi-fade">{stats.totalFacilities}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.pits} pits | {stats.dumps} dumps | {stats.both} both</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Materials Listed</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalMaterials)} className="inline-block kpi-fade">{stats.totalMaterials}</span></h3><p className="text-xs text-zinc-500 mt-2">across all facilities</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Quote Requests</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(stats.totalQuotes)} className="inline-block kpi-fade">{stats.totalQuotes}</span></h3><p className="text-xs text-zinc-500 mt-2">{stats.pendingQuotes} pending | {stats.acceptedQuotes} accepted</p></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-5"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending Access</p><h3 className={`text-2xl font-bold mt-1 ${pendingCount > 0 ? 'text-orange-600' : 'text-zinc-500'}`}><span key={pendingCount} className="inline-block kpi-fade">{pendingCount}</span></h3><p className="text-xs text-zinc-500 mt-2">signup requests awaiting review</p></div>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
@@ -432,7 +432,7 @@ export default function AdminView({
                         </div>
                         <div className="flex space-x-2 md:flex-shrink-0">
                           <button onClick={() => handleRequest(req, 'reject')} disabled={processingId === req.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-300 text-zinc-600 hover:border-red-500/50 hover:text-red-700 transition-all disabled:opacity-40">{processingId === req.id ? '...' : 'Reject'}</button>
-                          <button onClick={() => handleRequest(req, 'approve')} disabled={processingId === req.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all disabled:opacity-40">{processingId === req.id ? 'Processing...' : 'Approve'}</button>
+                          <button onClick={() => handleRequest(req, 'approve')} disabled={processingId === req.id} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] text-white transition-all disabled:opacity-40">{processingId === req.id ? 'Processing...' : 'Approve'}</button>
                         </div>
                       </div>
                     </div>
@@ -481,7 +481,7 @@ export default function AdminView({
                       const isEditing = editingRoleId === p.id;
                       const isSaving  = savingRoleId === p.id;
                       return (
-                        <tr key={p.id} className="hover:bg-zinc-100 transition-colors">
+                        <tr key={p.id} className="hover:bg-zinc-100 transition-colors duration-150">
                           <td className="px-5 py-3 font-medium text-zinc-900">{p.company_name || '-'}</td>
                           <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${roleBadgeClasses(p.role, facType)}`}>{roleLabel(p.role, facType)}</span></td>
                           <td className="px-5 py-3 text-zinc-600">{userProjects}</td>
@@ -521,7 +521,7 @@ export default function AdminView({
                       const contractor = profiles.find(pr => pr.id === p.contractor_id);
                       const statusColor = p.status === 'active' ? 'bg-emerald-500/20 text-emerald-700' : p.status === 'completed' ? 'bg-blue-500/20 text-blue-700' : 'bg-zinc-200 text-zinc-600';
                       return (
-                        <tr key={p.id} className="hover:bg-zinc-100 transition-colors">
+                        <tr key={p.id} className="hover:bg-zinc-100 transition-colors duration-150">
                           <td className="px-5 py-3"><div className="font-medium text-zinc-900">{p.name}</div><div className="text-xs text-zinc-500 truncate max-w-[200px]">{p.address}</div></td>
                           <td className="px-5 py-3 text-zinc-600">{contractor?.company_name || '-'}</td>
                           <td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{p.status}</span></td>
@@ -558,7 +558,7 @@ export default function AdminView({
                       const facMaterials = materials.filter(m => m.facility_id === f.id).length;
                       const facEstimates = estimates.filter(e => e.facility_id === f.id).length;
                       const typeColor = f.type === 'pit' ? 'bg-orange-500/20 text-orange-600' : f.type === 'dump' ? 'bg-blue-500/20 text-blue-700' : 'bg-emerald-500/20 text-emerald-700';
-                      return (<tr key={f.id} className="hover:bg-zinc-100 transition-colors"><td className="px-5 py-3 font-medium text-zinc-900">{f.name}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span></td><td className="px-5 py-3">
+                      return (<tr key={f.id} className="hover:bg-zinc-100 transition-colors duration-150"><td className="px-5 py-3 font-medium text-zinc-900">{f.name}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${typeColor}`}>{f.type}</span></td><td className="px-5 py-3">
   <select
     value={f.owner_id || ''}
     disabled={assigningFacilityId === f.id}
@@ -649,7 +649,7 @@ export default function AdminView({
 
                 <div className="md:col-span-2">
                   <button type="submit" disabled={savingFacility || !newFacName.trim()}
-                    className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                    className="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.97] disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                     {savingFacility ? 'Creating...' : 'Create Facility'}
                   </button>
                 </div>
@@ -662,10 +662,10 @@ export default function AdminView({
           {activeTab === 'materials' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Materials</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{materials.length}</h3></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Import Materials</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{materials.filter(m => m.is_import).length}</h3></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Export Materials</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{materials.filter(m => !m.is_import).length}</h3></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Price / Ton</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{fmtCurrency(materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) / (materials.filter(m => m.price_per_ton).length || 1))}</h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Materials</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(materials.length)} className="inline-block kpi-fade">{materials.length}</span></h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Import Materials</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(materials.filter(m => m.is_import).length)} className="inline-block kpi-fade">{materials.filter(m => m.is_import).length}</span></h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Export Materials</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(materials.filter(m => !m.is_import).length)} className="inline-block kpi-fade">{materials.filter(m => !m.is_import).length}</span></h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Price / Ton</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(fmtCurrency(materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) / (materials.filter(m => m.price_per_ton).length || 1)))} className="inline-block kpi-fade">{fmtCurrency(materials.filter(m => m.price_per_ton).reduce((s, m) => s + m.price_per_ton, 0) / (materials.filter(m => m.price_per_ton).length || 1))}</span></h3></div>
               </div>
               <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/80"><h2 className="text-sm font-semibold text-zinc-900">Material Catalog</h2></div>
@@ -676,7 +676,7 @@ export default function AdminView({
                       {materials.map(m => {
                         const fac = facilities.find(f => f.id === m.facility_id);
                         const reqCount = estimates.filter(e => e.material_name === m.name && e.facility_id === m.facility_id).length;
-                        return (<tr key={m.id} className="hover:bg-zinc-100 transition-colors"><td className="px-5 py-3 font-medium text-zinc-900">{m.name}</td><td className="px-5 py-3 text-zinc-600 truncate max-w-[180px]">{fac?.name || '-'}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${m.is_import ? 'bg-orange-500/20 text-orange-600' : 'bg-blue-500/20 text-blue-700'}`}>{m.is_import ? 'Import' : 'Export'}</span></td><td className="px-5 py-3 text-right font-semibold text-zinc-700">{m.price_per_ton ? fmtCurrency(m.price_per_ton) : '-'}</td><td className="px-5 py-3"><span className={`font-semibold ${reqCount > 0 ? 'text-orange-600' : 'text-zinc-500'}`}>{reqCount}</span></td></tr>);
+                        return (<tr key={m.id} className="hover:bg-zinc-100 transition-colors duration-150"><td className="px-5 py-3 font-medium text-zinc-900">{m.name}</td><td className="px-5 py-3 text-zinc-600 truncate max-w-[180px]">{fac?.name || '-'}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${m.is_import ? 'bg-orange-500/20 text-orange-600' : 'bg-blue-500/20 text-blue-700'}`}>{m.is_import ? 'Import' : 'Export'}</span></td><td className="px-5 py-3 text-right font-semibold text-zinc-700">{m.price_per_ton ? fmtCurrency(m.price_per_ton) : '-'}</td><td className="px-5 py-3"><span className={`font-semibold ${reqCount > 0 ? 'text-orange-600' : 'text-zinc-500'}`}>{reqCount}</span></td></tr>);
                       })}
                     </tbody>
                   </table>
@@ -718,7 +718,7 @@ export default function AdminView({
                       <button type="button" onClick={() => setNewCatType('import')} className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newCatType === 'import' ? 'bg-orange-500/10 border-orange-500/50 text-orange-600' : 'border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}>Import</button>
                       <button type="button" onClick={() => setNewCatType('export')} className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${newCatType === 'export' ? 'bg-blue-500/10 border-blue-500/50 text-blue-700' : 'border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}>Export</button>
                     </div>
-                    <button type="submit" disabled={savingCat} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{savingCat ? 'Creating...' : '+ Create Category'}</button>
+                    <button type="submit" disabled={savingCat} className="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.97] disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{savingCat ? 'Creating...' : '+ Create Category'}</button>
                   </form>
                 </div>
               </div>
@@ -780,7 +780,7 @@ export default function AdminView({
                 <form onSubmit={createTruckType} className="space-y-3">
                   <input type="text" required value={newTruckName} onChange={(e) => setNewTruckName(e.target.value)} placeholder="e.g., Transfer Truck"
                     className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
-                  <button type="submit" disabled={savingTruck} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{savingTruck ? 'Adding...' : '+ Add Truck Type'}</button>
+                  <button type="submit" disabled={savingTruck} className="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.97] disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{savingTruck ? 'Adding...' : '+ Add Truck Type'}</button>
                 </form>
                 <p className="text-xs text-zinc-500 mt-4">Truck types marked as inactive will not appear in the contractor requirement form but historical data is preserved.</p>
               </div>
@@ -791,10 +791,10 @@ export default function AdminView({
           {activeTab === 'quotes' && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Requests</p><h3 className="text-2xl font-bold text-zinc-900 mt-1">{quotes.length}</h3></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending</p><h3 className="text-2xl font-bold text-orange-600 mt-1">{quotes.filter(q => q.status === 'pending').length}</h3></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Responded</p><h3 className="text-2xl font-bold text-blue-700 mt-1">{quotes.filter(q => q.status === 'responded').length}</h3></div>
-                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Accepted</p><h3 className="text-2xl font-bold text-emerald-700 mt-1">{quotes.filter(q => q.status === 'accepted').length}</h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Requests</p><h3 className="text-2xl font-bold text-zinc-900 mt-1"><span key={String(quotes.length)} className="inline-block kpi-fade">{quotes.length}</span></h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Pending</p><h3 className="text-2xl font-bold text-orange-600 mt-1"><span key={String(quotes.filter(q => q.status === 'pending').length)} className="inline-block kpi-fade">{quotes.filter(q => q.status === 'pending').length}</span></h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Responded</p><h3 className="text-2xl font-bold text-blue-700 mt-1"><span key={String(quotes.filter(q => q.status === 'responded').length)} className="inline-block kpi-fade">{quotes.filter(q => q.status === 'responded').length}</span></h3></div>
+                <div className="bg-white border border-zinc-200 rounded-xl p-4"><p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Accepted</p><h3 className="text-2xl font-bold text-emerald-700 mt-1"><span key={String(quotes.filter(q => q.status === 'accepted').length)} className="inline-block kpi-fade">{quotes.filter(q => q.status === 'accepted').length}</span></h3></div>
               </div>
               <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/80"><h2 className="text-sm font-semibold text-zinc-900">All Quote Requests ({quotes.length})</h2></div>
@@ -806,7 +806,7 @@ export default function AdminView({
                         const fac = facilities.find(f => f.id === q.facility_id);
                         const contractor = profiles.find(p => p.id === q.contractor_id);
                         const statusColor = q.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-700' : q.status === 'pending' ? 'bg-orange-500/20 text-orange-600' : q.status === 'declined' ? 'bg-red-500/20 text-red-700' : 'bg-blue-500/20 text-blue-700';
-                        return (<tr key={q.id} className="hover:bg-zinc-100 transition-colors"><td className="px-5 py-3 font-medium text-zinc-900">{q.material_name}</td><td className="px-5 py-3 text-zinc-600 truncate max-w-[150px]">{fac?.name || '-'}</td><td className="px-5 py-3 text-zinc-600">{contractor?.company_name || '-'}</td><td className="px-5 py-3 text-right text-zinc-600">{q.quantity?.toLocaleString()}</td><td className="px-5 py-3 text-right font-semibold text-emerald-700">{q.offered_price ? fmtCurrency(q.offered_price) : '-'}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span></td><td className="px-5 py-3 text-zinc-600">{fmtDate(q.created_at)}</td></tr>);
+                        return (<tr key={q.id} className="hover:bg-zinc-100 transition-colors duration-150"><td className="px-5 py-3 font-medium text-zinc-900">{q.material_name}</td><td className="px-5 py-3 text-zinc-600 truncate max-w-[150px]">{fac?.name || '-'}</td><td className="px-5 py-3 text-zinc-600">{contractor?.company_name || '-'}</td><td className="px-5 py-3 text-right text-zinc-600">{q.quantity?.toLocaleString()}</td><td className="px-5 py-3 text-right font-semibold text-emerald-700">{q.offered_price ? fmtCurrency(q.offered_price) : '-'}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span></td><td className="px-5 py-3 text-zinc-600">{fmtDate(q.created_at)}</td></tr>);
                       })}
                       {quotes.length === 0 && <tr><td colSpan={7} className="px-5 py-8 text-center text-zinc-500">No quote requests yet.</td></tr>}
                     </tbody>
@@ -959,7 +959,7 @@ export default function AdminView({
                   Cancel
                 </button>
                 <button type="submit" disabled={savingEditFacility || !editFacName.trim()}
-                  className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                  className="bg-orange-500 hover:bg-orange-600 active:scale-[0.97] disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
                   {savingEditFacility ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
