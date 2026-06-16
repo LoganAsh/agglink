@@ -965,7 +965,7 @@ export default function ContractorView({
                   <td className="px-4 py-2">
                     <div className="flex space-x-1 justify-center">
                       <button onClick={() => toggleEstimate(res, req)} disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
-                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-zinc-900 hover:bg-red-500' : 'bg-zinc-100 text-zinc-700 hover:bg-emerald-600 hover:text-zinc-900'}`}
+                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-white hover:bg-red-500' : 'bg-zinc-100 text-zinc-700 hover:bg-emerald-600 hover:text-white'}`}
                         title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
                         {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                       </button>
@@ -1058,7 +1058,7 @@ export default function ContractorView({
                 className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'invoices' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
                 <i className="fa-solid fa-file-invoice-dollar mr-3 w-4 text-center"></i>Invoices
                 {unpaidCount > 0 && (
-                  <span className="ml-auto bg-orange-500 text-zinc-900 text-[10px] font-bold px-2 py-0.5 rounded-full">{unpaidCount}</span>
+                  <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{unpaidCount}</span>
                 )}
               </button>
             );
@@ -1123,7 +1123,7 @@ export default function ContractorView({
                 </select>
               );
             })()}
-            <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-zinc-900 px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
+            <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
           </div>
         </header>
 
@@ -1332,7 +1332,7 @@ export default function ContractorView({
                     <button onClick={() => setActiveTab('pending')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center ${activeTab === 'pending' ? 'bg-zinc-100 text-zinc-900 shadow' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'}`}>
                       Pending Quotes
                       {projectQuotes.filter(q => q.status === 'pending').length > 0 && (
-                        <span className="ml-1.5 bg-orange-500 text-zinc-900 text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
+                        <span className="ml-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
                       )}
                     </button>
                   </div>
@@ -1435,7 +1435,7 @@ export default function ContractorView({
                                   <button onClick={() => { setMessagingQuoteId(null); setFollowupText(''); }}
                                     className="text-zinc-600 hover:text-zinc-900 text-xs font-semibold px-2">Cancel</button>
                                   <button disabled={sendingFollowup || !followupText.trim()} onClick={() => sendQuoteFollowup(q.id)}
-                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-zinc-900 px-3 py-1.5 rounded text-xs font-bold transition-colors">
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">
                                     {sendingFollowup ? '...' : 'Send Message'}
                                   </button>
                                 </div>
@@ -1466,7 +1466,7 @@ export default function ContractorView({
                     {lastCalculated && <p className="text-xs text-zinc-600 mt-0.5"><i className="fa-solid fa-clock mr-1"></i> Last Routed: {lastCalculated.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
                   </div>
                   {requirements.length > 0 && (
-                    <button onClick={calculateManifest} disabled={isCalculating} className="bg-emerald-500 hover:bg-emerald-600 text-zinc-900 px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50">
+                    <button onClick={calculateManifest} disabled={isCalculating} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50">
                       {isCalculating ? 'Routing...' : (lastCalculated ? 'Re-Route Logistics' : 'Optimize Logistics')}
                     </button>
                   )}
@@ -1538,7 +1538,7 @@ export default function ContractorView({
                           <p className="text-xs text-zinc-600 mb-2">Select material(s) to compare:</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                             {filteredMaterials.map(mat => (
-                              <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'}`}>
+                              <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-700' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'}`}>
                                 <input type="checkbox" checked={selectedMaterials.includes(mat)} onChange={() => toggleMaterial(mat)} className="sr-only" />
                                 <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-zinc-300'}`}>
                                   {selectedMaterials.includes(mat) && <i className="fa-solid fa-check text-zinc-900" style={{ fontSize: '8px' }}></i>}
@@ -2060,7 +2060,7 @@ export default function ContractorView({
                       {inv.status !== 'paid' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); setShowPaymentModal(true); }}
-                          className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                          className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
                           Pay ${owed.toFixed(2)}
                         </button>
                       )}
@@ -2133,7 +2133,7 @@ export default function ContractorView({
                   <p className="text-xs text-zinc-600 mb-2">Select material(s) to compare:</p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                     {calcFilteredMaterials.map(mat => (
-                      <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'}`}>
+                      <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-700' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'}`}>
                         <input type="checkbox" checked={calcMaterials.includes(mat)} onChange={() => calcToggleMaterial(mat)} className="sr-only" />
                         <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-zinc-300'}`}>
                           {calcMaterials.includes(mat) && <i className="fa-solid fa-check text-zinc-900" style={{ fontSize: '8px' }}></i>}
@@ -2146,7 +2146,7 @@ export default function ContractorView({
               )}
 
               <button onClick={runCalculator} disabled={calcIsCalculating || !calcAddress || calcMaterials.length === 0 || !calcTruckType}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-zinc-900 py-2.5 rounded-lg text-sm font-bold transition-all">
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white py-2.5 rounded-lg text-sm font-bold transition-all">
                 {calcIsCalculating ? 'Calculating...' : 'Calculate'}
               </button>
             </div>
@@ -2220,7 +2220,7 @@ export default function ContractorView({
             <p className="text-sm text-zinc-700 mb-6">Are you sure you want to delete <span className="font-semibold text-zinc-900">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.</p>
             <div className="flex space-x-3">
               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
-              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">{isDeletingProject ? 'Deleting...' : 'Delete Project'}</button>
+              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{isDeletingProject ? 'Deleting...' : 'Delete Project'}</button>
             </div>
           </div>
         </div>
@@ -2253,7 +2253,7 @@ export default function ContractorView({
               </div>
               <div className="flex space-x-3 pt-2">
                 <button type="button" onClick={closeModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
-                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
               </div>
             </form>
           </div>
@@ -2287,7 +2287,7 @@ export default function ContractorView({
               </div>
               <div className="flex space-x-3 pt-2">
                 <button type="button" onClick={closeEditModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
-                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">Save Changes</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Save Changes</button>
               </div>
             </form>
           </div>
@@ -2424,7 +2424,7 @@ export default function ContractorView({
                 Cancel
               </button>
               <button onClick={submitQuoteModal} disabled={submittingQuoteModal || quoteModalSelected.size === 0}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
+                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                 {submittingQuoteModal ? 'Sending...' : `Send Request (${quoteModalSelected.size})`}
               </button>
             </div>
@@ -2579,7 +2579,7 @@ export default function ContractorView({
                   </button>
                   {selectedInvoice.status !== 'paid' && (
                     <button onClick={() => { setShowInvoiceDetail(false); setShowPaymentModal(true); }}
-                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-zinc-900 transition-all">
+                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">
                       Pay ${owed.toFixed(2)}
                     </button>
                   )}
@@ -2665,7 +2665,7 @@ export default function ContractorView({
                 Cancel
               </button>
               <button onClick={submitJobRequest} disabled={sendingJobRequest || !selectedTruckerId || truckingNetwork.length === 0}
-                className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
+                className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                 {sendingJobRequest ? 'Sending...' : 'Send Request'}
               </button>
             </div>
@@ -2691,12 +2691,12 @@ export default function ContractorView({
             <div className="space-y-2">
               {tierRequestRes.pricingTier === 'public' && (
                 <button onClick={() => submitTierRequest('contractor')} disabled={tierRequestSending}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                   Request Contractor Pricing
                 </button>
               )}
               <button onClick={() => submitTierRequest('customer')} disabled={tierRequestSending}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
                 Request Customer Pricing
               </button>
             </div>
