@@ -85,5 +85,5 @@ body {
    A small brightness pullback turns the cream/white land areas into a
    soft gray so the map has more weight against the light UI panels. */
 .leaflet-tile-pane {
-  filter: brightness(0.93) contrast(1.05);
+  filter: brightness(0.96) contrast(1.04);
 }
