@@ -81,9 +81,5 @@ body {
   animation: kpiFade 0.5s ease-out;
 }
 
-/* Gentle nudge on map tiles: a small contrast bump and a small saturation
-   pullback so the topographic basemap stays muted and readable next to the
-   light UI without looking washed out. */
-.leaflet-tile-pane {
-  filter: contrast(1.05) saturate(0.92);
-}
+/* Carto Voyager is the closest free-tier basemap to Google Maps' look —
+   show its native palette without filters. */
