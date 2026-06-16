@@ -896,24 +896,24 @@ export default function ContractorView({
 
   //        Results table (reusable for single and multi-material)
   const ResultsTable = ({ options, req, label }: { options: any[], req: any, label?: string }) => {
-    if (!options || options.length === 0) return <p className="p-3 text-center text-xs text-red-400">No results found.</p>;
+    if (!options || options.length === 0) return <p className="p-3 text-center text-xs text-red-700">No results found.</p>;
     return (
       <div className="w-full overflow-x-auto">
-        {label && <div className="px-4 py-2 bg-slate-800/60 border-b border-slate-700"><span className="text-xs font-bold text-slate-300 uppercase tracking-wider">{label}</span></div>}
+        {label && <div className="px-4 py-2 bg-zinc-50 border-b border-zinc-200"><span className="text-xs font-bold text-zinc-700 uppercase tracking-wider">{label}</span></div>}
         <table className="w-full min-w-[520px] text-xs text-left">
-          <thead className="text-slate-500 bg-slate-800/50">
+          <thead className="text-zinc-500 bg-zinc-50">
             <tr>
               <th className="px-4 py-2 font-medium">{req.job_type === 'Import (Delivery)' ? 'Supplier' : 'Dump Site'}</th>
               <th className="px-4 py-2 font-medium">Material</th>
               <th className="px-4 py-2 font-medium">Fleet</th>
               <th className="px-4 py-2 font-medium text-right">Base</th>
               <th className="px-4 py-2 font-medium text-right">Frt</th>
-              <th className="px-4 py-2 font-bold text-right text-white">Total</th>
+              <th className="px-4 py-2 font-bold text-right text-zinc-900">Total</th>
               <th className="px-4 py-2 font-medium text-right">Job Total</th>
               <th className="px-4 py-2 text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-zinc-200">
             {options.map((res: any, idx: number) => {
               const isSaved = savedEstimates.some(se => se.facility_id === res.facilityId && se.material_name === (res.materialName || req.material_name) && se.truck_fleet === res.truckFleet);
               const allBase = options.map((o: any) => o.basePrice);
@@ -926,39 +926,39 @@ export default function ContractorView({
               const avgTotal = allTotal.reduce((a: number, b: number) => a + b, 0) / allTotal.length;
               const totalSavingsPct = avgTotal > 0 ? ((avgTotal - res.totalPerUnit) / avgTotal) * 100 : null;
               const savingsSpan = (pct: number | null) => pct === null ? null : (
-                <span className={`ml-1 text-[10px] font-semibold ${pct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <span className={`ml-1 text-[10px] font-semibold ${pct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                   {pct >= 0 ? '+' : ''}{pct.toFixed(0)}%
                 </span>
               );
               const stockColor = res.stockStatus === 'out_of_stock' ? 'bg-red-500' : res.stockStatus === 'low' ? 'bg-yellow-500' : 'bg-emerald-500';
               const stockLabel = res.stockStatus === 'out_of_stock' ? 'Out' : res.stockStatus === 'low' ? 'Low' : null;
               return (
-                <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-slate-800 transition-colors"}>
-                  <td className="px-4 py-2 text-slate-300">
+                <tr key={idx} className={isSaved ? "bg-emerald-500/10" : "hover:bg-white transition-colors"}>
+                  <td className="px-4 py-2 text-zinc-700">
                     <div className="flex items-center space-x-1.5">
                       <span>{res.supplier}</span>
                       <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${stockColor}`} title={res.stockStatus}></span>
-                      {stockLabel && <span className={`text-[10px] font-semibold ${res.stockStatus === 'out_of_stock' ? 'text-red-400' : 'text-yellow-400'}`}>{stockLabel}</span>}
+                      {stockLabel && <span className={`text-[10px] font-semibold ${res.stockStatus === 'out_of_stock' ? 'text-red-700' : 'text-yellow-700'}`}>{stockLabel}</span>}
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-slate-300">{res.materialName || req.material_name}</td>
-                  <td className="px-4 py-2 text-slate-400">
+                  <td className="px-4 py-2 text-zinc-700">{res.materialName || req.material_name}</td>
+                  <td className="px-4 py-2 text-zinc-600">
                     <div>{res.truckFleet}</div>
-                    {res.truckerName && <div className="text-[9px] text-cyan-400 mt-0.5"><i className="fa-solid fa-truck mr-1"></i>{res.truckerName}</div>}
+                    {res.truckerName && <div className="text-[9px] text-cyan-700 mt-0.5"><i className="fa-solid fa-truck mr-1"></i>{res.truckerName}</div>}
                   </td>
-                  <td className="px-4 py-2 text-right text-slate-400">
+                  <td className="px-4 py-2 text-right text-zinc-600">
                     ${res.basePrice.toFixed(2)}
                     {savingsSpan(baseSavingsPct)}
                   </td>
-                  <td className="px-4 py-2 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}{savingsSpan(frtSavingsPct)}</td>
-                  <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-400' : 'text-blue-400'}`}>
+                  <td className="px-4 py-2 text-right text-zinc-600">${res.frtPerUnit.toFixed(2)}{savingsSpan(frtSavingsPct)}</td>
+                  <td className={`px-4 py-2 text-right font-bold ${req.job_type === 'Import (Delivery)' ? 'text-orange-600' : 'text-blue-700'}`}>
                     ${res.totalPerUnit.toFixed(2)}{savingsSpan(totalSavingsPct)}
                   </td>
-                  <td className="px-4 py-2 text-right font-semibold text-slate-200">${(req.quantity * res.totalPerUnit).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td className="px-4 py-2 text-right font-semibold text-zinc-800">${(req.quantity * res.totalPerUnit).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td className="px-4 py-2">
                     <div className="flex space-x-1 justify-center">
                       <button onClick={() => toggleEstimate(res, req)} disabled={savingEstimateId === res.facilityId + res.truckFleet + req.id}
-                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-white hover:bg-red-500' : 'bg-slate-700 text-slate-300 hover:bg-emerald-600 hover:text-white'}`}
+                        className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${isSaved ? 'bg-emerald-500 text-zinc-900 hover:bg-red-500' : 'bg-zinc-100 text-zinc-700 hover:bg-emerald-600 hover:text-zinc-900'}`}
                         title={isSaved ? "Remove saved estimate" : "Lock in this price"}>
                         {savingEstimateId === res.facilityId + res.truckFleet + req.id ? <i className="fa-solid fa-spinner fa-spin"></i> : isSaved ? <i className="fa-solid fa-xmark"></i> : <i className="fa-solid fa-floppy-disk"></i>}
                       </button>
@@ -966,9 +966,9 @@ export default function ContractorView({
                         const tier = res.pricingTier || 'public';
                         const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
                         const tierColor =
-                          tier === 'public' ? 'border-slate-600 text-slate-400 hover:bg-slate-700' :
-                          tier === 'contractor' ? 'border-orange-500/30 text-orange-400 hover:bg-orange-500/10' :
-                                                  'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10';
+                          tier === 'public' ? 'border-zinc-300 text-zinc-600 hover:bg-zinc-100' :
+                          tier === 'contractor' ? 'border-orange-500/30 text-orange-600 hover:bg-orange-500/10' :
+                                                  'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10';
                         return (
                           <button onClick={() => openTierRequest(res)}
                             disabled={tier === 'customer'}
@@ -980,27 +980,27 @@ export default function ContractorView({
                       })()}
                       {res.isCustomQuote ? (
                         <span title="Custom quote accepted"
-                          className="px-2 py-1 rounded text-[10px] font-bold border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 inline-flex items-center">
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 inline-flex items-center">
                           <i className="fa-solid fa-check mr-1"></i>Approved
                         </span>
                       ) : res.isDeclined ? (
                         <span title="Custom quote declined by supplier"
-                          className="px-2 py-1 rounded text-[10px] font-bold border border-red-500/40 bg-red-500/10 text-red-400 inline-flex items-center">
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-red-500/40 bg-red-500/10 text-red-700 inline-flex items-center">
                           <i className="fa-solid fa-xmark mr-1"></i>Declined
                         </span>
                       ) : res.isQuotePending ? (
                         <span title="Awaiting supplier response"
-                          className="px-2 py-1 rounded text-[10px] font-bold border border-orange-500/40 bg-orange-500/10 text-orange-400 inline-flex items-center">
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-orange-500/40 bg-orange-500/10 text-orange-600 inline-flex items-center">
                           <i className="fa-solid fa-clock mr-1"></i>Pending
                         </span>
                       ) : res.acceptsQuotes === false ? (
                         <span title="Supplier is not accepting quote requests"
-                          className="px-2 py-1 rounded text-[10px] font-bold border border-slate-600 bg-slate-700/40 text-slate-400 inline-flex items-center">
+                          className="px-2 py-1 rounded text-[10px] font-bold border border-zinc-300 bg-zinc-100 text-zinc-600 inline-flex items-center">
                           <i className="fa-solid fa-ban mr-1"></i>No Quotes
                         </span>
                       ) : (
                         <button onClick={() => openQuoteModal(res, req, options)}
-                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10'}`}>
+                          className={`px-2 py-1 rounded text-[10px] font-bold transition-all border ${req.job_type === 'Import (Delivery)' ? 'border-orange-500/30 text-orange-500 hover:bg-orange-500/10' : 'border-blue-500/30 text-blue-700 hover:bg-blue-500/10'}`}>
                           Quote
                         </button>
                       )}
@@ -1016,15 +1016,15 @@ export default function ContractorView({
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[#0b1120] text-slate-300 font-sans">
+    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 text-zinc-700 font-sans">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800 hidden md:flex flex-col">
-        <div className="h-16 flex items-center px-6 border-b border-slate-800">
-          <span className="text-xl font-bold text-white tracking-wide">AggLink<span className="text-orange-500">.</span></span>
+      <aside className="w-64 bg-white border-r border-zinc-200 hidden md:flex flex-col">
+        <div className="h-16 flex items-center px-6 border-b border-zinc-200">
+          <span className="text-xl font-bold text-zinc-900 tracking-wide">AggLink<span className="text-orange-500">.</span></span>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2">
           <button type="button" onClick={() => setActiveView('dashboard')}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-gauge-high mr-3 w-4 text-center"></i>Dashboard
           </button>
           <button type="button" onClick={() => {
@@ -1033,38 +1033,38 @@ export default function ContractorView({
               setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]);
               setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
             }}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'projects' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'projects' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-folder mr-3 w-4 text-center"></i>Projects
           </button>
           <button type="button" onClick={() => setActiveView('facility_management')}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'facility_management' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'facility_management' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-network-wired mr-3 w-4 text-center"></i>Facility Network
           </button>
           <button type="button" onClick={() => setActiveView('trucking_network')}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'trucking_network' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'trucking_network' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-truck mr-3 w-4 text-center"></i>Trucking Network
           </button>
           {(() => {
             const unpaidCount = contractorInvoices.filter((i: any) => i.status !== 'paid').length;
             return (
               <button type="button" onClick={() => setActiveView('invoices')}
-                className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'invoices' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'invoices' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
                 <i className="fa-solid fa-file-invoice-dollar mr-3 w-4 text-center"></i>Invoices
                 {unpaidCount > 0 && (
-                  <span className="ml-auto bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{unpaidCount}</span>
+                  <span className="ml-auto bg-orange-500 text-zinc-900 text-[10px] font-bold px-2 py-0.5 rounded-full">{unpaidCount}</span>
                 )}
               </button>
             );
           })()}
           <button type="button" onClick={() => setActiveView('calculator')}
-            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'calculator' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+            className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-colors text-left ${activeView === 'calculator' ? 'bg-orange-500/10 text-orange-500' : 'text-zinc-600 hover:text-zinc-900 hover:bg-white'}`}>
             <i className="fa-solid fa-calculator mr-3 w-4 text-center"></i>Calculator
           </button>
         </nav>
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-zinc-200">
           <div className="flex items-center">
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold border-2 border-slate-500">{profileName.substring(0, 2).toUpperCase()}</div>
-            <div className="ml-3"><p className="text-sm font-semibold text-white">{profileName}</p><p className="text-xs text-slate-400">{companyName}</p></div>
+            <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-900 font-bold border-2 border-zinc-400">{profileName.substring(0, 2).toUpperCase()}</div>
+            <div className="ml-3"><p className="text-sm font-semibold text-zinc-900">{profileName}</p><p className="text-xs text-zinc-600">{companyName}</p></div>
           </div>
         </div>
         <LogoutButton />
@@ -1073,39 +1073,39 @@ export default function ContractorView({
       {/* Main */}
       <main className="flex-1 flex flex-col h-screen overflow-y-auto">
         {/* Header */}
-        <header className="h-16 bg-slate-900/50 backdrop-blur-md border-b border-slate-800 flex items-center justify-between px-8 sticky top-0 z-10">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-zinc-200 flex items-center justify-between px-8 sticky top-0 z-10">
           <div className="relative w-full md:w-96 flex items-center space-x-3">
             {activeProject ? (
               <>
-                <h2 className="text-lg font-semibold text-white">{activeProject.name}</h2>
+                <h2 className="text-lg font-semibold text-zinc-900">{activeProject.name}</h2>
                 {activeProject.status === 'archived' ? (
-                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Archived Project</span>
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-700 border border-red-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Archived Project</span>
                 ) : (
-                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
+                  <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded text-[10px] font-bold uppercase tracking-wider hidden sm:block">Active Project</span>
                 )}
-                <button onClick={openEditModal} className="ml-1 p-1.5 text-slate-600 hover:text-orange-400 hover:bg-orange-500/10 rounded-md transition-all" title="Edit project">
+                <button onClick={openEditModal} className="ml-1 p-1.5 text-zinc-400 hover:text-orange-600 hover:bg-orange-500/10 rounded-md transition-all" title="Edit project">
                   <i className="fa-solid fa-pen-to-square text-xs"></i>
                 </button>
                 <button onClick={toggleArchive} disabled={archivingProject}
-                  className="ml-1 p-1.5 text-slate-600 hover:text-amber-400 hover:bg-amber-500/10 rounded-md transition-all disabled:opacity-50"
+                  className="ml-1 p-1.5 text-zinc-400 hover:text-amber-700 hover:bg-amber-500/10 rounded-md transition-all disabled:opacity-50"
                   title={activeProject.status === 'archived' ? 'Unarchive project' : 'Archive project'}>
                   <i className={`fa-solid ${activeProject.status === 'archived' ? 'fa-box-open' : 'fa-box-archive'} text-xs`}></i>
                 </button>
-                <button onClick={() => setShowDeleteConfirm(true)} className="ml-1 p-1.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all" title="Delete project">
+                <button onClick={() => setShowDeleteConfirm(true)} className="ml-1 p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all" title="Delete project">
                   <i className="fa-solid fa-trash-can text-xs"></i>
                 </button>
               </>
-            ) : <span className="text-slate-400 italic">Select a project to begin...</span>}
+            ) : <span className="text-zinc-600 italic">Select a project to begin...</span>}
           </div>
           <div className="flex items-center space-x-2 md:space-x-4">
-            <div className="md:hidden w-8 h-8 flex items-center justify-center bg-slate-800 rounded-lg border border-slate-700"><LogoutButton /></div>
+            <div className="md:hidden w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-zinc-200"><LogoutButton /></div>
             {activeView === 'projects' && projects.length > 0 && (() => {
               const recents = recentProjectIds
                 .map(id => projects.find(p => p.id === id))
                 .filter(Boolean);
               if (recents.length === 0) return null;
               return (
-                <select className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-orange-500"
+                <select className="bg-white border border-zinc-200 rounded px-3 py-2 text-sm text-zinc-700 focus:outline-none focus:border-orange-500"
                   onChange={(e) => {
                     if (e.target.value === "") { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }
                     else { const p = projects.find(proj => proj.id === e.target.value); if (p) selectProject(p); }
@@ -1116,7 +1116,7 @@ export default function ContractorView({
                 </select>
               );
             })()}
-            <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
+            <button onClick={() => setShowProjectModal(true)} className="bg-orange-500 hover:bg-orange-600 text-zinc-900 px-4 py-2 rounded-lg text-sm font-semibold shadow-lg shadow-orange-500/20 transition-all hidden sm:block whitespace-nowrap">+ New Project</button>
           </div>
         </header>
 
@@ -1125,38 +1125,38 @@ export default function ContractorView({
         <div className="p-4 md:p-8 space-y-6">
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
-              <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-slate-500' : accountSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}>{accountSavingsFmt.display}</h3>
-              <p className="text-xs text-slate-400 mt-3">{accountSavingsFmt.sub}</p>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
+              <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-zinc-500' : accountSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>{accountSavingsFmt.display}</h3>
+              <p className="text-xs text-zinc-600 mt-3">{accountSavingsFmt.sub}</p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Active Network</p>
-              <h3 className="text-3xl font-bold text-white mt-1">{pitsCount + dumpsCount}</h3>
-              <p className="text-xs text-slate-400 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Network</p>
+              <h3 className="text-3xl font-bold text-zinc-900 mt-1">{pitsCount + dumpsCount}</h3>
+              <p className="text-xs text-zinc-600 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Est. Value</p>
-              <h3 className={`text-3xl font-bold mt-1 ${accountTotalValue.total > 0 ? 'text-white' : 'text-slate-500'}`}>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Est. Value</p>
+              <h3 className={`text-3xl font-bold mt-1 ${accountTotalValue.total > 0 ? 'text-zinc-900' : 'text-zinc-500'}`}>
                 {accountTotalValue.total > 0 ? fmtCompactCurrency(accountTotalValue.total) : '--'}
               </h3>
-              <p className="text-xs text-slate-400 mt-3">
+              <p className="text-xs text-zinc-600 mt-3">
                 {accountTotalValue.projectCount > 0 ? `Across ${accountTotalValue.projectCount} active bid${accountTotalValue.projectCount === 1 ? '' : 's'}` : 'No active bids yet'}
               </p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Most Requested Material</p>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Most Requested Material</p>
               {mostRequestedMaterial.name ? (
                 <>
-                  <h3 className="text-xl font-bold text-white mt-2 truncate" title={mostRequestedMaterial.name}>{mostRequestedMaterial.name}</h3>
-                  <p className="text-xs text-slate-400 mt-3">
+                  <h3 className="text-xl font-bold text-zinc-900 mt-2 truncate" title={mostRequestedMaterial.name}>{mostRequestedMaterial.name}</h3>
+                  <p className="text-xs text-zinc-600 mt-3">
                     {mostRequestedMaterial.quantity.toLocaleString()} {importMaterials?.includes(mostRequestedMaterial.name) ? 'Tons' : exportMaterials?.includes(mostRequestedMaterial.name) ? 'CY' : 'Units'} requested
                   </p>
                 </>
               ) : (
                 <>
-                  <h3 className="text-3xl font-bold text-slate-500 mt-1">--</h3>
-                  <p className="text-xs text-slate-400 mt-3">No saved estimates yet</p>
+                  <h3 className="text-3xl font-bold text-zinc-500 mt-1">--</h3>
+                  <p className="text-xs text-zinc-600 mt-3">No saved estimates yet</p>
                 </>
               )}
             </div>
@@ -1164,32 +1164,32 @@ export default function ContractorView({
 
           {/* Dashboard placeholders: Materials by Month + Upcoming Bids */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+            <div className="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-white">Materials Purchased by Month</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">12-month rolling view</p>
+                  <h2 className="text-lg font-semibold text-zinc-900">Materials Purchased by Month</h2>
+                  <p className="text-xs text-zinc-600 mt-0.5">12-month rolling view</p>
                 </div>
-                <span className="text-[10px] uppercase tracking-wider font-bold bg-slate-700 text-slate-400 px-2 py-1 rounded">Placeholder</span>
+                <span className="text-[10px] uppercase tracking-wider font-bold bg-zinc-100 text-zinc-600 px-2 py-1 rounded">Placeholder</span>
               </div>
-              <div className="h-64 flex items-end space-x-2 px-2 pb-2 border-b border-slate-700">
+              <div className="h-64 flex items-end space-x-2 px-2 pb-2 border-b border-zinc-200">
                 {(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']).map((m, i) => {
                   const sample = [40, 65, 35, 80, 55, 70, 90, 75, 60, 85, 50, 95];
                   return (
                     <div key={m} className="flex-1 flex flex-col items-center justify-end h-full">
                       <div className="w-full bg-orange-500/30 hover:bg-orange-500/50 rounded-t-sm transition-colors" style={{ height: `${sample[i]}%` }} />
-                      <span className="text-[10px] text-slate-500 mt-1">{m}</span>
+                      <span className="text-[10px] text-zinc-500 mt-1">{m}</span>
                     </div>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-slate-500 mt-2 text-right italic">Sample data — not yet wired to real estimates.</p>
+              <p className="text-[10px] text-zinc-500 mt-2 text-right italic">Sample data — not yet wired to real estimates.</p>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-sm">
+            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Upcoming Bids</h2>
-                <span className="text-[10px] uppercase tracking-wider font-bold bg-slate-700 text-slate-400 px-2 py-1 rounded">Placeholder</span>
+                <h2 className="text-lg font-semibold text-zinc-900">Upcoming Bids</h2>
+                <span className="text-[10px] uppercase tracking-wider font-bold bg-zinc-100 text-zinc-600 px-2 py-1 rounded">Placeholder</span>
               </div>
               <div className="space-y-3">
                 {[
@@ -1197,16 +1197,16 @@ export default function ContractorView({
                   { proj: 'Mountain View Subdivision', date: 'Jul 22', amount: '$640K' },
                   { proj: 'Riverdale Bridge',          date: 'Aug 03', amount: '$2.1M' },
                 ].map(b => (
-                  <div key={b.proj} className="flex items-center justify-between py-2.5 px-3 bg-slate-900/50 border border-slate-700/60 rounded-lg">
+                  <div key={b.proj} className="flex items-center justify-between py-2.5 px-3 bg-zinc-50/80 border border-zinc-200 rounded-lg">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{b.proj}</p>
-                      <p className="text-[10px] text-slate-500">Due {b.date}</p>
+                      <p className="text-sm font-medium text-zinc-900 truncate">{b.proj}</p>
+                      <p className="text-[10px] text-zinc-500">Due {b.date}</p>
                     </div>
-                    <span className="text-xs font-semibold text-orange-400 flex-shrink-0">{b.amount}</span>
+                    <span className="text-xs font-semibold text-orange-600 flex-shrink-0">{b.amount}</span>
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-500 mt-3 text-right italic">Sample data — bid tracking coming soon.</p>
+              <p className="text-[10px] text-zinc-500 mt-3 text-right italic">Sample data — bid tracking coming soon.</p>
             </div>
           </div>
         </div>
@@ -1233,7 +1233,7 @@ export default function ContractorView({
                       }
                     }
                   }}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${isActive ? 'bg-orange-500/10 text-orange-400 border-orange-500/40' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600 hover:text-white'}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${isActive ? 'bg-orange-500/10 text-orange-600 border-orange-500/40' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900'}`}>
                   {f} <span className="ml-1.5 text-[10px] opacity-80">({count})</span>
                 </button>
               );
@@ -1241,10 +1241,10 @@ export default function ContractorView({
           </div>
 
           {!activeProject ? (
-            <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-900/50 text-xs text-slate-400 uppercase tracking-wider">
+                  <thead className="bg-zinc-50/80 text-xs text-zinc-600 uppercase tracking-wider">
                     <tr>
                       {([
                         { key: 'name',            label: 'Project' },
@@ -1257,7 +1257,7 @@ export default function ContractorView({
                             if (projectsSortKey === col.key) setProjectsSortDir(d => d === 'asc' ? 'desc' : 'asc');
                             else { setProjectsSortKey(col.key); setProjectsSortDir('asc'); }
                           }}
-                          className="px-5 py-3 cursor-pointer hover:text-white select-none">
+                          className="px-5 py-3 cursor-pointer hover:text-zinc-900 select-none">
                           {col.label}
                           {projectsSortKey === col.key && (
                             <i className={`fa-solid fa-arrow-${projectsSortDir === 'asc' ? 'up' : 'down'} ml-1.5 text-[10px]`}></i>
@@ -1266,9 +1266,9 @@ export default function ContractorView({
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-700/60">
+                  <tbody className="divide-y divide-zinc-200/70">
                     {visibleProjects.length === 0 ? (
-                      <tr><td colSpan={4} className="px-5 py-10 text-center text-slate-500 italic">No {projectsFilter} projects.</td></tr>
+                      <tr><td colSpan={4} className="px-5 py-10 text-center text-zinc-500 italic">No {projectsFilter} projects.</td></tr>
                     ) : [...visibleProjects].sort((a, b) => {
                       const dir = projectsSortDir === 'asc' ? 1 : -1;
                       const av = a[projectsSortKey] ?? '';
@@ -1278,11 +1278,11 @@ export default function ContractorView({
                       return 0;
                     }).map(p => (
                       <tr key={p.id} onClick={() => selectProject(p)}
-                        className="cursor-pointer hover:bg-slate-700/40 transition-colors">
-                        <td className="px-5 py-3 font-medium text-white">{p.name}</td>
-                        <td className="px-5 py-3 text-slate-400 truncate max-w-xs">{p.address || '—'}</td>
-                        <td className="px-5 py-3 text-slate-400">{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                        <td className="px-5 py-3 text-slate-400">{p.last_calculated ? new Date(p.last_calculated).toLocaleDateString() : '—'}</td>
+                        className="cursor-pointer hover:bg-zinc-100 transition-colors">
+                        <td className="px-5 py-3 font-medium text-zinc-900">{p.name}</td>
+                        <td className="px-5 py-3 text-zinc-600 truncate max-w-xs">{p.address || '—'}</td>
+                        <td className="px-5 py-3 text-zinc-600">{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
+                        <td className="px-5 py-3 text-zinc-600">{p.last_calculated ? new Date(p.last_calculated).toLocaleDateString() : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1292,7 +1292,7 @@ export default function ContractorView({
           ) : (
           <>
           <button onClick={() => { setActiveProject(null); setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]); setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined); }}
-            className="text-xs text-slate-400 hover:text-orange-400 transition-colors flex items-center">
+            className="text-xs text-zinc-600 hover:text-orange-600 transition-colors flex items-center">
             <i className="fa-solid fa-arrow-left mr-1.5"></i>All Projects
           </button>
 
@@ -1300,16 +1300,16 @@ export default function ContractorView({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
 
               {/* Map */}
-              <div className="col-span-1 lg:col-span-2 bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col h-[420px]">
-                <div className="flex-1 bg-slate-900 w-full relative">
+              <div className="col-span-1 lg:col-span-2 bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-[420px]">
+                <div className="flex-1 bg-white w-full relative">
                   <MapComponent jobLat={jobLat} jobLon={jobLon} jobAddress={jobAddress}
                     facilities={networkFacilities}
                   />
                 </div>
-                <div className="px-4 py-2 border-t border-slate-700 flex items-center space-x-5">
-                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wider mr-1">Legend</span>
+                <div className="px-4 py-2 border-t border-zinc-200 flex items-center space-x-5">
+                  <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider mr-1">Legend</span>
                   {[['bg-red-500','Job Site'],['bg-orange-500','Material Pit'],['bg-blue-500','Dump Site'],['bg-emerald-500','Pit & Dump']].map(([color, label]) => (
-                    <span key={label} className="flex items-center space-x-1.5 text-xs text-slate-400">
+                    <span key={label} className="flex items-center space-x-1.5 text-xs text-zinc-600">
                       <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`}></span><span>{label}</span>
                     </span>
                   ))}
@@ -1317,36 +1317,36 @@ export default function ContractorView({
               </div>
 
               {/* Project Feed */}
-              <div className="col-span-1 bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col h-[420px]">
-                <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-                  <h2 className="text-lg font-semibold text-white mb-4">Project Feed</h2>
-                  <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700">
-                    <button onClick={() => setActiveTab('locked')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'locked' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}>Locked Pricing</button>
-                    <button onClick={() => setActiveTab('pending')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center ${activeTab === 'pending' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}>
+              <div className="col-span-1 bg-white border border-zinc-200 rounded-xl shadow-sm flex flex-col h-[420px]">
+                <div className="p-5 border-b border-zinc-200 bg-zinc-50/80">
+                  <h2 className="text-lg font-semibold text-zinc-900 mb-4">Project Feed</h2>
+                  <div className="flex space-x-1 p-1 bg-white rounded-lg border border-zinc-200">
+                    <button onClick={() => setActiveTab('locked')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'locked' ? 'bg-zinc-100 text-zinc-900 shadow' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'}`}>Locked Pricing</button>
+                    <button onClick={() => setActiveTab('pending')} className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center justify-center ${activeTab === 'pending' ? 'bg-zinc-100 text-zinc-900 shadow' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'}`}>
                       Pending Quotes
                       {projectQuotes.filter(q => q.status === 'pending').length > 0 && (
-                        <span className="ml-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
+                        <span className="ml-1.5 bg-orange-500 text-zinc-900 text-[10px] px-1.5 py-0.5 rounded-full">{projectQuotes.filter(q => q.status === 'pending').length}</span>
                       )}
                     </button>
                   </div>
                 </div>
                 <div className="p-5 flex-1 space-y-4 overflow-y-auto">
                   {!activeProject ? (
-                    <p className="text-slate-500 text-sm text-center py-4">Select a project to view the feed.</p>
+                    <p className="text-zinc-500 text-sm text-center py-4">Select a project to view the feed.</p>
                   ) : activeTab === 'locked' ? (
                     savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => {
                       const existingReq = contractorJobRequests.find((r: any) => r.project_estimate_id === est.id);
-                      const reqStatusColor = existingReq?.status === 'quoted' ? 'text-emerald-400' : existingReq?.status === 'declined' ? 'text-red-400' : 'text-orange-400';
+                      const reqStatusColor = existingReq?.status === 'quoted' ? 'text-emerald-700' : existingReq?.status === 'declined' ? 'text-red-700' : 'text-orange-600';
                       return (
                       <div key={idx} className="border border-emerald-500/30 bg-emerald-500/5 rounded-lg p-4">
                         <div className="flex justify-between items-start">
                           <div>
-                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">{est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}</span>
-                            <h4 className="text-white font-medium text-sm">{est.material_name}</h4>
-                            <p className="text-xs text-slate-400 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} {importMaterials?.includes(est.material_name) ? "Tons" : "CY"} | {est.truck_fleet}</p>
+                            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-700 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block">{est.is_custom_quote ? 'Locked (Discount)' : 'Locked'}</span>
+                            <h4 className="text-zinc-900 font-medium text-sm">{est.material_name}</h4>
+                            <p className="text-xs text-zinc-600 mt-1">{est.facility?.name || "Selected Facility"} | {est.quantity} {importMaterials?.includes(est.material_name) ? "Tons" : "CY"} | {est.truck_fleet}</p>
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-bold text-emerald-400">${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span></div>
+                            <div className="text-lg font-bold text-emerald-700">${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span></div>
                           </div>
                         </div>
 
@@ -1355,7 +1355,7 @@ export default function ContractorView({
                             <i className="fa-solid fa-truck mr-1"></i>
                             {existingReq.trucker?.company_name}: {existingReq.status.toUpperCase()}
                             {existingReq.status === 'quoted' && existingReq.offered_hourly_rate && (
-                              <span className="ml-1 text-white">${Number(existingReq.offered_hourly_rate).toFixed(2)}/hr</span>
+                              <span className="ml-1 text-zinc-900">${Number(existingReq.offered_hourly_rate).toFixed(2)}/hr</span>
                             )}
                           </div>
                         )}
@@ -1367,53 +1367,53 @@ export default function ContractorView({
                             setJobRequestMessage('');
                             setShowJobRequestModal(true);
                           }}
-                          className="mt-3 w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                          className="mt-3 w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
                           <i className="fa-solid fa-truck mr-1.5"></i>{existingReq ? 'Send Another Quote Request' : 'Request Trucker Quote'}
                         </button>
                       </div>
                       );
-                    }) : <p className="text-slate-500 text-sm text-center py-4">No locked pricing yet.</p>
+                    }) : <p className="text-zinc-500 text-sm text-center py-4">No locked pricing yet.</p>
                   ) : (
                     projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => {
                       const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
                       const borderColor = q.status === 'pending' ? 'border-orange-500/30 bg-orange-500/5' : q.status === 'declined' ? 'border-red-500/30 bg-red-500/5' : 'border-emerald-500/30 bg-emerald-500/5';
-                      const badgeColor = q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : q.status === 'declined' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400';
+                      const badgeColor = q.status === 'pending' ? 'bg-orange-500/20 text-orange-500' : q.status === 'declined' ? 'bg-red-500/20 text-red-700' : 'bg-emerald-500/20 text-emerald-700';
                       const badgeLabel = q.status === 'pending' ? 'Awaiting Response' : q.status === 'declined' ? 'Declined' : 'Quote Received';
                       return (
                       <div key={idx} className={`border rounded-lg p-4 ${borderColor}`}>
                         <div className="flex justify-between items-start">
                           <div>
                             <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider mb-2 inline-block ${badgeColor}`}>{badgeLabel}</span>
-                            <h4 className="text-white font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
-                            <p className="text-xs text-slate-400 mt-1">{q.material_name}</p>
-                            {startDate && <p className="text-[11px] text-slate-500 mt-0.5">Start: {startDate}</p>}
-                            {q.bid_date && <p className="text-[11px] text-slate-500 mt-0.5">Bid by: {q.bid_date}</p>}
+                            <h4 className="text-zinc-900 font-medium text-sm">{q.facility?.name || "Supplier"}</h4>
+                            <p className="text-xs text-zinc-600 mt-1">{q.material_name}</p>
+                            {startDate && <p className="text-[11px] text-zinc-500 mt-0.5">Start: {startDate}</p>}
+                            {q.bid_date && <p className="text-[11px] text-zinc-500 mt-0.5">Bid by: {q.bid_date}</p>}
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-bold text-slate-300">{q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span></div>
-                            {q.offered_price && <div className="text-lg font-bold text-emerald-400 mt-1">${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(q.material_name) ? "Ton" : "CY"}</span></div>}
+                            <div className="text-sm font-bold text-zinc-700">{q.quantity} <span className="text-xs font-normal">{importMaterials?.includes(q.material_name) ? "Tons" : "CY"}</span></div>
+                            {q.offered_price && <div className="text-lg font-bold text-emerald-700 mt-1">${q.offered_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(q.material_name) ? "Ton" : "CY"}</span></div>}
                           </div>
                         </div>
                         {q.message && (
-                          <div className="mt-3 bg-slate-800/40 border border-slate-700/60 rounded px-2.5 py-1.5">
-                            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Your note</p>
-                            <p className="text-[11px] text-slate-300 whitespace-pre-wrap mt-0.5">{q.message}</p>
+                          <div className="mt-3 bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5">
+                            <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Your note</p>
+                            <p className="text-[11px] text-zinc-700 whitespace-pre-wrap mt-0.5">{q.message}</p>
                           </div>
                         )}
                         {q.supplier_message && (
                           <div className="mt-2 bg-emerald-500/5 border border-emerald-500/20 rounded px-2.5 py-1.5">
-                            <p className="text-[9px] text-emerald-400 uppercase tracking-wider font-semibold">Supplier reply</p>
-                            <p className="text-[11px] text-slate-200 whitespace-pre-wrap mt-0.5">{q.supplier_message}</p>
+                            <p className="text-[9px] text-emerald-700 uppercase tracking-wider font-semibold">Supplier reply</p>
+                            <p className="text-[11px] text-zinc-800 whitespace-pre-wrap mt-0.5">{q.supplier_message}</p>
                           </div>
                         )}
                         {q.contractor_message && messagingQuoteId !== q.id && (
-                          <div className="mt-2 bg-slate-800/40 border border-slate-700/60 rounded px-2.5 py-1.5">
-                            <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Your last message</p>
-                            <p className="text-[11px] text-slate-300 whitespace-pre-wrap mt-0.5">{q.contractor_message}</p>
+                          <div className="mt-2 bg-zinc-50 border border-zinc-200 rounded px-2.5 py-1.5">
+                            <p className="text-[9px] text-zinc-500 uppercase tracking-wider font-semibold">Your last message</p>
+                            <p className="text-[11px] text-zinc-700 whitespace-pre-wrap mt-0.5">{q.contractor_message}</p>
                           </div>
                         )}
                         {q.status === 'pending' && (
-                          <div className="mt-3 pt-2 border-t border-slate-700/60">
+                          <div className="mt-3 pt-2 border-t border-zinc-200">
                             {messagingQuoteId === q.id ? (
                               <div className="space-y-2">
                                 <textarea
@@ -1422,13 +1422,13 @@ export default function ContractorView({
                                   rows={3}
                                   autoFocus
                                   placeholder="Send a question or note to the supplier..."
-                                  className="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1.5 text-xs text-white focus:border-orange-500 focus:outline-none resize-none"
+                                  className="w-full bg-white border border-zinc-300 rounded px-2 py-1.5 text-xs text-zinc-900 focus:border-orange-500 focus:outline-none resize-none"
                                 />
                                 <div className="flex justify-end space-x-2">
                                   <button onClick={() => { setMessagingQuoteId(null); setFollowupText(''); }}
-                                    className="text-slate-400 hover:text-white text-xs font-semibold px-2">Cancel</button>
+                                    className="text-zinc-600 hover:text-zinc-900 text-xs font-semibold px-2">Cancel</button>
                                   <button disabled={sendingFollowup || !followupText.trim()} onClick={() => sendQuoteFollowup(q.id)}
-                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-zinc-900 px-3 py-1.5 rounded text-xs font-bold transition-colors">
                                     {sendingFollowup ? '...' : 'Send Message'}
                                   </button>
                                 </div>
@@ -1436,7 +1436,7 @@ export default function ContractorView({
                             ) : (
                               <div className="flex justify-end">
                                 <button onClick={() => { setMessagingQuoteId(q.id); setFollowupText(''); }}
-                                  className="text-orange-500 hover:text-orange-400 text-xs font-bold transition-colors">
+                                  className="text-orange-500 hover:text-orange-600 text-xs font-bold transition-colors">
                                   Send Message <i className="fa-solid fa-arrow-right ml-1"></i>
                                 </button>
                               </div>
@@ -1445,28 +1445,28 @@ export default function ContractorView({
                         )}
                       </div>
                       );
-                    }) : <p className="text-slate-500 text-sm text-center py-4">No pending quotes.</p>
+                    }) : <p className="text-zinc-500 text-sm text-center py-4">No pending quotes.</p>
                   )}
                 </div>
               </div>
           </div>
 
               {/* Manifest */}
-              <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm overflow-hidden flex flex-col">
-                <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+              <div className="bg-white border border-zinc-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
+                <div className="p-5 border-b border-zinc-200 flex justify-between items-center bg-zinc-50/80">
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Project Manifest (Bill of Materials)</h2>
-                    {lastCalculated && <p className="text-xs text-slate-400 mt-0.5"><i className="fa-solid fa-clock mr-1"></i> Last Routed: {lastCalculated.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
+                    <h2 className="text-lg font-semibold text-zinc-900">Project Manifest (Bill of Materials)</h2>
+                    {lastCalculated && <p className="text-xs text-zinc-600 mt-0.5"><i className="fa-solid fa-clock mr-1"></i> Last Routed: {lastCalculated.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>}
                   </div>
                   {requirements.length > 0 && (
-                    <button onClick={calculateManifest} disabled={isCalculating} className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50">
+                    <button onClick={calculateManifest} disabled={isCalculating} className="bg-emerald-500 hover:bg-emerald-600 text-zinc-900 px-4 py-1.5 rounded text-sm font-bold shadow-lg transition-all disabled:opacity-50">
                       {isCalculating ? 'Routing...' : (lastCalculated ? 'Re-Route Logistics' : 'Optimize Logistics')}
                     </button>
                   )}
                 </div>
 
                 {!activeProject ? (
-                  <div className="p-12 text-center text-slate-500">
+                  <div className="p-12 text-center text-zinc-500">
                     <i className="fa-solid fa-folder-open text-4xl mb-3 opacity-50"></i>
                     <p>Select or create a project to build your logistics manifest.</p>
                   </div>
@@ -1476,27 +1476,27 @@ export default function ContractorView({
                     {/* Project savings banner */}
                     {projectFreightSavings !== null && (
                       <div className={`flex items-center space-x-3 px-4 py-2.5 rounded-lg border ${projectSavingsFmt.positive ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                        <i className={`fa-solid fa-truck text-sm ${projectSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}></i>
+                        <i className={`fa-solid fa-truck text-sm ${projectSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}></i>
                         <div>
-                          <span className={`text-sm font-bold ${projectSavingsFmt.positive ? 'text-emerald-400' : 'text-red-400'}`}>{projectSavingsFmt.display}</span>
-                          <span className="text-xs text-slate-400 ml-2">freight savings on this project vs. top-5 avg</span>
+                          <span className={`text-sm font-bold ${projectSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>{projectSavingsFmt.display}</span>
+                          <span className="text-xs text-zinc-600 ml-2">freight savings on this project vs. top-5 avg</span>
                         </div>
                       </div>
                     )}
 
                     {/* Add Requirement Form */}
-                    <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 space-y-3">
-                      <h3 className="text-sm font-semibold text-white">Add Requirement</h3>
+                    <div className="bg-zinc-50/80 p-4 rounded-lg border border-zinc-200 space-y-3">
+                      <h3 className="text-sm font-semibold text-zinc-900">Add Requirement</h3>
 
                       {/* Import / Export toggle */}
-                      <div className="inline-flex relative bg-slate-800 border border-slate-700 rounded-lg p-0.5">
+                      <div className="inline-flex relative bg-white border border-zinc-200 rounded-lg p-0.5">
                         <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ${isImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
                         <button type="button" onClick={() => { setJobType("Import (Delivery)"); setSelectedMaterials([]); setSelectedCategory(""); }}
-                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${isImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${isImport ? 'text-orange-600' : 'text-zinc-500 hover:text-zinc-700'}`}>
                           Import
                         </button>
                         <button type="button" onClick={() => { setJobType("Export (Haul-Off)"); setSelectedMaterials([]); setSelectedCategory(""); }}
-                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!isImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                          className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!isImport ? 'text-blue-700' : 'text-zinc-500 hover:text-zinc-700'}`}>
                           Export
                         </button>
                       </div>
@@ -1505,36 +1505,36 @@ export default function ContractorView({
                       <div className="flex flex-col md:flex-row gap-2">
                         {/* Category */}
                         <select value={selectedCategory} onChange={(e) => { setSelectedCategory(e.target.value); setSelectedMaterials([]); }}
-                          className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                          className={`flex-1 bg-white border rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none appearance-none ${isImport ? 'border-zinc-200 focus:border-orange-500' : 'border-zinc-200 focus:border-blue-500'}`}>
                           <option value="">All Categories</option>
                           {filteredCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
 
                         {/* Truck Type */}
                         <select value={selectedTruckType} onChange={(e) => setSelectedTruckType(e.target.value)} required
-                          className={`flex-1 bg-slate-800 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                          className={`flex-1 bg-white border rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none appearance-none ${isImport ? 'border-zinc-200 focus:border-orange-500' : 'border-zinc-200 focus:border-blue-500'}`}>
                           <option value="">-- Truck Type --</option>
                           {truckTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                         </select>
 
                         {/* Quantity */}
                         <div className="relative w-full md:w-32">
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{isImport ? 'Tons' : 'CY'}</span>
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-zinc-600">{isImport ? 'Tons' : 'CY'}</span>
                           <input type="number" required value={qty} onChange={(e) => setQty(Number(e.target.value))}
-                            className={`w-full bg-slate-800 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${isImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
+                            className={`w-full bg-white border rounded-lg pl-3 pr-10 py-2 text-sm text-zinc-900 focus:outline-none ${isImport ? 'border-zinc-200 focus:border-orange-500' : 'border-zinc-200 focus:border-blue-500'}`} />
                         </div>
                       </div>
 
                       {/* Material multi-select checkboxes */}
                       {filteredMaterials.length > 0 && (
                         <div>
-                          <p className="text-xs text-slate-400 mb-2">Select material(s) to compare:</p>
+                          <p className="text-xs text-zinc-600 mb-2">Select material(s) to compare:</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                             {filteredMaterials.map(mat => (
-                              <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                              <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'}`}>
                                 <input type="checkbox" checked={selectedMaterials.includes(mat)} onChange={() => toggleMaterial(mat)} className="sr-only" />
-                                <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-slate-600'}`}>
-                                  {selectedMaterials.includes(mat) && <i className="fa-solid fa-check text-white" style={{ fontSize: '8px' }}></i>}
+                                <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${selectedMaterials.includes(mat) ? (isImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-zinc-300'}`}>
+                                  {selectedMaterials.includes(mat) && <i className="fa-solid fa-check text-zinc-900" style={{ fontSize: '8px' }}></i>}
                                 </span>
                                 <span className="truncate">{mat}</span>
                               </label>
@@ -1546,11 +1546,11 @@ export default function ContractorView({
                       {/* Add button */}
                       <form onSubmit={addRequirement}>
                         <button type="submit" disabled={selectedMaterials.length === 0 || !selectedTruckType}
-                          className={`px-5 py-2 rounded-lg text-sm font-bold transition-all text-white disabled:opacity-40 ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
+                          className={`px-5 py-2 rounded-lg text-sm font-bold transition-all text-zinc-900 disabled:opacity-40 ${isImport ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'}`}>
                           + Add {selectedMaterials.length > 1 ? `${selectedMaterials.length} Materials` : 'Material'}
                         </button>
                         {selectedMaterials.length > 1 && (
-                          <span className="ml-3 text-xs text-slate-400">Results will show side-by-side comparison</span>
+                          <span className="ml-3 text-xs text-zinc-600">Results will show side-by-side comparison</span>
                         )}
                       </form>
                     </div>
@@ -1561,37 +1561,37 @@ export default function ContractorView({
                         const result = manifestResults[req.id];
                         const comparedMats = req.compared_materials || [req.material_name];
                         return (
-                          <div key={req.id} className="border border-slate-700 rounded-lg overflow-hidden">
+                          <div key={req.id} className="border border-zinc-200 rounded-lg overflow-hidden">
                             {/* Header */}
                             <div className={`px-4 py-3 flex justify-between items-center ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/10' : 'bg-blue-500/10'}`}>
                               <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-400'}`}>
+                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-700'}`}>
                                   {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
                                 </span>
                                 {comparedMats.length === 1 ? (
-                                  <span className="font-semibold text-white text-sm">{comparedMats[0]}</span>
+                                  <span className="font-semibold text-zinc-900 text-sm">{comparedMats[0]}</span>
                                 ) : (
                                   <div className="flex flex-wrap gap-1">
                                     {comparedMats.map((m: string) => (
-                                      <span key={m} className="px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded text-[10px]">{m}</span>
+                                      <span key={m} className="px-1.5 py-0.5 bg-zinc-100 text-zinc-700 rounded text-[10px]">{m}</span>
                                     ))}
                                   </div>
                                 )}
-                                <span className="text-slate-400 text-xs">({req.quantity.toLocaleString()} {req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY'})</span>
-                                {req.truck_type && <span className="px-1.5 py-0.5 bg-slate-700 text-slate-400 rounded text-[10px]">{req.truck_type}</span>}
+                                <span className="text-zinc-600 text-xs">({req.quantity.toLocaleString()} {req.job_type === 'Import (Delivery)' ? 'Tons' : 'CY'})</span>
+                                {req.truck_type && <span className="px-1.5 py-0.5 bg-zinc-100 text-zinc-600 rounded text-[10px]">{req.truck_type}</span>}
                               </div>
-                              <button onClick={() => removeRequirement(req.id)} className="text-slate-500 hover:text-red-500 transition-colors ml-2">
+                              <button onClick={() => removeRequirement(req.id)} className="text-zinc-500 hover:text-red-500 transition-colors ml-2">
                                 <i className="fa-solid fa-trash"></i>
                               </button>
                             </div>
 
                             {/* Results */}
                             {result && (
-                              <div className="bg-slate-900 border-t border-slate-700">
+                              <div className="bg-white border-t border-zinc-200">
                                 {Array.isArray(result) && result.length > 0 ? (
                                   <ResultsTable options={result} req={req} />
                                 ) : (
-                                  <p className="p-3 text-center text-xs text-red-400">No facilities found or routing failed.</p>
+                                  <p className="p-3 text-center text-xs text-red-700">No facilities found or routing failed.</p>
                                 )}
                               </div>
                             )}
@@ -1599,8 +1599,8 @@ export default function ContractorView({
                         );
                       })}
                       {requirements.length === 0 && (
-                        <div className="text-center py-6 border-2 border-dashed border-slate-700 rounded-lg">
-                          <p className="text-slate-500 text-sm">No materials added to manifest yet.</p>
+                        <div className="text-center py-6 border-2 border-dashed border-zinc-200 rounded-lg">
+                          <p className="text-zinc-500 text-sm">No materials added to manifest yet.</p>
                         </div>
                       )}
                     </div>
@@ -1625,21 +1625,21 @@ export default function ContractorView({
           return (
         <div className="p-4 md:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Facility Network</h1>
-            <p className="text-sm text-slate-400 mt-1">Add facilities to your network to see them in the estimator and on your map.</p>
+            <h1 className="text-2xl font-bold text-zinc-900">Facility Network</h1>
+            <p className="text-sm text-zinc-600 mt-1">Add facilities to your network to see them in the estimator and on your map.</p>
           </div>
 
           {/* Network filter chips */}
           <div className="flex items-center space-x-2">
             {([
-              { id: 'all', label: 'All',              count: (allFacilities || []).length, activeCls: 'bg-orange-500/10 text-orange-400 border-orange-500/40' },
-              { id: 'in',  label: 'In My Network',    count: inNetworkAll.length,          activeCls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40' },
-              { id: 'out', label: 'Outside Network',  count: outNetworkAll.length,         activeCls: 'bg-slate-700/40 text-slate-300 border-slate-500' },
+              { id: 'all', label: 'All',              count: (allFacilities || []).length, activeCls: 'bg-orange-500/10 text-orange-600 border-orange-500/40' },
+              { id: 'in',  label: 'In My Network',    count: inNetworkAll.length,          activeCls: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/40' },
+              { id: 'out', label: 'Outside Network',  count: outNetworkAll.length,         activeCls: 'bg-zinc-100 text-zinc-700 border-zinc-400' },
             ] as const).map(opt => {
               const isActive = networkFilter === opt.id;
               return (
                 <button key={opt.id} onClick={() => setNetworkFilter(opt.id)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isActive ? opt.activeCls : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-600 hover:text-white'}`}>
+                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all ${isActive ? opt.activeCls : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900'}`}>
                   {opt.label} <span className="ml-1.5 text-[10px] opacity-80">({opt.count})</span>
                 </button>
               );
@@ -1647,7 +1647,7 @@ export default function ContractorView({
           </div>
 
           {/* All facilities map with custom popups */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[460px]">
+          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden h-[460px]">
             <MapComponent
               facilities={visibleFacilities}
               renderFacilityPopup={(fac: any) => {
@@ -1660,17 +1660,17 @@ export default function ContractorView({
                   fac.type === 'both' ? 'Pit & Dump Site' :
                   'Material Pit';
                 return (
-                  <div style={{ background: '#1e293b', color: '#f1f5f9', padding: '8px 10px', borderRadius: '6px', minWidth: '200px' }}>
+                  <div style={{ background: '#ffffff', color: '#18181b', padding: '8px 10px', borderRadius: '6px', minWidth: '200px' }}>
                     <div style={{ fontWeight: 600, fontSize: '13px' }}>{fac.name}</div>
-                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{typeLabel}</div>
-                    <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '6px' }}>
-                      <span style={{ color: '#64748b' }}>Owner: </span>{ownerName}
+                    <div style={{ fontSize: '11px', color: '#71717a', marginTop: '2px' }}>{typeLabel}</div>
+                    <div style={{ fontSize: '11px', color: '#52525b', marginTop: '6px' }}>
+                      <span style={{ color: '#a1a1aa' }}>Owner: </span>{ownerName}
                     </div>
                     <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       {inNetwork ? (
                         <button
                           onClick={() => removeFromNetwork(fac.id)}
-                          style={{ background: 'transparent', color: '#f87171', border: '1px solid rgba(239,68,68,0.4)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                          style={{ background: 'transparent', color: '#b91c1c', border: '1px solid rgba(239,68,68,0.4)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                         >
                           <i className="fa-solid fa-minus" style={{ marginRight: 4 }}></i>Remove from Network
                         </button>
@@ -1685,7 +1685,7 @@ export default function ContractorView({
                       {fac.owner_id && ownerFacilityCount > 1 && (
                         <button
                           onClick={() => addAllCompanyFacilities(fac.owner_id)}
-                          style={{ background: 'transparent', color: '#fb923c', border: '1px solid rgba(249,115,22,0.4)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                          style={{ background: 'transparent', color: '#c2410c', border: '1px solid rgba(249,115,22,0.4)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                         >
                           + Add all of {ownerName}&apos;s {ownerFacilityCount} facilities
                         </button>
@@ -1698,22 +1698,22 @@ export default function ContractorView({
           </div>
 
           <div className="relative max-w-md">
-            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm"></i>
             <input
               type="text"
               value={networkSearch}
               onChange={e => setNetworkSearch(e.target.value)}
               placeholder="Search facilities by name..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+              className="w-full bg-white border border-zinc-200 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500"
             />
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-700 bg-slate-900/40 flex items-center justify-between text-xs text-slate-400">
+          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between text-xs text-zinc-600">
               <span>{visibleFacilities.length} facilities</span>
               <span>{networkFacilities.length} in your network</span>
             </div>
-            <div className="divide-y divide-slate-700/60">
+            <div className="divide-y divide-zinc-200/70">
               {visibleFacilities
                 .map((f: any) => {
                   const inNetwork = networkFacilities.some((n: any) => n.id === f.id);
@@ -1721,34 +1721,34 @@ export default function ContractorView({
                   const rel = (relationships || []).find((r: any) => r.supplier_id === f.owner_id);
                   const tier = rel?.tier || 'public';
                   const tierColor =
-                    tier === 'customer' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                    tier === 'contractor' ? 'bg-orange-500/10 text-orange-400 border-orange-500/30' :
-                    'bg-slate-700/40 text-slate-400 border-slate-600';
+                    tier === 'customer' ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/30' :
+                    tier === 'contractor' ? 'bg-orange-500/10 text-orange-600 border-orange-500/30' :
+                    'bg-zinc-100 text-zinc-600 border-zinc-300';
                   const typeColor =
-                    f.type === 'pit'  ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
-                    f.type === 'dump' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+                    f.type === 'pit'  ? 'bg-orange-500/20 text-orange-600 border-orange-500/30' :
+                    f.type === 'dump' ? 'bg-blue-500/20 text-blue-700 border-blue-500/30' :
+                                        'bg-emerald-500/20 text-emerald-700 border-emerald-500/30';
                   return (
                     <div key={f.id} className="px-5 py-4 flex items-center justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center space-x-2">
-                          <p className="text-sm font-semibold text-white truncate">{f.name}</p>
+                          <p className="text-sm font-semibold text-zinc-900 truncate">{f.name}</p>
                           <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${typeColor}`}>{f.type}</span>
                         </div>
-                        {f.address && <p className="text-xs text-slate-400 mt-1 truncate">{f.address}</p>}
+                        {f.address && <p className="text-xs text-zinc-600 mt-1 truncate">{f.address}</p>}
                         <div className="flex items-center space-x-2 mt-1.5">
-                          <span className="text-[10px] text-slate-500">Owner: <span className="text-slate-400">{owner?.company_name || '—'}</span></span>
+                          <span className="text-[10px] text-zinc-500">Owner: <span className="text-zinc-600">{owner?.company_name || '—'}</span></span>
                           <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tierColor}`}>{tier}</span>
                         </div>
                       </div>
                       {inNetwork ? (
                         <button onClick={() => removeFromNetwork(f.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-400 hover:border-red-500/50 hover:text-red-400 transition-all whitespace-nowrap">
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-300 text-zinc-600 hover:border-red-500/50 hover:text-red-700 transition-all whitespace-nowrap">
                           <i className="fa-solid fa-minus mr-1.5"></i>Remove
                         </button>
                       ) : (
                         <button onClick={() => addToNetwork(f.id)}
-                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white transition-all whitespace-nowrap">
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-zinc-900 transition-all whitespace-nowrap">
                           <i className="fa-solid fa-plus mr-1.5"></i>Add to Network
                         </button>
                       )}
@@ -1756,7 +1756,7 @@ export default function ContractorView({
                   );
                 })}
               {visibleFacilities.length === 0 && (
-                <div className="px-5 py-10 text-center text-sm text-slate-500 italic">No facilities match your filter.</div>
+                <div className="px-5 py-10 text-center text-sm text-zinc-500 italic">No facilities match your filter.</div>
               )}
             </div>
           </div>
@@ -1772,18 +1772,18 @@ export default function ContractorView({
         <div className="p-4 md:p-8 space-y-6 pb-24 md:pb-8">
 
           <div>
-            <h1 className="text-2xl font-bold text-white">Trucking Network</h1>
-            <p className="text-sm text-slate-400 mt-1">Add trucking companies to use their rates in your project estimates.</p>
+            <h1 className="text-2xl font-bold text-zinc-900">Trucking Network</h1>
+            <p className="text-sm text-zinc-600 mt-1">Add trucking companies to use their rates in your project estimates.</p>
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-white">My Trucking Network ({inNetwork.length})</h2>
+          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/80 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-zinc-900">My Trucking Network ({inNetwork.length})</h2>
             </div>
             {inNetwork.length === 0 ? (
-              <p className="p-8 text-center text-slate-500 text-sm">No trucking companies in your network yet. Add some below to use their rates.</p>
+              <p className="p-8 text-center text-zinc-500 text-sm">No trucking companies in your network yet. Add some below to use their rates.</p>
             ) : (
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-zinc-200/70">
                 {inNetwork.map((trucker: any) => {
                   const truckerSpecificRates = (truckerRates || []).filter((r: any) => r.trucker_id === trucker.id);
                   return (
@@ -1791,24 +1791,24 @@ export default function ContractorView({
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <i className="fa-solid fa-truck text-cyan-400"></i>
-                            <span className="text-sm font-semibold text-white">{trucker.company_name}</span>
+                            <i className="fa-solid fa-truck text-cyan-700"></i>
+                            <span className="text-sm font-semibold text-zinc-900">{trucker.company_name}</span>
                           </div>
                           <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
                             {truckerSpecificRates.map((rate: any) => (
-                              <div key={rate.id} className="bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2">
-                                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">{rate.truck_type}</p>
-                                <p className="text-sm text-white font-bold mt-0.5">${Number(rate.hourly_rate).toFixed(2)}<span className="text-[10px] text-slate-500 font-normal">/hr</span></p>
-                                <p className="text-[10px] text-slate-500 mt-0.5">Min {rate.minimum_hours_per_day}hr/day</p>
+                              <div key={rate.id} className="bg-zinc-50/80 border border-zinc-200 rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-bold">{rate.truck_type}</p>
+                                <p className="text-sm text-zinc-900 font-bold mt-0.5">${Number(rate.hourly_rate).toFixed(2)}<span className="text-[10px] text-zinc-500 font-normal">/hr</span></p>
+                                <p className="text-[10px] text-zinc-500 mt-0.5">Min {rate.minimum_hours_per_day}hr/day</p>
                               </div>
                             ))}
                             {truckerSpecificRates.length === 0 && (
-                              <span className="text-xs text-slate-500 italic">No rates published yet</span>
+                              <span className="text-xs text-zinc-500 italic">No rates published yet</span>
                             )}
                           </div>
                         </div>
                         <button onClick={() => removeTruckerFromNetwork(trucker.id)}
-                          className="text-slate-500 hover:text-red-500 transition-colors text-xs">
+                          className="text-zinc-500 hover:text-red-500 transition-colors text-xs">
                           <i className="fa-solid fa-trash"></i>
                         </button>
                       </div>
@@ -1819,27 +1819,27 @@ export default function ContractorView({
             )}
           </div>
 
-          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-700 bg-slate-900/50">
-              <h2 className="text-sm font-semibold text-white">Available Trucking Companies ({notInNetwork.length})</h2>
+          <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/80">
+              <h2 className="text-sm font-semibold text-zinc-900">Available Trucking Companies ({notInNetwork.length})</h2>
             </div>
             {notInNetwork.length === 0 ? (
-              <p className="p-8 text-center text-slate-500 text-sm">No additional trucking companies available.</p>
+              <p className="p-8 text-center text-zinc-500 text-sm">No additional trucking companies available.</p>
             ) : (
-              <div className="divide-y divide-slate-700/50">
+              <div className="divide-y divide-zinc-200/70">
                 {notInNetwork.map((trucker: any) => {
                   const truckerSpecificRates = (truckerRates || []).filter((r: any) => r.trucker_id === trucker.id);
                   return (
                     <div key={trucker.id} className="px-5 py-3 flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <i className="fa-solid fa-truck text-slate-500"></i>
-                          <span className="text-sm font-semibold text-white">{trucker.company_name}</span>
-                          <span className="text-xs text-slate-500">({truckerSpecificRates.length} truck type{truckerSpecificRates.length !== 1 ? 's' : ''})</span>
+                          <i className="fa-solid fa-truck text-zinc-500"></i>
+                          <span className="text-sm font-semibold text-zinc-900">{trucker.company_name}</span>
+                          <span className="text-xs text-zinc-500">({truckerSpecificRates.length} truck type{truckerSpecificRates.length !== 1 ? 's' : ''})</span>
                         </div>
                       </div>
                       <button onClick={() => addTruckerToNetwork(trucker.id)}
-                        className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                        className="bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/40 text-cyan-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
                         + Add to Network
                       </button>
                     </div>
@@ -1871,38 +1871,38 @@ export default function ContractorView({
           return (
         <div className="p-4 md:p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">Invoices</h1>
-            <p className="text-sm text-slate-400 mt-1">Bills from your suppliers. Click to view details and pay online.</p>
+            <h1 className="text-2xl font-bold text-zinc-900">Invoices</h1>
+            <p className="text-sm text-zinc-600 mt-1">Bills from your suppliers. Click to view details and pay online.</p>
           </div>
 
           {/* Summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Total Outstanding</p>
-              <h3 className={`text-3xl font-bold mt-1 ${totalOutstanding > 0 ? 'text-orange-400' : 'text-slate-500'}`}>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Outstanding</p>
+              <h3 className={`text-3xl font-bold mt-1 ${totalOutstanding > 0 ? 'text-orange-600' : 'text-zinc-500'}`}>
                 ${totalOutstanding.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h3>
-              <p className="text-xs text-slate-400 mt-3">{contractorInvoices.filter((i: any) => i.status !== 'paid').length} unpaid invoice(s)</p>
+              <p className="text-xs text-zinc-600 mt-3">{contractorInvoices.filter((i: any) => i.status !== 'paid').length} unpaid invoice(s)</p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Paid This Year</p>
-              <h3 className="text-3xl font-bold text-emerald-400 mt-1">
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Paid This Year</p>
+              <h3 className="text-3xl font-bold text-emerald-700 mt-1">
                 ${paidThisYear.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </h3>
-              <p className="text-xs text-slate-400 mt-3">{thisYear} year-to-date</p>
+              <p className="text-xs text-zinc-600 mt-3">{thisYear} year-to-date</p>
             </div>
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Overdue</p>
-              <h3 className={`text-3xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-400' : 'text-slate-500'}`}>{overdueCount}</h3>
-              <p className="text-xs text-slate-400 mt-3">past their due date</p>
+            <div className="bg-white border border-zinc-200 rounded-xl p-5">
+              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Overdue</p>
+              <h3 className={`text-3xl font-bold mt-1 ${overdueCount > 0 ? 'text-red-700' : 'text-zinc-500'}`}>{overdueCount}</h3>
+              <p className="text-xs text-zinc-600 mt-3">past their due date</p>
             </div>
           </div>
 
           {/* Filter pills */}
-          <div className="flex space-x-1 p-1 bg-slate-800 rounded-lg border border-slate-700 inline-flex">
+          <div className="flex space-x-1 p-1 bg-white rounded-lg border border-zinc-200 inline-flex">
             {(['all', 'unpaid', 'paid', 'overdue'] as const).map(f => (
               <button key={f} onClick={() => setInvoiceFilter(f)}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all capitalize ${invoiceFilter === f ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all capitalize ${invoiceFilter === f ? 'bg-zinc-100 text-zinc-900 shadow' : 'text-zinc-600 hover:text-zinc-900'}`}>
                 {f}
               </button>
             ))}
@@ -1911,53 +1911,53 @@ export default function ContractorView({
           {/* Invoice list */}
           <div className="space-y-3">
             {filtered.length === 0 ? (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-12 text-center">
-                <i className="fa-solid fa-file-invoice-dollar text-4xl text-slate-600 mb-3"></i>
-                <p className="text-slate-400 text-sm">No invoices {invoiceFilter !== 'all' ? `with status "${invoiceFilter}"` : 'yet'}.</p>
+              <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
+                <i className="fa-solid fa-file-invoice-dollar text-4xl text-zinc-400 mb-3"></i>
+                <p className="text-zinc-600 text-sm">No invoices {invoiceFilter !== 'all' ? `with status "${invoiceFilter}"` : 'yet'}.</p>
               </div>
             ) : filtered.map((inv: any) => {
               const statusColor =
-                inv.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-400' :
-                inv.status === 'overdue' ? 'bg-red-500/20 text-red-400' :
-                inv.status === 'sent'    ? 'bg-blue-500/20 text-blue-400' :
-                                           'bg-slate-600/30 text-slate-400';
+                inv.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-700' :
+                inv.status === 'overdue' ? 'bg-red-500/20 text-red-700' :
+                inv.status === 'sent'    ? 'bg-blue-500/20 text-blue-700' :
+                                           'bg-zinc-200 text-zinc-600';
               const owed = Number(inv.total_amount) - Number(inv.amount_paid || 0);
               return (
                 <div key={inv.id}
                   onClick={() => { setSelectedInvoice(inv); setShowInvoiceDetail(true); }}
-                  className="bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-slate-600 transition-colors cursor-pointer">
+                  className="bg-white border border-zinc-200 rounded-xl p-5 hover:border-zinc-300 transition-colors cursor-pointer">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-base font-bold text-white">{inv.invoice_number}</span>
+                        <span className="text-base font-bold text-zinc-900">{inv.invoice_number}</span>
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{inv.status}</span>
                       </div>
                       {(() => {
                         const issuer = inv.supplier?.company_name || inv.trucker?.company_name || 'Unknown';
                         const issuerType = inv.supplier_id ? 'Supplier' : inv.trucker_id ? 'Trucking' : null;
-                        const issuerColor = inv.supplier_id ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30';
+                        const issuerColor = inv.supplier_id ? 'bg-orange-500/15 text-orange-600 border-orange-500/30' : 'bg-cyan-500/15 text-cyan-700 border-cyan-500/30';
                         return (
-                          <p className="text-sm text-slate-300 flex items-center gap-2">
+                          <p className="text-sm text-zinc-700 flex items-center gap-2">
                             <span>{issuer}</span>
                             {issuerType && <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${issuerColor}`}>{issuerType}</span>}
                           </p>
                         );
                       })()}
-                      {inv.project?.name && <p className="text-xs text-slate-500 mt-0.5">{inv.project.name}</p>}
-                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                      {inv.project?.name && <p className="text-xs text-zinc-500 mt-0.5">{inv.project.name}</p>}
+                      <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
                         {inv.issued_date && <span><i className="fa-solid fa-calendar mr-1"></i>{new Date(inv.issued_date).toLocaleDateString()}</span>}
                         {inv.due_date    && <span><i className="fa-solid fa-clock mr-1"></i>Due {new Date(inv.due_date).toLocaleDateString()}</span>}
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 flex flex-col items-end">
-                      <div className="text-xl font-bold text-white">${Number(inv.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      <div className="text-xl font-bold text-zinc-900">${Number(inv.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       {inv.amount_paid > 0 && inv.amount_paid < inv.total_amount && (
-                        <div className="text-xs text-emerald-400 mt-1">${Number(inv.amount_paid).toFixed(2)} paid</div>
+                        <div className="text-xs text-emerald-700 mt-1">${Number(inv.amount_paid).toFixed(2)} paid</div>
                       )}
                       {inv.status !== 'paid' && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelectedInvoice(inv); setShowPaymentModal(true); }}
-                          className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                          className="mt-2 bg-emerald-500 hover:bg-emerald-600 text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
                           Pay ${owed.toFixed(2)}
                         </button>
                       )}
@@ -1976,64 +1976,64 @@ export default function ContractorView({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Left: inputs */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
-              <h2 className="text-lg font-semibold text-white">Quick Calculator</h2>
-              <p className="text-xs text-slate-400">Calculate freight and material costs without creating a project.</p>
+            <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
+              <h2 className="text-lg font-semibold text-zinc-900">Quick Calculator</h2>
+              <p className="text-xs text-zinc-600">Calculate freight and material costs without creating a project.</p>
 
-              <div className="inline-flex relative bg-slate-900 border border-slate-700 rounded-lg p-0.5">
+              <div className="inline-flex relative bg-white border border-zinc-200 rounded-lg p-0.5">
                 <span className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md transition-all duration-200 ${calcIsImport ? 'left-0.5 bg-orange-500/20 border border-orange-500/40' : 'left-[calc(50%+2px)] bg-blue-500/20 border border-blue-500/40'}`} />
                 <button type="button" onClick={() => { setCalcIsImport(true); setCalcJobType("Import (Delivery)"); setCalcMaterials([]); setCalcCategory(""); }}
-                  className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${calcIsImport ? 'text-orange-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                  className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${calcIsImport ? 'text-orange-600' : 'text-zinc-500 hover:text-zinc-700'}`}>
                   Import
                 </button>
                 <button type="button" onClick={() => { setCalcIsImport(false); setCalcJobType("Export (Haul-Off)"); setCalcMaterials([]); setCalcCategory(""); }}
-                  className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!calcIsImport ? 'text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                  className={`relative z-10 px-5 py-1.5 text-xs font-semibold rounded-md transition-colors ${!calcIsImport ? 'text-blue-700' : 'text-zinc-500 hover:text-zinc-700'}`}>
                   Export
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site <span className="text-xs text-slate-500 font-normal ml-1">Click map to drop pin</span></label>
-                <div className="h-48 rounded-lg overflow-hidden border border-slate-700">
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Job Site <span className="text-xs text-zinc-500 font-normal ml-1">Click map to drop pin</span></label>
+                <div className="h-48 rounded-lg overflow-hidden border border-zinc-200">
                   <MapComponent jobLat={calcLat} jobLon={calcLon} facilities={networkFacilities} onMapClick={handleCalcMapClick} interactive={true} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Address {calcIsReverseGeocoding && <span className="text-xs text-orange-400 animate-pulse ml-2">Looking up...</span>}</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Address {calcIsReverseGeocoding && <span className="text-xs text-orange-600 animate-pulse ml-2">Looking up...</span>}</label>
                 <textarea value={calcAddress} onChange={(e) => setCalcAddress(e.target.value)} placeholder="Click map above or type address manually"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-14 resize-none" />
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500 h-14 resize-none" />
               </div>
 
               <div className="flex flex-col md:flex-row gap-2">
                 <select value={calcCategory} onChange={(e) => { setCalcCategory(e.target.value); setCalcMaterials([]); }}
-                  className={`flex-1 bg-slate-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${calcIsImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                  className={`flex-1 bg-white border rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none appearance-none ${calcIsImport ? 'border-zinc-200 focus:border-orange-500' : 'border-zinc-200 focus:border-blue-500'}`}>
                   <option value="">All Categories</option>
                   {calcFilteredCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
 
                 <select value={calcTruckType} onChange={(e) => setCalcTruckType(e.target.value)}
-                  className={`flex-1 bg-slate-900 border rounded-lg px-3 py-2 text-sm text-white focus:outline-none appearance-none ${calcIsImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`}>
+                  className={`flex-1 bg-white border rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none appearance-none ${calcIsImport ? 'border-zinc-200 focus:border-orange-500' : 'border-zinc-200 focus:border-blue-500'}`}>
                   <option value="">-- Truck Type --</option>
                   {truckTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
 
                 <div className="relative w-full md:w-32">
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">{calcIsImport ? 'Tons' : 'CY'}</span>
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-zinc-600">{calcIsImport ? 'Tons' : 'CY'}</span>
                   <input type="number" value={calcQty} onChange={(e) => setCalcQty(Number(e.target.value))}
-                    className={`w-full bg-slate-900 border rounded-lg pl-3 pr-10 py-2 text-sm text-white focus:outline-none ${calcIsImport ? 'border-slate-700 focus:border-orange-500' : 'border-slate-700 focus:border-blue-500'}`} />
+                    className={`w-full bg-white border rounded-lg pl-3 pr-10 py-2 text-sm text-zinc-900 focus:outline-none ${calcIsImport ? 'border-zinc-200 focus:border-orange-500' : 'border-zinc-200 focus:border-blue-500'}`} />
                 </div>
               </div>
 
               {calcFilteredMaterials.length > 0 && (
                 <div>
-                  <p className="text-xs text-slate-400 mb-2">Select material(s) to compare:</p>
+                  <p className="text-xs text-zinc-600 mb-2">Select material(s) to compare:</p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                     {calcFilteredMaterials.map(mat => (
-                      <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                      <label key={mat} className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all text-xs ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500/10 border-orange-500/50 text-orange-300' : 'bg-blue-500/10 border-blue-500/50 text-blue-300') : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'}`}>
                         <input type="checkbox" checked={calcMaterials.includes(mat)} onChange={() => calcToggleMaterial(mat)} className="sr-only" />
-                        <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-slate-600'}`}>
-                          {calcMaterials.includes(mat) && <i className="fa-solid fa-check text-white" style={{ fontSize: '8px' }}></i>}
+                        <span className={`w-3 h-3 rounded border flex-shrink-0 flex items-center justify-center ${calcMaterials.includes(mat) ? (calcIsImport ? 'bg-orange-500 border-orange-500' : 'bg-blue-500 border-blue-500') : 'border-zinc-300'}`}>
+                          {calcMaterials.includes(mat) && <i className="fa-solid fa-check text-zinc-900" style={{ fontSize: '8px' }}></i>}
                         </span>
                         <span className="truncate">{mat}</span>
                       </label>
@@ -2043,56 +2043,56 @@ export default function ContractorView({
               )}
 
               <button onClick={runCalculator} disabled={calcIsCalculating || !calcAddress || calcMaterials.length === 0 || !calcTruckType}
-                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white py-2.5 rounded-lg text-sm font-bold transition-all">
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-zinc-900 py-2.5 rounded-lg text-sm font-bold transition-all">
                 {calcIsCalculating ? 'Calculating...' : 'Calculate'}
               </button>
             </div>
 
             {/* Right: results */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-              <div className="p-5 border-b border-slate-700 bg-slate-900/50">
-                <h2 className="text-lg font-semibold text-white">Results</h2>
-                {calcResults.length > 0 && <p className="text-xs text-slate-400 mt-0.5">Top {calcResults.length} options sorted by total price</p>}
+            <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
+              <div className="p-5 border-b border-zinc-200 bg-zinc-50/80">
+                <h2 className="text-lg font-semibold text-zinc-900">Results</h2>
+                {calcResults.length > 0 && <p className="text-xs text-zinc-600 mt-0.5">Top {calcResults.length} options sorted by total price</p>}
               </div>
               {calcResults.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">
+                <div className="p-12 text-center text-zinc-500">
                   <i className="fa-solid fa-calculator text-4xl mb-3 opacity-30"></i>
                   <p className="text-sm">Fill in the details and hit Calculate to see results.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="text-slate-500 bg-slate-800/80 uppercase tracking-wider">
+                    <thead className="text-zinc-500 bg-white/80 uppercase tracking-wider">
                       <tr>
                         <th className="px-4 py-3">Supplier</th>
                         <th className="px-4 py-3">Material</th>
                         <th className="px-4 py-3">Fleet</th>
                         <th className="px-4 py-3 text-right">Base</th>
                         <th className="px-4 py-3 text-right">Frt</th>
-                        <th className="px-4 py-3 text-right font-bold text-white">Total/Unit</th>
+                        <th className="px-4 py-3 text-right font-bold text-zinc-900">Total/Unit</th>
                         <th className="px-4 py-3 text-right">Job Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/50">
+                    <tbody className="divide-y divide-zinc-200/70">
                       {calcResults.map((res: any, idx: number) => {
                         const allTotal = calcResults.map(r => r.totalPerUnit);
                         const avgTotal = allTotal.reduce((a, b) => a + b, 0) / allTotal.length;
                         const savingsPct = avgTotal > 0 ? ((avgTotal - res.totalPerUnit) / avgTotal) * 100 : null;
                         return (
-                          <tr key={idx} className="hover:bg-slate-700/30 transition-colors">
-                            <td className="px-4 py-3 text-slate-300">{res.supplier}</td>
-                            <td className="px-4 py-3 text-slate-400">{res.materialName}</td>
-                            <td className="px-4 py-3 text-slate-400">
+                          <tr key={idx} className="hover:bg-zinc-100 transition-colors">
+                            <td className="px-4 py-3 text-zinc-700">{res.supplier}</td>
+                            <td className="px-4 py-3 text-zinc-600">{res.materialName}</td>
+                            <td className="px-4 py-3 text-zinc-600">
                               <div>{res.truckFleet}</div>
-                              {res.truckerName && <div className="text-[9px] text-cyan-400 mt-0.5"><i className="fa-solid fa-truck mr-1"></i>{res.truckerName}</div>}
+                              {res.truckerName && <div className="text-[9px] text-cyan-700 mt-0.5"><i className="fa-solid fa-truck mr-1"></i>{res.truckerName}</div>}
                             </td>
-                            <td className="px-4 py-3 text-right text-slate-400">${res.basePrice.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right text-slate-400">${res.frtPerUnit.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right font-bold text-orange-400">
+                            <td className="px-4 py-3 text-right text-zinc-600">${res.basePrice.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right text-zinc-600">${res.frtPerUnit.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-orange-600">
                               ${res.totalPerUnit.toFixed(2)}
-                              {savingsPct !== null && <span className={`ml-1 text-[10px] font-semibold ${savingsPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{savingsPct >= 0 ? '+' : ''}{savingsPct.toFixed(0)}%</span>}
+                              {savingsPct !== null && <span className={`ml-1 text-[10px] font-semibold ${savingsPct >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{savingsPct >= 0 ? '+' : ''}{savingsPct.toFixed(0)}%</span>}
                             </td>
-                            <td className="px-4 py-3 text-right text-slate-300 font-semibold">${(calcQty * res.totalPerUnit).toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
+                            <td className="px-4 py-3 text-right text-zinc-700 font-semibold">${(calcQty * res.totalPerUnit).toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
                           </tr>
                         );
                       })}
@@ -2108,16 +2108,16 @@ export default function ContractorView({
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && activeProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-sm p-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center"><i className="fa-solid fa-triangle-exclamation text-red-500"></i></div>
-              <div><h2 className="text-base font-bold text-white">Delete Project</h2><p className="text-xs text-slate-400">This cannot be undone.</p></div>
+              <div><h2 className="text-base font-bold text-zinc-900">Delete Project</h2><p className="text-xs text-zinc-600">This cannot be undone.</p></div>
             </div>
-            <p className="text-sm text-slate-300 mb-6">Are you sure you want to delete <span className="font-semibold text-white">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.</p>
+            <p className="text-sm text-zinc-700 mb-6">Are you sure you want to delete <span className="font-semibold text-zinc-900">{activeProject.name}</span>? All requirements, estimates, and quotes will be permanently removed.</p>
             <div className="flex space-x-3">
-              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
-              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{isDeletingProject ? 'Deleting...' : 'Delete Project'}</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
+              <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">{isDeletingProject ? 'Deleting...' : 'Delete Project'}</button>
             </div>
           </div>
         </div>
@@ -2125,32 +2125,32 @@ export default function ContractorView({
 
       {/* Create Project Modal */}
       {showProjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-2xl p-6">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-white">Create New Project</h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark text-lg"></i></button>
+              <h2 className="text-xl font-bold text-zinc-900">Create New Project</h2>
+              <button onClick={closeModal} className="text-zinc-600 hover:text-zinc-900"><i className="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onSubmit={createProject} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Project Name</label>
                 <input type="text" required value={newProjName} onChange={(e) => setNewProjName(e.target.value)} placeholder="e.g., Redwood Subdivision"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" />
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span></label>
-                <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Job Site Location <span className="ml-2 text-xs text-zinc-500 font-normal">Click the map to drop your pin</span></label>
+                <div className="relative h-64 w-full rounded-lg overflow-hidden border border-zinc-200">
                   <MapComponent jobLat={modalJobLat} jobLon={modalJobLon} facilities={networkFacilities} onMapClick={handleMapClick} interactive={true} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address {isReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Job Site Address {isReverseGeocoding && <span className="ml-2 text-xs text-orange-600 animate-pulse">Looking up address...</span>}</label>
                 <textarea required value={newProjAddr} onChange={(e) => setNewProjAddr(e.target.value)} placeholder="Click the map above, or type an address manually"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-16 resize-none" />
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500 h-16 resize-none" />
               </div>
               <div className="flex space-x-3 pt-2">
-                <button type="button" onClick={closeModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
-                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
+                <button type="button" onClick={closeModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">Create & Select</button>
               </div>
             </form>
           </div>
@@ -2159,32 +2159,32 @@ export default function ContractorView({
 
       {/* Edit Project Modal */}
       {showEditModal && activeProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-2xl p-6">
             <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold text-white">Edit Project</h2>
-              <button onClick={closeEditModal} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark text-lg"></i></button>
+              <h2 className="text-xl font-bold text-zinc-900">Edit Project</h2>
+              <button onClick={closeEditModal} className="text-zinc-600 hover:text-zinc-900"><i className="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <form onSubmit={saveProject} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Project Name</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Project Name</label>
                 <input type="text" required value={editProjName} onChange={(e) => setEditProjName(e.target.value)} placeholder="e.g., Redwood Subdivision"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500" />
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Location <span className="ml-2 text-xs text-slate-500 font-normal">Click the map to drop your pin</span></label>
-                <div className="relative h-64 w-full rounded-lg overflow-hidden border border-slate-700">
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Job Site Location <span className="ml-2 text-xs text-zinc-500 font-normal">Click the map to drop your pin</span></label>
+                <div className="relative h-64 w-full rounded-lg overflow-hidden border border-zinc-200">
                   <MapComponent jobLat={editJobLat} jobLon={editJobLon} facilities={networkFacilities} onMapClick={handleEditMapClick} interactive={true} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Job Site Address {isEditReverseGeocoding && <span className="ml-2 text-xs text-orange-400 animate-pulse">Looking up address...</span>}</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Job Site Address {isEditReverseGeocoding && <span className="ml-2 text-xs text-orange-600 animate-pulse">Looking up address...</span>}</label>
                 <textarea required value={editProjAddr} onChange={(e) => setEditProjAddr(e.target.value)} placeholder="Click the map above, or type an address manually"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-16 resize-none" />
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-4 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500 h-16 resize-none" />
               </div>
               <div className="flex space-x-3 pt-2">
-                <button type="button" onClick={closeEditModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">Cancel</button>
-                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg text-sm font-semibold transition-all">Save Changes</button>
+                <button type="button" onClick={closeEditModal} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
+                <button type="submit" className="flex-1 bg-orange-500 hover:bg-orange-600 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">Save Changes</button>
               </div>
             </form>
           </div>
@@ -2193,45 +2193,45 @@ export default function ContractorView({
 
       {/* Quote Request Modal */}
       {showQuoteModal && quoteModalReq && activeProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={closeQuoteModal}>
-          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4" onClick={closeQuoteModal}>
+          <div className="bg-white border border-zinc-200 rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-zinc-200 flex items-center justify-between flex-shrink-0">
               <div>
-                <h3 className="text-lg font-semibold text-white">Request Job-Specific Quote</h3>
-                <p className="text-xs text-slate-400 mt-0.5">{activeProject.name}</p>
+                <h3 className="text-lg font-semibold text-zinc-900">Request Job-Specific Quote</h3>
+                <p className="text-xs text-zinc-600 mt-0.5">{activeProject.name}</p>
               </div>
-              <button onClick={closeQuoteModal} className="text-slate-400 hover:text-white p-1.5">
+              <button onClick={closeQuoteModal} className="text-zinc-600 hover:text-zinc-900 p-1.5">
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
 
             <div className="p-6 space-y-5 overflow-y-auto">
               {/* Job details */}
-              <div className="bg-slate-800/60 border border-slate-700 rounded-lg p-4 space-y-2">
+              <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 space-y-2">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-slate-500 uppercase tracking-wider font-semibold">Material</p>
-                    <p className="text-white font-medium mt-0.5">{quoteModalReq.material_name}</p>
+                    <p className="text-zinc-500 uppercase tracking-wider font-semibold">Material</p>
+                    <p className="text-zinc-900 font-medium mt-0.5">{quoteModalReq.material_name}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500 uppercase tracking-wider font-semibold">Quantity</p>
-                    <p className="text-white font-medium mt-0.5">{Number(quoteModalReq.quantity || 0).toLocaleString()} {quoteModalReq.job_type === 'Import (Delivery)' ? 'tons' : 'CY'}</p>
+                    <p className="text-zinc-500 uppercase tracking-wider font-semibold">Quantity</p>
+                    <p className="text-zinc-900 font-medium mt-0.5">{Number(quoteModalReq.quantity || 0).toLocaleString()} {quoteModalReq.job_type === 'Import (Delivery)' ? 'tons' : 'CY'}</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-slate-500 uppercase tracking-wider font-semibold">Job Site</p>
-                    <p className="text-white font-medium mt-0.5">{activeProject.address}</p>
+                    <p className="text-zinc-500 uppercase tracking-wider font-semibold">Job Site</p>
+                    <p className="text-zinc-900 font-medium mt-0.5">{activeProject.address}</p>
                   </div>
                 </div>
               </div>
 
               {/* Start date (optional) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Job Start Date <span className="text-slate-600 font-normal normal-case">(optional)</span></label>
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">Job Start Date <span className="text-zinc-400 font-normal normal-case">(optional)</span></label>
                 <div className="grid grid-cols-2 gap-3">
                   <select
                     value={quoteStartMonth}
                     onChange={e => setQuoteStartMonth(e.target.value)}
-                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                    className="bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500"
                   >
                     <option value="">— Month or Season —</option>
                     <optgroup label="Month">
@@ -2251,26 +2251,26 @@ export default function ContractorView({
                     value={quoteStartYear}
                     onChange={e => setQuoteStartYear(e.target.value)}
                     placeholder="Year"
-                    className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                    className="bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500"
                   />
                 </div>
               </div>
 
               {/* Bid date (optional) */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Bid Date <span className="text-slate-600 font-normal normal-case">(optional — deadline for the supplier to respond)</span></label>
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">Bid Date <span className="text-zinc-400 font-normal normal-case">(optional — deadline for the supplier to respond)</span></label>
                 <input
                   type="date"
                   value={quoteBidDate}
                   onChange={e => setQuoteBidDate(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500"
+                  className="bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500"
                 />
               </div>
 
               {/* Facility selection */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  Suppliers to Request Quote From <span className="text-slate-600 font-normal normal-case">({quoteModalSelected.size} selected)</span>
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">
+                  Suppliers to Request Quote From <span className="text-zinc-400 font-normal normal-case">({quoteModalSelected.size} selected)</span>
                 </label>
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {quoteModalFacilities.map(fac => {
@@ -2278,7 +2278,7 @@ export default function ContractorView({
                     const disabled = fac.acceptsQuotes === false;
                     return (
                       <label key={fac.facilityId}
-                        className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all ${disabled ? 'bg-slate-900/40 border-slate-800 opacity-60 cursor-not-allowed' : checked ? 'bg-orange-500/10 border-orange-500/40 cursor-pointer' : 'bg-slate-800 border-slate-700 hover:border-slate-600 cursor-pointer'}`}>
+                        className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border transition-all ${disabled ? 'bg-zinc-50/80 border-zinc-200 opacity-60 cursor-not-allowed' : checked ? 'bg-orange-500/10 border-orange-500/40 cursor-pointer' : 'bg-white border-zinc-200 hover:border-zinc-300 cursor-pointer'}`}>
                         <div className="flex items-center space-x-3 min-w-0">
                           <input
                             type="checkbox"
@@ -2288,13 +2288,13 @@ export default function ContractorView({
                             className="w-4 h-4 accent-orange-500 flex-shrink-0 disabled:opacity-50"
                           />
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{fac.supplier}</p>
-                            <p className="text-[10px] text-slate-500">{fac.truckFleet}{disabled && <span className="ml-2 text-red-400">Not accepting quotes</span>}</p>
+                            <p className="text-sm font-medium text-zinc-900 truncate">{fac.supplier}</p>
+                            <p className="text-[10px] text-zinc-500">{fac.truckFleet}{disabled && <span className="ml-2 text-red-700">Not accepting quotes</span>}</p>
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-semibold text-white">${fac.totalPerUnit.toFixed(2)}</p>
-                          <p className="text-[10px] text-slate-500">{quoteModalReq.job_type === 'Import (Delivery)' ? '/ton' : '/CY'}</p>
+                          <p className="text-sm font-semibold text-zinc-900">${fac.totalPerUnit.toFixed(2)}</p>
+                          <p className="text-[10px] text-zinc-500">{quoteModalReq.job_type === 'Import (Delivery)' ? '/ton' : '/CY'}</p>
                         </div>
                       </label>
                     );
@@ -2304,24 +2304,24 @@ export default function ContractorView({
 
               {/* Message */}
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Additional Details <span className="text-slate-600 font-normal normal-case">(optional)</span></label>
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">Additional Details <span className="text-zinc-400 font-normal normal-case">(optional)</span></label>
                 <textarea
                   value={quoteMessage}
                   onChange={e => setQuoteMessage(e.target.value)}
                   rows={4}
                   placeholder="Specs, delivery preferences, scheduling notes, etc."
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 resize-none"
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500 resize-none"
                 />
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-700 flex space-x-3 flex-shrink-0">
+            <div className="px-6 py-4 border-t border-zinc-200 flex space-x-3 flex-shrink-0">
               <button onClick={closeQuoteModal}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">
+                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">
                 Cancel
               </button>
               <button onClick={submitQuoteModal} disabled={submittingQuoteModal || quoteModalSelected.size === 0}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
                 {submittingQuoteModal ? 'Sending...' : `Send Request (${quoteModalSelected.size})`}
               </button>
             </div>
@@ -2334,32 +2334,32 @@ export default function ContractorView({
         const items = (invoiceLineItems || []).filter((li: any) => li.invoice_id === selectedInvoice.id);
         const owed = Number(selectedInvoice.total_amount) - Number(selectedInvoice.amount_paid || 0);
         const statusColor =
-          selectedInvoice.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
-          selectedInvoice.status === 'overdue' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
-          selectedInvoice.status === 'sent'    ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                                                 'bg-slate-600/30 text-slate-400 border-slate-600';
+          selectedInvoice.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30' :
+          selectedInvoice.status === 'overdue' ? 'bg-red-500/20 text-red-700 border-red-500/30' :
+          selectedInvoice.status === 'sent'    ? 'bg-blue-500/20 text-blue-700 border-blue-500/30' :
+                                                 'bg-zinc-200 text-zinc-600 border-zinc-300';
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowInvoiceDetail(false)}>
-            <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
-              <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4" onClick={() => setShowInvoiceDetail(false)}>
+            <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-zinc-200 flex items-center justify-between flex-shrink-0">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-white">{selectedInvoice.invoice_number}</h2>
+                    <h2 className="text-lg font-bold text-zinc-900">{selectedInvoice.invoice_number}</h2>
                     <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider border ${statusColor}`}>{selectedInvoice.status}</span>
                   </div>
                   {(() => {
                     const issuer = selectedInvoice.supplier?.company_name || selectedInvoice.trucker?.company_name || 'Unknown';
                     const issuerType = selectedInvoice.supplier_id ? 'Supplier' : selectedInvoice.trucker_id ? 'Trucking' : null;
-                    const issuerColor = selectedInvoice.supplier_id ? 'text-orange-400' : 'text-cyan-400';
+                    const issuerColor = selectedInvoice.supplier_id ? 'text-orange-600' : 'text-cyan-700';
                     return (
-                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                      <p className="text-xs text-zinc-600 mt-0.5 flex items-center gap-2">
                         <span>{issuer}</span>
                         {issuerType && <span className={`text-[9px] font-bold uppercase tracking-wider ${issuerColor}`}>· {issuerType}</span>}
                       </p>
                     );
                   })()}
                 </div>
-                <button onClick={() => setShowInvoiceDetail(false)} className="text-slate-400 hover:text-white p-1.5">
+                <button onClick={() => setShowInvoiceDetail(false)} className="text-zinc-600 hover:text-zinc-900 p-1.5">
                   <i className="fa-solid fa-xmark"></i>
                 </button>
               </div>
@@ -2368,39 +2368,39 @@ export default function ContractorView({
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   {selectedInvoice.project?.name && (
                     <div>
-                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Project</p>
-                      <p className="text-slate-200 mt-0.5">{selectedInvoice.project.name}</p>
+                      <p className="text-zinc-500 uppercase tracking-wider font-semibold">Project</p>
+                      <p className="text-zinc-800 mt-0.5">{selectedInvoice.project.name}</p>
                     </div>
                   )}
                   {selectedInvoice.issued_date && (
                     <div>
-                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Issued</p>
-                      <p className="text-slate-200 mt-0.5">{new Date(selectedInvoice.issued_date).toLocaleDateString()}</p>
+                      <p className="text-zinc-500 uppercase tracking-wider font-semibold">Issued</p>
+                      <p className="text-zinc-800 mt-0.5">{new Date(selectedInvoice.issued_date).toLocaleDateString()}</p>
                     </div>
                   )}
                   {selectedInvoice.due_date && (
                     <div>
-                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Due</p>
-                      <p className="text-slate-200 mt-0.5">{new Date(selectedInvoice.due_date).toLocaleDateString()}</p>
+                      <p className="text-zinc-500 uppercase tracking-wider font-semibold">Due</p>
+                      <p className="text-zinc-800 mt-0.5">{new Date(selectedInvoice.due_date).toLocaleDateString()}</p>
                     </div>
                   )}
                   {selectedInvoice.paid_date && (
                     <div>
-                      <p className="text-slate-500 uppercase tracking-wider font-semibold">Paid</p>
-                      <p className="text-emerald-400 mt-0.5">{new Date(selectedInvoice.paid_date).toLocaleDateString()}</p>
+                      <p className="text-zinc-500 uppercase tracking-wider font-semibold">Paid</p>
+                      <p className="text-emerald-700 mt-0.5">{new Date(selectedInvoice.paid_date).toLocaleDateString()}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Line items */}
                 <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Line Items</p>
-                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg overflow-hidden">
+                  <p className="text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-2">Line Items</p>
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg overflow-hidden">
                     {items.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic text-center py-6">No line items.</p>
+                      <p className="text-xs text-zinc-500 italic text-center py-6">No line items.</p>
                     ) : (
                       <table className="w-full text-xs">
-                        <thead className="bg-slate-900/40 text-slate-500 uppercase tracking-wider">
+                        <thead className="bg-zinc-50/80 text-zinc-500 uppercase tracking-wider">
                           <tr>
                             <th className="px-3 py-2 text-left font-semibold">Description</th>
                             <th className="px-3 py-2 text-right font-semibold w-20">Qty</th>
@@ -2408,13 +2408,13 @@ export default function ContractorView({
                             <th className="px-3 py-2 text-right font-semibold w-28">Line Total</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-700/60">
+                        <tbody className="divide-y divide-zinc-200/70">
                           {items.map((it: any, i: number) => (
                             <tr key={it.id || i}>
-                              <td className="px-3 py-2 text-slate-200">{it.description}{it.material_name && it.material_name !== it.description && <span className="text-slate-500 text-[10px] block">{it.material_name}</span>}</td>
-                              <td className="px-3 py-2 text-right text-slate-300">{Number(it.quantity).toLocaleString()}</td>
-                              <td className="px-3 py-2 text-right text-slate-300">${Number(it.unit_price).toFixed(2)}</td>
-                              <td className="px-3 py-2 text-right text-white font-semibold">${Number(it.line_total).toFixed(2)}</td>
+                              <td className="px-3 py-2 text-zinc-800">{it.description}{it.material_name && it.material_name !== it.description && <span className="text-zinc-500 text-[10px] block">{it.material_name}</span>}</td>
+                              <td className="px-3 py-2 text-right text-zinc-700">{Number(it.quantity).toLocaleString()}</td>
+                              <td className="px-3 py-2 text-right text-zinc-700">${Number(it.unit_price).toFixed(2)}</td>
+                              <td className="px-3 py-2 text-right text-zinc-900 font-semibold">${Number(it.line_total).toFixed(2)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2425,27 +2425,27 @@ export default function ContractorView({
 
                 {/* Totals */}
                 <div className="flex justify-end">
-                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg px-5 py-3 min-w-[260px] space-y-1">
-                    <div className="flex justify-between text-xs text-slate-400">
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-5 py-3 min-w-[260px] space-y-1">
+                    <div className="flex justify-between text-xs text-zinc-600">
                       <span>Subtotal</span>
-                      <span className="text-white">${Number(selectedInvoice.subtotal).toFixed(2)}</span>
+                      <span className="text-zinc-900">${Number(selectedInvoice.subtotal).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs text-slate-400">
+                    <div className="flex justify-between text-xs text-zinc-600">
                       <span>Tax</span>
-                      <span className="text-white">${Number(selectedInvoice.tax_amount || 0).toFixed(2)}</span>
+                      <span className="text-zinc-900">${Number(selectedInvoice.tax_amount || 0).toFixed(2)}</span>
                     </div>
-                    <div className="border-t border-slate-700 my-1" />
-                    <div className="flex justify-between text-base font-bold text-white">
+                    <div className="border-t border-zinc-200 my-1" />
+                    <div className="flex justify-between text-base font-bold text-zinc-900">
                       <span>Total</span>
                       <span>${Number(selectedInvoice.total_amount).toFixed(2)}</span>
                     </div>
                     {Number(selectedInvoice.amount_paid || 0) > 0 && (
                       <>
-                        <div className="flex justify-between text-xs text-emerald-400 mt-1">
+                        <div className="flex justify-between text-xs text-emerald-700 mt-1">
                           <span>Paid</span>
                           <span>−${Number(selectedInvoice.amount_paid).toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-sm font-bold text-orange-400">
+                        <div className="flex justify-between text-sm font-bold text-orange-600">
                           <span>Owed</span>
                           <span>${owed.toFixed(2)}</span>
                         </div>
@@ -2455,14 +2455,14 @@ export default function ContractorView({
                 </div>
 
                 {selectedInvoice.notes && (
-                  <div className="bg-slate-800/40 border border-slate-700 rounded-lg px-4 py-3">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Notes</p>
-                    <p className="text-xs text-slate-300 whitespace-pre-wrap mt-1">{selectedInvoice.notes}</p>
+                  <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-3">
+                    <p className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Notes</p>
+                    <p className="text-xs text-zinc-700 whitespace-pre-wrap mt-1">{selectedInvoice.notes}</p>
                   </div>
                 )}
               </div>
 
-              <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between gap-2 flex-shrink-0">
+              <div className="px-6 py-4 border-t border-zinc-200 flex items-center justify-between gap-2 flex-shrink-0">
                 <InvoicePDFButton
                   invoice={selectedInvoice}
                   lineItems={(invoiceLineItems || []).filter((li: any) => li.invoice_id === selectedInvoice.id)}
@@ -2471,12 +2471,12 @@ export default function ContractorView({
                 />
                 <div className="flex items-center space-x-2">
                   <button onClick={() => setShowInvoiceDetail(false)}
-                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all">
+                    className="px-4 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">
                     Close
                   </button>
                   {selectedInvoice.status !== 'paid' && (
                     <button onClick={() => { setShowInvoiceDetail(false); setShowPaymentModal(true); }}
-                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-white transition-all">
+                      className="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-500 hover:bg-emerald-600 text-zinc-900 transition-all">
                       Pay ${owed.toFixed(2)}
                     </button>
                   )}
@@ -2489,14 +2489,14 @@ export default function ContractorView({
 
       {/* Payment Modal */}
       {showPaymentModal && selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h2 className="text-base font-bold text-white">Pay Invoice</h2>
-                <p className="text-xs text-slate-400">{selectedInvoice.invoice_number}</p>
+                <h2 className="text-base font-bold text-zinc-900">Pay Invoice</h2>
+                <p className="text-xs text-zinc-600">{selectedInvoice.invoice_number}</p>
               </div>
-              <button onClick={() => setShowPaymentModal(false)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+              <button onClick={() => setShowPaymentModal(false)} className="text-zinc-600 hover:text-zinc-900"><i className="fa-solid fa-xmark"></i></button>
             </div>
             <InvoicePaymentForm
               invoiceId={selectedInvoice.id}
@@ -2512,33 +2512,33 @@ export default function ContractorView({
 
       {/* Trucker Job Request Modal */}
       {showJobRequestModal && jobRequestEstimate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-base font-bold text-white">Request Trucker Quote</h2>
-              <button onClick={() => setShowJobRequestModal(false)} className="text-slate-400 hover:text-white">
+              <h2 className="text-base font-bold text-zinc-900">Request Trucker Quote</h2>
+              <button onClick={() => setShowJobRequestModal(false)} className="text-zinc-600 hover:text-zinc-900">
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
 
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 mb-4 text-sm">
+            <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 mb-4 text-sm">
               <div className="flex justify-between">
-                <span className="text-slate-400">Material</span>
-                <span className="text-white font-semibold">{jobRequestEstimate.material_name}</span>
+                <span className="text-zinc-600">Material</span>
+                <span className="text-zinc-900 font-semibold">{jobRequestEstimate.material_name}</span>
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-slate-400">Quantity</span>
-                <span className="text-white font-semibold">{Number(jobRequestEstimate.quantity).toLocaleString()} {importMaterials?.includes(jobRequestEstimate.material_name) ? 'Tons' : 'CY'}</span>
+                <span className="text-zinc-600">Quantity</span>
+                <span className="text-zinc-900 font-semibold">{Number(jobRequestEstimate.quantity).toLocaleString()} {importMaterials?.includes(jobRequestEstimate.material_name) ? 'Tons' : 'CY'}</span>
               </div>
               <div className="flex justify-between mt-1">
-                <span className="text-slate-400">Truck Type</span>
-                <span className="text-white font-semibold">{jobRequestEstimate.truck_fleet}</span>
+                <span className="text-zinc-600">Truck Type</span>
+                <span className="text-zinc-900 font-semibold">{jobRequestEstimate.truck_fleet}</span>
               </div>
             </div>
 
-            <label className="block text-sm font-medium text-slate-300 mb-1">Send to Trucker</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Send to Trucker</label>
             <select value={selectedTruckerId} onChange={e => setSelectedTruckerId(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 mb-4">
+              className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-cyan-500 mb-4">
               <option value="">-- Select Trucking Company --</option>
               {truckingNetwork.map((t: any) => (
                 <option key={t.trucker_id} value={t.trucker_id}>{t.trucker?.company_name}</option>
@@ -2546,23 +2546,23 @@ export default function ContractorView({
             </select>
 
             {truckingNetwork.length === 0 && (
-              <p className="text-xs text-slate-500 italic mb-4">
+              <p className="text-xs text-zinc-500 italic mb-4">
                 You don&apos;t have any trucking companies in your network yet. Add some from the Trucking Network tab first.
               </p>
             )}
 
-            <label className="block text-sm font-medium text-slate-300 mb-1">Message (optional)</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Message (optional)</label>
             <textarea value={jobRequestMessage} onChange={e => setJobRequestMessage(e.target.value)}
               placeholder="Project timeline, special requirements, etc."
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 h-20 resize-none mb-4" />
+              className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-cyan-500 h-20 resize-none mb-4" />
 
             <div className="flex space-x-3">
               <button onClick={() => setShowJobRequestModal(false)} disabled={sendingJobRequest}
-                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition-all disabled:opacity-40">
+                className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all disabled:opacity-40">
                 Cancel
               </button>
               <button onClick={submitJobRequest} disabled={sendingJobRequest || !selectedTruckerId || truckingNetwork.length === 0}
-                className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                className="flex-1 bg-cyan-500 hover:bg-cyan-600 disabled:opacity-40 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
                 {sendingJobRequest ? 'Sending...' : 'Send Request'}
               </button>
             </div>
@@ -2572,28 +2572,28 @@ export default function ContractorView({
 
       {/* Tier Request Modal */}
       {tierRequestRes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-md p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-base font-bold text-white">Request Better Pricing</h2>
-              <button onClick={() => setTierRequestRes(null)} className="text-slate-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
+              <h2 className="text-base font-bold text-zinc-900">Request Better Pricing</h2>
+              <button onClick={() => setTierRequestRes(null)} className="text-zinc-600 hover:text-zinc-900"><i className="fa-solid fa-xmark"></i></button>
             </div>
-            <p className="text-sm text-slate-400 mb-4">
-              You are currently receiving <span className="font-semibold capitalize text-white">{tierRequestRes.pricingTier}</span> pricing from <span className="font-semibold text-white">{tierRequestRes.supplier}</span>.
+            <p className="text-sm text-zinc-600 mb-4">
+              You are currently receiving <span className="font-semibold capitalize text-zinc-900">{tierRequestRes.pricingTier}</span> pricing from <span className="font-semibold text-zinc-900">{tierRequestRes.supplier}</span>.
             </p>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Message (optional)</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Message (optional)</label>
             <textarea value={tierRequestMessage} onChange={e => setTierRequestMessage(e.target.value)}
               placeholder="Introduce yourself or explain your typical volume..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 h-24 resize-none mb-4" />
+              className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500 h-24 resize-none mb-4" />
             <div className="space-y-2">
               {tierRequestRes.pricingTier === 'public' && (
                 <button onClick={() => submitTierRequest('contractor')} disabled={tierRequestSending}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
                   Request Contractor Pricing
                 </button>
               )}
               <button onClick={() => submitTierRequest('customer')} disabled={tierRequestSending}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">
+                className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-zinc-900 py-2 rounded-lg text-sm font-semibold transition-all">
                 Request Customer Pricing
               </button>
             </div>

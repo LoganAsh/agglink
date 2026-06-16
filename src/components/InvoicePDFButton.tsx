@@ -133,7 +133,7 @@ export default function InvoicePDFButton({ invoice, lineItems, supplier, contrac
     <PDFDownloadLink
       document={<InvoiceDocument invoice={invoice} lineItems={lineItems} supplier={supplier} contractor={contractor} />}
       fileName={`${invoice.invoice_number}.pdf`}
-      className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-600 text-slate-300 hover:bg-slate-800 hover:text-white hover:border-slate-500 transition-all"
+      className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold border border-zinc-300 text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900 hover:border-zinc-400 transition-all"
     >
       {({ loading }) => (
         <>

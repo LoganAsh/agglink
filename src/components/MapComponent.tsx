@@ -90,7 +90,7 @@ export default function MapComponent({
     <>
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
       />
       <MapController center={center} zoom={zoom} />
       <ClickHandler onMapClick={onMapClick} />
@@ -98,10 +98,10 @@ export default function MapComponent({
       {hasJob && (
         <Marker position={[jobLat!, jobLon!]} icon={jobSiteIcon}>
           <Popup>
-            <div style={{ background: '#1e293b', color: '#f1f5f9', padding: '6px 8px', borderRadius: '6px', minWidth: '120px' }}>
+            <div style={{ background: '#ffffff', color: '#18181b', padding: '6px 8px', borderRadius: '6px', minWidth: '120px' }}>
               <div style={{ fontWeight: 600, fontSize: '13px' }}>Job Site</div>
               {jobAddress && (
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px', maxWidth: '180px' }}>{jobAddress}</div>
+                <div style={{ fontSize: '11px', color: '#71717a', marginTop: '3px', maxWidth: '180px' }}>{jobAddress}</div>
               )}
             </div>
           </Popup>
@@ -120,9 +120,9 @@ export default function MapComponent({
           <Marker key={fac.id ?? idx} position={[lat, lon]} icon={getFacilityIcon(fac)}>
             <Popup>
               {renderFacilityPopup ? renderFacilityPopup(fac) : (
-                <div style={{ background: '#1e293b', color: '#f1f5f9', padding: '6px 8px', borderRadius: '6px', minWidth: '120px' }}>
+                <div style={{ background: '#ffffff', color: '#18181b', padding: '6px 8px', borderRadius: '6px', minWidth: '120px' }}>
                   <div style={{ fontWeight: 600, fontSize: '13px' }}>{fac.name}</div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>{typeLabel}</div>
+                  <div style={{ fontSize: '11px', color: '#71717a', marginTop: '3px' }}>{typeLabel}</div>
                 </div>
               )}
             </Popup>
@@ -142,7 +142,7 @@ export default function MapComponent({
 
       <button
         onClick={(e) => { e.stopPropagation(); setIsMaximized(true); }}
-        className="absolute top-2 right-2 z-[1000] bg-slate-900/80 hover:bg-slate-800 border border-slate-600 text-white p-1.5 rounded-md shadow-lg transition-all"
+        className="absolute top-2 right-2 z-[1000] bg-white/95 hover:bg-zinc-100 border border-zinc-300 text-zinc-900 p-1.5 rounded-md shadow-lg transition-all"
         title="Expand map"
       >
         <i className="fa-solid fa-expand text-xs"></i>
@@ -164,7 +164,7 @@ export default function MapComponent({
             onClick={() => setIsMaximized(false)}
           />
           <div
-            className="fixed inset-[10%] z-[2001] rounded-xl overflow-hidden border border-slate-600 shadow-2xl"
+            className="fixed inset-[10%] z-[2001] rounded-xl overflow-hidden border border-zinc-300 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <MapContainer
@@ -178,7 +178,7 @@ export default function MapComponent({
             </MapContainer>
             <button
               onClick={() => setIsMaximized(false)}
-              className="absolute top-2 right-2 z-[2100] bg-slate-900/80 hover:bg-slate-800 border border-slate-600 text-white p-1.5 rounded-md shadow-lg transition-all"
+              className="absolute top-2 right-2 z-[2100] bg-white/95 hover:bg-zinc-100 border border-zinc-300 text-zinc-900 p-1.5 rounded-md shadow-lg transition-all"
               title="Close fullscreen"
             >
               <i className="fa-solid fa-compress text-xs"></i>
