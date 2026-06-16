@@ -84,6 +84,55 @@ export default function AdminView({
     setAssigningFacilityId(null);
   };
 
+  // Edit facility modal state
+  const [editingFacility, setEditingFacility] = useState<any | null>(null);
+  const [editFacName, setEditFacName] = useState('');
+  const [editFacAddress, setEditFacAddress] = useState('');
+  const [editFacType, setEditFacType] = useState<'pit'|'dump'|'both'>('pit');
+  const [editFacLat, setEditFacLat] = useState('');
+  const [editFacLon, setEditFacLon] = useState('');
+  const [editFacOwner, setEditFacOwner] = useState('');
+  const [savingEditFacility, setSavingEditFacility] = useState(false);
+
+  const openEditFacility = (f: any) => {
+    setEditingFacility(f);
+    setEditFacName(f.name || '');
+    setEditFacAddress(f.address || '');
+    setEditFacType((f.type || 'pit') as 'pit'|'dump'|'both');
+    setEditFacLat(f.latitude != null ? String(f.latitude) : '');
+    setEditFacLon(f.longitude != null ? String(f.longitude) : '');
+    setEditFacOwner(f.owner_id || '');
+  };
+
+  const closeEditFacility = () => setEditingFacility(null);
+
+  const saveEditFacility = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFacility) return;
+    setSavingEditFacility(true);
+    const payload = {
+      name: editFacName.trim(),
+      address: editFacAddress.trim(),
+      type: editFacType,
+      latitude: editFacLat ? parseFloat(editFacLat) : null,
+      longitude: editFacLon ? parseFloat(editFacLon) : null,
+      owner_id: editFacOwner || null,
+    };
+    const { data, error } = await supabase
+      .from('facilities')
+      .update(payload)
+      .eq('id', editingFacility.id)
+      .select()
+      .single();
+    if (data && !error) {
+      setFacilities(prev => prev.map(f => f.id === editingFacility.id ? { ...f, ...data } : f));
+      setEditingFacility(null);
+    } else {
+      alert('Failed to update facility: ' + error?.message);
+    }
+    setSavingEditFacility(false);
+  };
+
   const [newFacName, setNewFacName] = useState('');
   const [newFacAddress, setNewFacAddress] = useState('');
   const [newFacType, setNewFacType] = useState<'pit'|'dump'|'both'>('pit');
@@ -502,7 +551,7 @@ export default function AdminView({
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-zinc-500 bg-zinc-50 uppercase tracking-wider"><tr><th className="px-5 py-3">Facility</th><th className="px-5 py-3">Type</th><th className="px-5 py-3">Owner</th><th className="px-5 py-3">Materials</th><th className="px-5 py-3">Est. Uses</th><th className="px-5 py-3">Added</th></tr></thead>
+                  <thead className="text-xs text-zinc-500 bg-zinc-50 uppercase tracking-wider"><tr><th className="px-5 py-3">Facility</th><th className="px-5 py-3">Type</th><th className="px-5 py-3">Owner</th><th className="px-5 py-3">Materials</th><th className="px-5 py-3">Est. Uses</th><th className="px-5 py-3">Added</th><th className="px-5 py-3 w-12"></th></tr></thead>
                   <tbody className="divide-y divide-zinc-200/70">
                     {facilities.map(f => {
                       const facMaterials = materials.filter(m => m.facility_id === f.id).length;
@@ -521,7 +570,7 @@ export default function AdminView({
     ))}
   </select>
   {assigningFacilityId === f.id && <span className="ml-2 text-xs text-zinc-600">Saving...</span>}
-</td><td className="px-5 py-3 text-zinc-600">{facMaterials}</td><td className="px-5 py-3"><span className={`font-semibold ${facEstimates > 0 ? 'text-orange-600' : 'text-zinc-500'}`}>{facEstimates}</span></td><td className="px-5 py-3 text-zinc-600">{f.created_at ? fmtDate(f.created_at) : '-'}</td></tr>);
+</td><td className="px-5 py-3 text-zinc-600">{facMaterials}</td><td className="px-5 py-3"><span className={`font-semibold ${facEstimates > 0 ? 'text-orange-600' : 'text-zinc-500'}`}>{facEstimates}</span></td><td className="px-5 py-3 text-zinc-600">{f.created_at ? fmtDate(f.created_at) : '-'}</td><td className="px-5 py-3 text-right"><button onClick={() => openEditFacility(f)} title="Edit facility" className="text-zinc-500 hover:text-orange-600 hover:bg-orange-500/10 rounded-md p-1.5 transition-colors"><i className="fa-solid fa-pen-to-square text-xs"></i></button></td></tr>);
                     })}
                   </tbody>
                 </table>
@@ -836,6 +885,87 @@ export default function AdminView({
 
         </div>
       </div>
+
+      {/* Edit Facility Modal */}
+      {editingFacility && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4" onClick={closeEditFacility}>
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-zinc-200 flex items-center justify-between">
+              <h2 className="text-base font-bold text-zinc-900">Edit Facility</h2>
+              <button onClick={closeEditFacility} className="text-zinc-500 hover:text-zinc-900 p-1.5">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <form onSubmit={saveEditFacility} className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1">Name</label>
+                <input type="text" required value={editFacName} onChange={e => setEditFacName(e.target.value)}
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1">Address</label>
+                <input type="text" value={editFacAddress} onChange={e => setEditFacAddress(e.target.value)}
+                  placeholder="Street, City"
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1">Type</label>
+                <div className="flex space-x-2">
+                  {(['pit','dump','both'] as const).map(t => {
+                    const active = editFacType === t;
+                    const color =
+                      t === 'pit'  ? (active ? 'bg-orange-500/10 border-orange-500/50 text-orange-600' : 'border-zinc-200 text-zinc-600 hover:text-zinc-900') :
+                      t === 'dump' ? (active ? 'bg-blue-500/10 border-blue-500/50 text-blue-700'       : 'border-zinc-200 text-zinc-600 hover:text-zinc-900') :
+                                     (active ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-700' : 'border-zinc-200 text-zinc-600 hover:text-zinc-900');
+                    return (
+                      <button key={t} type="button" onClick={() => setEditFacType(t)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border capitalize transition-all ${color}`}>
+                        {t}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1">Latitude</label>
+                <input type="number" step="any" value={editFacLat} onChange={e => setEditFacLat(e.target.value)}
+                  placeholder="40.7608"
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1">Longitude</label>
+                <input type="number" step="any" value={editFacLon} onChange={e => setEditFacLon(e.target.value)}
+                  placeholder="-111.8910"
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500" />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-zinc-600 uppercase tracking-wider mb-1">Owner</label>
+                <select value={editFacOwner} onChange={e => setEditFacOwner(e.target.value)}
+                  className="w-full bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-orange-500">
+                  <option value="">-- Unassigned --</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.company_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2 flex justify-end space-x-2 pt-2">
+                <button type="button" onClick={closeEditFacility}
+                  className="px-4 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-zinc-100 transition-all">
+                  Cancel
+                </button>
+                <button type="submit" disabled={savingEditFacility || !editFacName.trim()}
+                  className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all">
+                  {savingEditFacility ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
