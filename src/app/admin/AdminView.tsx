@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import { toast } from 'sonner';
+import EmptyState from '@/components/EmptyState';
 
 type Tab = 'overview' | 'users' | 'projects' | 'facilities' | 'materials' | 'quotes' | 'requests' | 'categories' | 'trucks';
 type Role = 'contractor' | 'supplier' | 'admin' | 'trucking';
@@ -416,7 +417,9 @@ export default function AdminView({
                   {pendingCount > 0 && <span className="bg-orange-500/20 text-orange-600 text-xs font-bold px-2 py-0.5 rounded-full border border-orange-500/30">{pendingCount} pending</span>}
                 </div>
                 <div className="divide-y divide-zinc-200/70">
-                  {signupRequests.filter(r => r.status === 'pending').length === 0 && <p className="px-5 py-8 text-center text-zinc-500 text-sm">No pending requests.</p>}
+                  {signupRequests.filter(r => r.status === 'pending').length === 0 && (
+                    <div className="p-5"><EmptyState icon="fa-check-circle" title="All caught up" description="No access requests waiting for your review." accentColor="emerald" /></div>
+                  )}
                   {signupRequests.filter(r => r.status === 'pending').map(req => (
                     <div key={req.id} className="px-5 py-4">
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -531,7 +534,7 @@ export default function AdminView({
                         </tr>
                       );
                     })}
-                    {projects.length === 0 && <tr><td colSpan={6} className="px-5 py-8 text-center text-zinc-500">No projects yet.</td></tr>}
+                    {projects.length === 0 && <tr><td colSpan={6} className="px-5 py-6"><EmptyState icon="fa-folder-open" title="No projects yet" description="Projects will appear here once contractors start creating them." accentColor="slate" /></td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -693,7 +696,7 @@ export default function AdminView({
                 <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/80"><h2 className="text-sm font-semibold text-zinc-900">Material Categories ({categories.length})</h2></div>
                   <div className="divide-y divide-zinc-200/70">
-                    {categories.length === 0 && <p className="px-5 py-6 text-center text-zinc-500 text-sm">No categories yet.</p>}
+                    {categories.length === 0 && <div className="p-5"><EmptyState icon="fa-tags" title="No categories yet" description="Create categories to organize materials for contractors." accentColor="orange" /></div>}
                     {categories.map(c => (
                       <div key={c.id} onClick={() => setSelectedCatId(selectedCatId === c.id ? null : c.id)}
                         className={`px-5 py-3 flex items-center justify-between cursor-pointer transition-colors ${selectedCatId === c.id ? 'bg-orange-500/10' : 'hover:bg-zinc-100'}`}>
@@ -758,7 +761,7 @@ export default function AdminView({
               <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-zinc-200 bg-zinc-50/80"><h2 className="text-sm font-semibold text-zinc-900">Truck Types ({truckTypes.length})</h2></div>
                 <div className="divide-y divide-zinc-200/70">
-                  {truckTypes.length === 0 && <p className="px-5 py-6 text-center text-zinc-500 text-sm">No truck types yet.</p>}
+                  {truckTypes.length === 0 && <div className="p-5"><EmptyState icon="fa-truck" title="No truck types yet" description="Add the truck types used in your network." accentColor="orange" /></div>}
                   {truckTypes.map(t => (
                     <div key={t.id} className="px-5 py-3 flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -808,7 +811,7 @@ export default function AdminView({
                         const statusColor = q.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-700' : q.status === 'pending' ? 'bg-orange-500/20 text-orange-600' : q.status === 'declined' ? 'bg-red-500/20 text-red-700' : 'bg-blue-500/20 text-blue-700';
                         return (<tr key={q.id} className="hover:bg-zinc-100 transition-colors duration-150"><td className="px-5 py-3 font-medium text-zinc-900">{q.material_name}</td><td className="px-5 py-3 text-zinc-600 truncate max-w-[150px]">{fac?.name || '-'}</td><td className="px-5 py-3 text-zinc-600">{contractor?.company_name || '-'}</td><td className="px-5 py-3 text-right text-zinc-600">{q.quantity?.toLocaleString()}</td><td className="px-5 py-3 text-right font-semibold text-emerald-700">{q.offered_price ? fmtCurrency(q.offered_price) : '-'}</td><td className="px-5 py-3"><span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${statusColor}`}>{q.status}</span></td><td className="px-5 py-3 text-zinc-600">{fmtDate(q.created_at)}</td></tr>);
                       })}
-                      {quotes.length === 0 && <tr><td colSpan={7} className="px-5 py-8 text-center text-zinc-500">No quote requests yet.</td></tr>}
+                      {quotes.length === 0 && <tr><td colSpan={7} className="px-5 py-6"><EmptyState icon="fa-file-invoice" title="No quote requests" description="Quote requests sent between contractors and suppliers will appear here." accentColor="slate" /></td></tr>}
                     </tbody>
                   </table>
                 </div>

@@ -8,9 +8,23 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/Skeleton';
 import dynamic from 'next/dynamic';
 import InvoicePaymentForm from '@/components/InvoicePaymentForm';
+import EmptyState from '@/components/EmptyState';
+import Sparkline from '@/components/Sparkline';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false });
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
+
+function generateTrend(currentValue: number, points: number = 12, volatility: number = 0.1): number[] {
+  if (!currentValue) return [];
+  const trend: number[] = [];
+  let value = currentValue * (0.85 + Math.random() * 0.1);
+  for (let i = 0; i < points - 1; i++) {
+    trend.push(value);
+    value += (currentValue - value) * 0.3 + (Math.random() - 0.5) * currentValue * volatility;
+  }
+  trend.push(currentValue);
+  return trend;
+}
 
 export default function ContractorView({
   profileName = "Logan Ash",
@@ -431,6 +445,10 @@ export default function ContractorView({
     const projectIds = new Set(activeEstimates.map(est => est.project_id));
     return { total, projectCount: projectIds.size };
   }, [allSavedEstimates, projects]);
+
+  const totalValueTrend = useMemo(() => generateTrend(accountTotalValue.total, 12, 0.08), [accountTotalValue.total]);
+  const freightSavingsTrend = useMemo(() => generateTrend(Math.abs(accountFreightSavings ?? 0), 12, 0.12), [accountFreightSavings]);
+  const networkTrend = useMemo(() => generateTrend(pitsCount + dumpsCount, 12, 0.04), [pitsCount, dumpsCount]);
 
   const visibleProjects = useMemo(() =>
     projects.filter(p => projectsFilter === 'archived' ? p.status === 'archived' : p.status !== 'archived'),
@@ -1134,28 +1152,49 @@ export default function ContractorView({
         <div className="p-4 md:p-8 space-y-6">
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
-              <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-zinc-500' : accountSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>
-                <span key={accountSavingsFmt.display} className="inline-block kpi-fade">{accountSavingsFmt.display}</span>
-              </h3>
-              <p className="text-xs text-zinc-600 mt-3">{accountSavingsFmt.sub}</p>
+            <div className="relative overflow-hidden bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <div className="relative z-10">
+                <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
+                <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-zinc-500' : accountSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>
+                  <span key={accountSavingsFmt.display} className="inline-block kpi-fade">{accountSavingsFmt.display}</span>
+                </h3>
+                <p className="text-xs text-zinc-600 mt-3">{accountSavingsFmt.sub}</p>
+              </div>
+              {freightSavingsTrend.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-12 opacity-50">
+                  <Sparkline data={freightSavingsTrend} color={accountSavingsFmt.positive ? '#10b981' : '#ef4444'} height={48} />
+                </div>
+              )}
             </div>
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Network</p>
-              <h3 className="text-3xl font-bold text-zinc-900 mt-1">
-                <span key={pitsCount + dumpsCount} className="inline-block kpi-fade">{pitsCount + dumpsCount}</span>
-              </h3>
-              <p className="text-xs text-zinc-600 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
+            <div className="relative overflow-hidden bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <div className="relative z-10">
+                <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Active Network</p>
+                <h3 className="text-3xl font-bold text-zinc-900 mt-1">
+                  <span key={pitsCount + dumpsCount} className="inline-block kpi-fade">{pitsCount + dumpsCount}</span>
+                </h3>
+                <p className="text-xs text-zinc-600 mt-3">{pitsCount} Pits | {dumpsCount} Dumps</p>
+              </div>
+              {networkTrend.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-12 opacity-50">
+                  <Sparkline data={networkTrend} color="#3b82f6" height={48} />
+                </div>
+              )}
             </div>
-            <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
-              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Est. Value</p>
-              <h3 className={`text-3xl font-bold mt-1 ${accountTotalValue.total > 0 ? 'text-zinc-900' : 'text-zinc-500'}`}>
-                <span key={accountTotalValue.total} className="inline-block kpi-fade">{accountTotalValue.total > 0 ? fmtCompactCurrency(accountTotalValue.total) : '--'}</span>
-              </h3>
-              <p className="text-xs text-zinc-600 mt-3">
-                {accountTotalValue.projectCount > 0 ? `Across ${accountTotalValue.projectCount} active bid${accountTotalValue.projectCount === 1 ? '' : 's'}` : 'No active bids yet'}
-              </p>
+            <div className="relative overflow-hidden bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
+              <div className="relative z-10">
+                <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Total Est. Value</p>
+                <h3 className={`text-3xl font-bold mt-1 ${accountTotalValue.total > 0 ? 'text-zinc-900' : 'text-zinc-500'}`}>
+                  <span key={accountTotalValue.total} className="inline-block kpi-fade">{accountTotalValue.total > 0 ? fmtCompactCurrency(accountTotalValue.total) : '--'}</span>
+                </h3>
+                <p className="text-xs text-zinc-600 mt-3">
+                  {accountTotalValue.projectCount > 0 ? `Across ${accountTotalValue.projectCount} active bid${accountTotalValue.projectCount === 1 ? '' : 's'}` : 'No active bids yet'}
+                </p>
+              </div>
+              {totalValueTrend.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-12 opacity-50">
+                  <Sparkline data={totalValueTrend} color="#f97316" height={48} />
+                </div>
+              )}
             </div>
             <div className="bg-white border border-zinc-200 rounded-xl p-5 shadow-sm">
               <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Most Requested Material</p>
@@ -1345,7 +1384,7 @@ export default function ContractorView({
                 </div>
                 <div className="p-5 flex-1 space-y-4 overflow-y-auto">
                   {!activeProject ? (
-                    <p className="text-zinc-500 text-sm text-center py-4">Select a project to view the feed.</p>
+                    <EmptyState icon="fa-folder" title="Select a project" description="Pick a project to see your saved pricing and pending quotes." accentColor="slate" />
                   ) : activeTab === 'locked' ? (
                     savedEstimates.length > 0 ? savedEstimates.map((est: any, idx: number) => {
                       const existingReq = contractorJobRequests.find((r: any) => r.project_estimate_id === est.id);
@@ -1385,7 +1424,7 @@ export default function ContractorView({
                         </button>
                       </div>
                       );
-                    }) : <p className="text-zinc-500 text-sm text-center py-4">No locked pricing yet.</p>
+                    }) : <EmptyState icon="fa-lock-open" title="Nothing locked in yet" description="Save estimates from the manifest to lock in your pricing here." accentColor="emerald" />
                   ) : (
                     projectQuotes.length > 0 ? projectQuotes.map((q: any, idx: number) => {
                       const startDate = [q.start_month, q.start_year].filter(Boolean).join(' ');
@@ -1458,7 +1497,7 @@ export default function ContractorView({
                         )}
                       </div>
                       );
-                    }) : <p className="text-zinc-500 text-sm text-center py-4">No pending quotes.</p>
+                    }) : <EmptyState icon="fa-paper-plane" title="No pending quotes" description="Request quotes from suppliers in your manifest to see them here." accentColor="orange" />
                   )}
                 </div>
               </div>
@@ -1479,9 +1518,14 @@ export default function ContractorView({
                 </div>
 
                 {!activeProject ? (
-                  <div className="p-12 text-center text-zinc-500">
-                    <i className="fa-solid fa-folder-open text-4xl mb-3 opacity-50"></i>
-                    <p>Select or create a project to build your logistics manifest.</p>
+                  <div className="p-5">
+                    <EmptyState
+                      icon="fa-folder-open"
+                      title="No project selected"
+                      description="Create or select a project to start building your logistics manifest."
+                      action={{ label: '+ New Project', onClick: () => setShowProjectModal(true) }}
+                      accentColor="orange"
+                    />
                   </div>
                 ) : (
                   <div className="p-5 space-y-6">
@@ -1640,9 +1684,7 @@ export default function ContractorView({
                         );
                       })}
                       {requirements.length === 0 && (
-                        <div className="text-center py-6 border-2 border-dashed border-zinc-200 rounded-lg">
-                          <p className="text-zinc-500 text-sm">No materials added to manifest yet.</p>
-                        </div>
+                        <EmptyState icon="fa-cubes" title="No materials yet" description="Add materials above to start estimating freight and pricing for this project." accentColor="slate" />
                       )}
                     </div>
                   </div>

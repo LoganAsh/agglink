@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import { toast } from 'sonner';
+import EmptyState from '@/components/EmptyState';
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
@@ -346,9 +347,7 @@ export default function TruckingView({
               </div>
 
               {truckTypes.length === 0 ? (
-                <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
-                  <p className="text-zinc-600 text-sm">No truck types configured yet. Contact an admin.</p>
-                </div>
+                <EmptyState icon="fa-dollar-sign" title="No truck types configured" description="Contact an admin to add truck types before you can publish rates." accentColor="cyan" />
               ) : truckTypes.map(t => {
                 const rate = rates.find(r => r.truck_type === t.name);
                 const isActive = !!rate?.active;
@@ -445,7 +444,7 @@ export default function TruckingView({
                 <p className="text-xs text-zinc-500 mt-0.5">When a contractor adds your trucking company to their network, they appear here and can request jobs.</p>
               </div>
               {networkLinks.length === 0 ? (
-                <div className="px-5 py-12 text-center text-sm text-zinc-500 italic">No contractors yet.</div>
+                <div className="p-5"><EmptyState icon="fa-handshake" title="No customers yet" description="Contractors who add you to their network will appear here." accentColor="cyan" /></div>
               ) : (
                 <div className="divide-y divide-zinc-200/70">
                   {networkLinks.map((link: any) => (
@@ -474,10 +473,12 @@ export default function TruckingView({
               </div>
 
               {filteredJobs.length === 0 ? (
-                <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
-                  <i className="fa-solid fa-truck-fast text-4xl text-zinc-400 mb-3"></i>
-                  <p className="text-zinc-600 text-sm">No {jobsFilter !== 'all' ? jobsFilter : ''} job requests {jobsFilter === 'all' ? 'yet' : ''}.</p>
-                </div>
+                <EmptyState
+                  icon="fa-clipboard-list"
+                  title={jobsFilter !== 'all' ? `No ${jobsFilter} job requests` : 'No job requests yet'}
+                  description={jobsFilter !== 'all' ? `No job requests currently match the "${jobsFilter}" filter.` : 'Job requests from contractors in your network will appear here.'}
+                  accentColor="cyan"
+                />
               ) : (
                 <div className="space-y-3">
                   {filteredJobs.map((req: any) => {
@@ -572,10 +573,12 @@ export default function TruckingView({
 
               <div className="space-y-3">
                 {invoices.filter(i => invoiceFilter === 'all' || i.status === invoiceFilter).length === 0 ? (
-                  <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
-                    <i className="fa-solid fa-file-invoice-dollar text-4xl text-zinc-400 mb-3"></i>
-                    <p className="text-zinc-600 text-sm">No invoices {invoiceFilter !== 'all' ? `with status "${invoiceFilter}"` : 'yet'}.</p>
-                  </div>
+                  <EmptyState
+                    icon="fa-file-invoice-dollar"
+                    title={invoiceFilter !== 'all' ? `No ${invoiceFilter} invoices` : 'No invoices yet'}
+                    description={invoiceFilter !== 'all' ? `No invoices currently have status "${invoiceFilter}".` : 'Invoices you issue to contractors will appear here.'}
+                    accentColor="cyan"
+                  />
                 ) : invoices.filter(i => invoiceFilter === 'all' || i.status === invoiceFilter).map((inv: any) => {
                   const statusColor =
                     inv.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-700' :

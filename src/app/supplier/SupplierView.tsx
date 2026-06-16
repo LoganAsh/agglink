@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { createClient } from '@/utils/supabase/client';
 import LogoutButton from '@/components/LogoutButton';
 import { toast } from 'sonner';
+import EmptyState from '@/components/EmptyState';
 
 const InvoicePDFButton = dynamic(() => import('@/components/InvoicePDFButton'), { ssr: false });
 
@@ -949,13 +950,13 @@ export default function SupplierView({
           {activeTab === 'materials' && (
             <div className="space-y-6">
               {materialsByFacility.length === 0 ? (
-                <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
-                  <i className="fa-solid fa-cubes text-4xl text-zinc-400 mb-3"></i>
-                  <p className="text-zinc-600 text-sm">No materials added yet.</p>
-                  <button onClick={() => setActiveTab('add')} className="mt-4 bg-orange-500 hover:bg-orange-600 active:scale-[0.97] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-all">
-                    Add Your First Material
-                  </button>
-                </div>
+                <EmptyState
+                  icon="fa-cubes"
+                  title="No materials yet"
+                  description="Add your first material to start receiving quote requests from contractors."
+                  action={{ label: 'Add Your First Material', onClick: () => setActiveTab('add') }}
+                  accentColor="orange"
+                />
               ) : materialsByFacility.map(({ facility, materials: facMats }) => (
                 <div key={facility.id} className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
                   {/* Facility header */}
@@ -1159,10 +1160,13 @@ export default function SupplierView({
 
               <div className="space-y-3">
                 {invoices.filter(i => invoiceFilter === 'all' || i.status === invoiceFilter).length === 0 ? (
-                  <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center">
-                    <i className="fa-solid fa-file-invoice-dollar text-4xl text-zinc-400 mb-3"></i>
-                    <p className="text-zinc-600 text-sm">No invoices {invoiceFilter !== 'all' ? `with status "${invoiceFilter}"` : 'yet'}.</p>
-                  </div>
+                  <EmptyState
+                    icon="fa-file-invoice-dollar"
+                    title={invoiceFilter !== 'all' ? `No ${invoiceFilter} invoices` : 'No invoices yet'}
+                    description={invoiceFilter !== 'all' ? `No invoices currently have status "${invoiceFilter}".` : 'Create your first invoice from accepted quotes or as a manual entry.'}
+                    action={invoiceFilter === 'all' ? { label: '+ New Invoice', onClick: () => { setEditingInvoice(null); resetInvoiceForm(); setShowInvoiceModal(true); } } : undefined}
+                    accentColor="emerald"
+                  />
                 ) : invoices.filter(i => invoiceFilter === 'all' || i.status === invoiceFilter).map((inv: any) => {
                   const statusColor =
                     inv.status === 'paid'    ? 'bg-emerald-500/20 text-emerald-700' :
