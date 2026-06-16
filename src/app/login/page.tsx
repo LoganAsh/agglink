@@ -68,53 +68,53 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-slate-300 font-sans flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-zinc-50 text-zinc-700 font-sans flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-white">
+        <h2 className="text-3xl font-bold tracking-tight text-zinc-900">
           AggLink<span className="text-orange-500">.</span>
         </h2>
-        <p className="mt-2 text-sm text-slate-400">The Utah Aggregate Logistics Network</p>
+        <p className="mt-2 text-sm text-zinc-600">The Utah Aggregate Logistics Network</p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         {/* Mode toggle */}
-        <div className="flex mb-4 bg-slate-800 border border-slate-700 rounded-xl p-1">
+        <div className="flex mb-4 bg-white border border-zinc-200 rounded-xl p-1">
           <button
             onClick={() => switchMode('login')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'login' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'login' ? 'bg-zinc-100 text-zinc-900 shadow' : 'text-zinc-600 hover:text-zinc-900'}`}
           >
             Sign In
           </button>
           <button
             onClick={() => switchMode('request')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'request' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${mode === 'request' ? 'bg-zinc-100 text-zinc-900 shadow' : 'text-zinc-600 hover:text-zinc-900'}`}
           >
             Request Access
           </button>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 py-8 px-4 shadow-2xl sm:rounded-xl sm:px-10">
+        <div className="bg-white border border-zinc-200 py-8 px-4 shadow-2xl sm:rounded-xl sm:px-10">
 
           {/*        SIGN IN        */}
           {mode === 'login' && (
             <form className="space-y-6" onSubmit={handleLogin}>
               {error && (
-                <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm p-3 rounded-lg">
+                <div className="bg-red-500/10 border border-red-500/50 text-red-700 text-sm p-3 rounded-lg">
                   {error}
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Email address</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Email address</label>
                 <input
                   type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
+                  className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
+                <label className="block text-sm font-medium text-zinc-700 mb-1">Password</label>
                 <input
                   type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
+                  className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
                 />
               </div>
               <button
@@ -132,15 +132,15 @@ export default function LoginPage() {
               {reqSuccess ? (
                 <div className="text-center py-6 space-y-3">
                   <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto">
-                    <i className="fa-solid fa-check text-emerald-400 text-lg"></i>
+                    <i className="fa-solid fa-check text-emerald-700 text-lg"></i>
                   </div>
-                  <h3 className="text-white font-semibold text-base">Request Submitted</h3>
-                  <p className="text-slate-400 text-sm max-w-xs mx-auto">
+                  <h3 className="text-zinc-900 font-semibold text-base">Request Submitted</h3>
+                  <p className="text-zinc-600 text-sm max-w-xs mx-auto">
                     Your access request has been sent to the AggLink administrator. You will receive an email once your account has been approved.
                   </p>
                   <button
                     onClick={() => switchMode('login')}
-                    className="mt-4 text-sm text-orange-400 hover:text-orange-300 transition-colors"
+                    className="mt-4 text-sm text-orange-600 hover:text-orange-700 transition-colors"
                   >
                     Back to Sign In
                   </button>
@@ -148,64 +148,64 @@ export default function LoginPage() {
               ) : (
                 <form className="space-y-4" onSubmit={handleRequestAccess}>
                   {reqError && (
-                    <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm p-3 rounded-lg">
+                    <div className="bg-red-500/10 border border-red-500/50 text-red-700 text-sm p-3 rounded-lg">
                       {reqError}
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Full Name</label>
                     <input
                       type="text" required value={reqFullName} onChange={(e) => setReqFullName(e.target.value)}
                       placeholder="John Smith"
-                      className="block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
+                      className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Email Address</label>
                     <input
                       type="email" required value={reqEmail} onChange={(e) => setReqEmail(e.target.value)}
                       placeholder="john@company.com"
-                      className="block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
+                      className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">Company Name</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">Company Name</label>
                     <input
                       type="text" required value={reqCompany} onChange={(e) => setReqCompany(e.target.value)}
                       placeholder="Smith Excavation LLC"
-                      className="block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
+                      className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">Account Type</label>
+                    <label className="block text-sm font-medium text-zinc-700 mb-2">Account Type</label>
                     <div className="flex space-x-3">
                       <button
                         type="button"
                         onClick={() => setReqRole('contractor')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'contractor' ? 'bg-orange-500/10 border-orange-500/50 text-orange-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'contractor' ? 'bg-orange-500/10 border-orange-500/50 text-orange-600' : 'bg-white border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}
                       >
                         Contractor
                       </button>
                       <button
                         type="button"
                         onClick={() => setReqRole('supplier')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'supplier' ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'supplier' ? 'bg-blue-500/10 border-blue-500/50 text-blue-700' : 'bg-white border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}
                       >
                         Supplier / Pit
                       </button>
                       <button
                         type="button"
                         onClick={() => setReqRole('trucking')}
-                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'trucking' ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400' : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-2.5 rounded-lg text-sm font-semibold border transition-all ${reqRole === 'trucking' ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-700' : 'bg-white border-zinc-200 text-zinc-600 hover:text-zinc-900'}`}
                       >
                         Trucking Company
                       </button>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
+                    <p className="text-xs text-zinc-500 mt-2">
                       {reqRole === 'contractor'
                         ? 'Contractors can create projects, run estimates, and request quotes.'
                         : reqRole === 'trucking'
@@ -215,14 +215,14 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                      Additional Notes <span className="text-slate-500 font-normal">(optional)</span>
+                    <label className="block text-sm font-medium text-zinc-700 mb-1">
+                      Additional Notes <span className="text-zinc-500 font-normal">(optional)</span>
                     </label>
                     <textarea
                       value={reqNotes} onChange={(e) => setReqNotes(e.target.value)}
                       placeholder="Tell us a bit about your business..."
                       rows={2}
-                      className="block w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors resize-none"
+                      className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-500 focus:border-orange-500 focus:outline-none sm:text-sm transition-colors resize-none"
                     />
                   </div>
 
