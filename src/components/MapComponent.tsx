@@ -26,10 +26,12 @@ function makePinIcon(fill: string, stroke: string) {
   });
 }
 
-const jobSiteIcon = makePinIcon('#ef4444', '#b91c1c');
-const pitIcon     = makePinIcon('#f97316', '#c2410c');
-const dumpIcon    = makePinIcon('#3b82f6', '#1d4ed8');
-const bothIcon    = makePinIcon('#10b981', '#047857');
+// Marker palette chosen to stay clear of the app's orange/blue/emerald theme accents
+// and to remain readable on the light CartoDB tiles.
+const jobSiteIcon = makePinIcon('#dc2626', '#7f1d1d'); // red — destination
+const pitIcon     = makePinIcon('#ca8a04', '#713f12'); // gold/amber — earthy, distinct from theme orange
+const dumpIcon    = makePinIcon('#7c3aed', '#4c1d95'); // violet — distinct from theme blue
+const bothIcon    = makePinIcon('#0d9488', '#134e4a'); // teal — distinct from theme emerald
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {

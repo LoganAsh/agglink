@@ -1368,7 +1368,7 @@ export default function ContractorView({
                 </div>
                 <div className="px-4 py-2 border-t border-zinc-200 flex items-center space-x-5">
                   <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider mr-1">Legend</span>
-                  {[['bg-red-500','Job Site'],['bg-orange-500','Material Pit'],['bg-blue-500','Dump Site'],['bg-emerald-500','Pit & Dump']].map(([color, label]) => (
+                  {[['bg-red-600','Job Site'],['bg-yellow-600','Material Pit'],['bg-violet-600','Dump Site'],['bg-teal-600','Pit & Dump']].map(([color, label]) => (
                     <span key={label} className="flex items-center space-x-1.5 text-xs text-zinc-600">
                       <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`}></span><span>{label}</span>
                     </span>
