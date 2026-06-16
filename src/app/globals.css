@@ -81,5 +81,9 @@ body {
   animation: kpiFade 0.5s ease-out;
 }
 
-/* Carto Voyager is the closest free-tier basemap to Google Maps' look —
-   show its native palette without filters. */
+/* Carto Voyager is the closest free-tier basemap to Google Maps' look.
+   A small brightness pullback turns the cream/white land areas into a
+   soft gray so the map has more weight against the light UI panels. */
+.leaflet-tile-pane {
+  filter: brightness(0.93) contrast(1.05);
+}
