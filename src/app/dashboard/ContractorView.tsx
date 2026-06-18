@@ -414,6 +414,28 @@ export default function ContractorView({
     return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
   }, [allSavedEstimates, projects]);
 
+  const accountMaterialSavings = useMemo(() => {
+    if (allSavedEstimates.length === 0 || projects.length === 0) return null;
+    const savingsPcts: number[] = [];
+    for (const proj of projects) {
+      const cachedResults = proj.cached_results || {};
+      if (Object.keys(cachedResults).length === 0) continue;
+      const projEstimates = allSavedEstimates.filter(e => e.project_id === proj.id);
+      for (const est of projEstimates) {
+        for (const [, options] of Object.entries(cachedResults) as [string, any[]][]) {
+          if (!options || options.length === 0) continue;
+          const avgBase = options.reduce((s: number, o: any) => s + (o.basePrice || 0), 0) / options.length;
+          if (avgBase === 0) continue;
+          const savingsPct = ((avgBase - est.base_price) / avgBase) * 100;
+          savingsPcts.push(savingsPct);
+          break;
+        }
+      }
+    }
+    if (savingsPcts.length === 0) return null;
+    return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
+  }, [allSavedEstimates, projects]);
+
   const projectFreightSavings = useMemo(() => {
     if (savedEstimates.length === 0 || Object.keys(manifestResults).length === 0) return null;
     const savingsPcts: number[] = [];
@@ -430,12 +452,14 @@ export default function ContractorView({
     return savingsPcts.reduce((a, b) => a + b, 0) / savingsPcts.length;
   }, [savedEstimates, manifestResults]);
 
-  const fmtSavings = (val: number | null) => {
+  const fmtSavings = (val: number | null, kind: 'freight' | 'material' = 'freight') => {
     if (val === null) return { display: '--', sub: 'No estimates yet', positive: true };
     const sign = val >= 0 ? '+' : '';
-    return { display: `${sign}${val.toFixed(1)}%`, sub: val >= 0 ? 'below avg market freight' : 'above avg market freight', positive: val >= 0 };
+    const label = kind === 'material' ? 'material' : 'freight';
+    return { display: `${sign}${val.toFixed(1)}%`, sub: val >= 0 ? `below avg market ${label}` : `above avg market ${label}`, positive: val >= 0 };
   };
   const accountSavingsFmt = fmtSavings(accountFreightSavings);
+  const accountMaterialSavingsFmt = fmtSavings(accountMaterialSavings, 'material');
   const projectSavingsFmt = fmtSavings(projectFreightSavings);
 
   const accountTotalValue = useMemo(() => {
@@ -449,6 +473,7 @@ export default function ContractorView({
 
   const totalValueTrend = useMemo(() => generateTrend(accountTotalValue.total, 12, 0.08), [accountTotalValue.total]);
   const freightSavingsTrend = useMemo(() => generateTrend(Math.abs(accountFreightSavings ?? 0), 12, 0.12), [accountFreightSavings]);
+  const materialSavingsTrend = useMemo(() => generateTrend(Math.abs(accountMaterialSavings ?? 0), 12, 0.12), [accountMaterialSavings]);
   const networkTrend = useMemo(() => generateTrend(pitsCount + dumpsCount, 12, 0.04), [pitsCount, dumpsCount]);
 
   const visibleProjects = useMemo(() =>
@@ -478,19 +503,6 @@ export default function ContractorView({
     setProjectsFilter(nextStatus === 'archived' ? 'archived' : 'active');
     setArchivingProject(false);
   };
-
-  const mostRequestedMaterial = useMemo(() => {
-    if (allSavedEstimates.length === 0) return { name: null as string | null, quantity: 0 };
-    const totals: Record<string, number> = {};
-    for (const est of allSavedEstimates) {
-      const name = est.material_name;
-      if (!name) continue;
-      totals[name] = (totals[name] || 0) + Number(est.quantity || 0);
-    }
-    const entries = Object.entries(totals).sort((a, b) => b[1] - a[1]);
-    if (entries.length === 0) return { name: null as string | null, quantity: 0 };
-    return { name: entries[0][0], quantity: entries[0][1] };
-  }, [allSavedEstimates]);
 
   const fmtCompactCurrency = (n: number) => {
     if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
@@ -1162,6 +1174,20 @@ export default function ContractorView({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
               <div className="relative z-10">
+                <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Material Savings</p>
+                <h3 className={`text-3xl font-bold mt-1 ${accountMaterialSavings === null ? 'text-zinc-500' : accountMaterialSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>
+                  <span key={accountMaterialSavingsFmt.display} className="inline-block kpi-fade">{accountMaterialSavingsFmt.display}</span>
+                </h3>
+                <p className="text-xs text-zinc-600 mt-3">{accountMaterialSavingsFmt.sub}</p>
+              </div>
+              {materialSavingsTrend.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-12 opacity-50">
+                  <Sparkline data={materialSavingsTrend} color={accountMaterialSavingsFmt.positive ? '#10b981' : '#ef4444'} height={48} />
+                </div>
+              )}
+            </div>
+            <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
+              <div className="relative z-10">
                 <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Avg Freight Savings</p>
                 <h3 className={`text-3xl font-bold mt-1 ${accountFreightSavings === null ? 'text-zinc-500' : accountSavingsFmt.positive ? 'text-emerald-700' : 'text-red-700'}`}>
                   <span key={accountSavingsFmt.display} className="inline-block kpi-fade">{accountSavingsFmt.display}</span>
@@ -1202,22 +1228,6 @@ export default function ContractorView({
                 <div className="absolute bottom-0 left-0 right-0 h-12 opacity-50">
                   <Sparkline data={totalValueTrend} color="#f97316" height={48} />
                 </div>
-              )}
-            </div>
-            <div className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-zinc-200 rounded-xl p-5 shadow-sm hover:bg-white hover:border-zinc-300 transition-all">
-              <p className="text-xs text-zinc-600 font-semibold uppercase tracking-wider">Most Requested Material</p>
-              {mostRequestedMaterial.name ? (
-                <>
-                  <h3 className="text-xl font-bold text-zinc-900 mt-2 truncate" title={mostRequestedMaterial.name}>{mostRequestedMaterial.name}</h3>
-                  <p className="text-xs text-zinc-600 mt-3">
-                    {mostRequestedMaterial.quantity.toLocaleString()} {importMaterials?.includes(mostRequestedMaterial.name) ? 'Tons' : exportMaterials?.includes(mostRequestedMaterial.name) ? 'CY' : 'Units'} requested
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h3 className="text-3xl font-bold text-zinc-500 mt-1">--</h3>
-                  <p className="text-xs text-zinc-600 mt-3">No saved estimates yet</p>
-                </>
               )}
             </div>
           </div>
