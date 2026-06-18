@@ -1407,6 +1407,7 @@ export default function ContractorView({
                           </div>
                           <div className="text-right">
                             <div className="text-lg font-bold text-emerald-700">${est.total_price.toFixed(2)}<span className="text-xs text-emerald-500/70 font-normal">/{importMaterials?.includes(est.material_name) ? "Ton" : "CY"}</span></div>
+                            <div className="text-xs text-zinc-600 mt-0.5">${(est.total_price * est.quantity).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total</div>
                           </div>
                         </div>
 
@@ -1508,6 +1509,15 @@ export default function ContractorView({
                     }) : <EmptyState icon="fa-paper-plane" title="No pending quotes" description="Request quotes from suppliers in your manifest to see them here." accentColor="orange" />
                   )}
                 </div>
+                {activeProject && savedEstimates.length > 0 && (() => {
+                  const projectTotal = savedEstimates.reduce((sum, e) => sum + (Number(e.total_price) * Number(e.quantity)), 0);
+                  return (
+                    <div className="border-t border-zinc-200 bg-zinc-50/80 px-5 py-3 flex items-center justify-between">
+                      <span className="text-xs font-semibold text-zinc-600 uppercase tracking-wider">Project Total</span>
+                      <span className="text-base font-bold text-emerald-700">${projectTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  );
+                })()}
               </div>
           </div>
 
