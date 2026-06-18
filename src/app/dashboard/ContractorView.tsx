@@ -1274,31 +1274,33 @@ export default function ContractorView({
 
         {activeView === 'projects' && (
         <div className="p-4 md:p-8 space-y-6">
-          {/* Active / Archived filter */}
-          <div className="flex items-center space-x-2">
-            {(['active','archived'] as const).map(f => {
-              const isActive = projectsFilter === f;
-              const count = projects.filter(p => f === 'archived' ? p.status === 'archived' : p.status !== 'archived').length;
-              return (
-                <button key={f}
-                  onClick={() => {
-                    setProjectsFilter(f);
-                    // If the currently selected project doesn't match the new filter, deselect
-                    if (activeProject) {
-                      const activeIsArchived = activeProject.status === 'archived';
-                      if ((f === 'archived') !== activeIsArchived) {
-                        setActiveProject(null);
-                        setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]);
-                        setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
+          {/* Active / Archived filter — only shown on the project list, not inside a project */}
+          {!activeProject && (
+            <div className="flex items-center space-x-2">
+              {(['active','archived'] as const).map(f => {
+                const isActive = projectsFilter === f;
+                const count = projects.filter(p => f === 'archived' ? p.status === 'archived' : p.status !== 'archived').length;
+                return (
+                  <button key={f}
+                    onClick={() => {
+                      setProjectsFilter(f);
+                      // If the currently selected project doesn't match the new filter, deselect
+                      if (activeProject) {
+                        const activeIsArchived = activeProject.status === 'archived';
+                        if ((f === 'archived') !== activeIsArchived) {
+                          setActiveProject(null);
+                          setSavedEstimates([]); setRequirements([]); setManifestResults({}); setProjectQuotes([]);
+                          setJobLat(undefined); setJobLon(undefined); setJobAddress(undefined);
+                        }
                       }
-                    }
-                  }}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${isActive ? 'bg-orange-500/10 text-orange-600 border-orange-500/40' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900'}`}>
-                  {f} <span className="ml-1.5 text-[10px] opacity-80">({count})</span>
-                </button>
-              );
-            })}
-          </div>
+                    }}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold border transition-all capitalize ${isActive ? 'bg-orange-500/10 text-orange-600 border-orange-500/40' : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900'}`}>
+                    {f} <span className="ml-1.5 text-[10px] opacity-80">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {!activeProject ? (
             <div className="bg-white border border-zinc-200 rounded-xl overflow-hidden">
