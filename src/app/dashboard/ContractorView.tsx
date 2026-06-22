@@ -720,6 +720,93 @@ export default function ContractorView({
     }
   };
 
+  // Inline editing of an existing requirement (quantity + truck type)
+  const [editingReqId, setEditingReqId] = useState<string | null>(null);
+  const [editReqQty, setEditReqQty] = useState<string>('');
+  const [editReqTruckType, setEditReqTruckType] = useState<string>('');
+  const [pendingReqEdit, setPendingReqEdit] = useState<null | {
+    req: any;
+    newQty: number;
+    newTruckType: string;
+    affectedEstimateIds: string[];
+  }>(null);
+  const [savingReqEdit, setSavingReqEdit] = useState(false);
+
+  const beginEditRequirement = (req: any) => {
+    setEditingReqId(req.id);
+    setEditReqQty(String(req.quantity));
+    setEditReqTruckType(req.truck_type || '');
+  };
+
+  const cancelEditRequirement = () => {
+    setEditingReqId(null);
+    setEditReqQty('');
+    setEditReqTruckType('');
+  };
+
+  const commitRequirementEdit = async (req: any, newQty: number, newTruckType: string, affectedEstimateIds: string[]) => {
+    setSavingReqEdit(true);
+    if (affectedEstimateIds.length > 0) {
+      const { error: delErr } = await supabase.from('project_estimates').delete().in('id', affectedEstimateIds);
+      if (delErr) {
+        toast.error('Failed to erase saved pricing.');
+        setSavingReqEdit(false);
+        return;
+      }
+      setSavedEstimates(prev => prev.filter(se => !affectedEstimateIds.includes(se.id)));
+      await fetchAllSavedEstimates();
+    }
+    const { data, error } = await supabase
+      .from('project_requirements')
+      .update({ quantity: newQty, truck_type: newTruckType })
+      .eq('id', req.id)
+      .select()
+      .single();
+    if (data && !error) {
+      setRequirements(prev => prev.map(r => r.id === req.id ? { ...r, ...data } : r));
+      if (affectedEstimateIds.length > 0) {
+        toast.success(`Updated requirement. ${affectedEstimateIds.length} saved estimate${affectedEstimateIds.length === 1 ? '' : 's'} erased.`);
+      } else {
+        toast.success('Requirement updated.');
+      }
+      setEditingReqId(null);
+    } else {
+      toast.error('Failed to update requirement.');
+    }
+    setPendingReqEdit(null);
+    setSavingReqEdit(false);
+  };
+
+  const saveRequirementEdit = async (req: any) => {
+    const newQty = Number(editReqQty);
+    if (!Number.isFinite(newQty) || newQty <= 0) {
+      toast.error('Enter a valid quantity greater than zero.');
+      return;
+    }
+    if (!editReqTruckType) {
+      toast.error('Select a truck type.');
+      return;
+    }
+    const oldQty = Number(req.quantity) || 0;
+    const qtyDeltaPct = oldQty > 0 ? Math.abs(newQty - oldQty) / oldQty * 100 : 100;
+    const truckChanged = editReqTruckType !== (req.truck_type || '');
+    const triggersErase = qtyDeltaPct > 10 || truckChanged;
+
+    const reqMaterials: string[] = (req.compared_materials && req.compared_materials.length > 0)
+      ? req.compared_materials
+      : (req.material_name ? [req.material_name] : []);
+    const affected = triggersErase && activeProject
+      ? savedEstimates.filter(se => se.project_id === activeProject.id && reqMaterials.includes(se.material_name))
+      : [];
+    const affectedIds = affected.map(se => se.id);
+
+    if (triggersErase && affectedIds.length > 0) {
+      setPendingReqEdit({ req, newQty, newTruckType: editReqTruckType, affectedEstimateIds: affectedIds });
+      return;
+    }
+    await commitRequirementEdit(req, newQty, editReqTruckType, []);
+  };
+
   //        Manifest calculation
   const calculateManifest = async () => {
     if (!activeProject || requirements.length === 0) return;
@@ -1659,11 +1746,32 @@ export default function ContractorView({
                                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wider ${req.job_type === 'Import (Delivery)' ? 'bg-orange-500/20 text-orange-500' : 'bg-blue-500/20 text-blue-700'}`}>
                                     {req.job_type === 'Import (Delivery)' ? 'Import' : 'Export'}
                                   </span>
-                                  <span className="text-sm font-semibold text-zinc-900">
-                                    {req.quantity.toLocaleString()} {unit}
-                                  </span>
-                                  {req.truck_type && (
-                                    <span className="px-1.5 py-0.5 bg-white border border-zinc-200 text-zinc-700 rounded text-[10px] font-medium">{req.truck_type}</span>
+                                  {editingReqId === req.id ? (
+                                    <>
+                                      <input
+                                        type="number" min={1} step={1}
+                                        value={editReqQty}
+                                        onChange={(e) => setEditReqQty(e.target.value)}
+                                        className="w-24 bg-white border border-zinc-300 rounded px-2 py-0.5 text-sm font-semibold text-zinc-900 focus:outline-none focus:border-orange-500"
+                                      />
+                                      <span className="text-sm font-semibold text-zinc-700">{unit}</span>
+                                      <select
+                                        value={editReqTruckType}
+                                        onChange={(e) => setEditReqTruckType(e.target.value)}
+                                        className="bg-white border border-zinc-300 rounded px-2 py-0.5 text-[11px] font-medium text-zinc-900 focus:outline-none focus:border-orange-500"
+                                      >
+                                        {truckTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                                      </select>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-sm font-semibold text-zinc-900">
+                                        {req.quantity.toLocaleString()} {unit}
+                                      </span>
+                                      {req.truck_type && (
+                                        <span className="px-1.5 py-0.5 bg-white border border-zinc-200 text-zinc-700 rounded text-[10px] font-medium">{req.truck_type}</span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                                 <div className="mt-2 flex items-baseline flex-wrap gap-1.5">
@@ -1683,9 +1791,27 @@ export default function ContractorView({
                                   )}
                                 </div>
                               </div>
-                              <button onClick={() => removeRequirement(req.id)} className="text-zinc-500 hover:text-red-500 transition-colors flex-shrink-0 mt-0.5" title="Remove requirement">
-                                <i className="fa-solid fa-trash"></i>
-                              </button>
+                              <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                                {editingReqId === req.id ? (
+                                  <>
+                                    <button onClick={() => saveRequirementEdit(req)} disabled={savingReqEdit} className="text-emerald-700 hover:text-emerald-800 transition-colors disabled:opacity-50" title="Save changes">
+                                      <i className="fa-solid fa-check"></i>
+                                    </button>
+                                    <button onClick={cancelEditRequirement} disabled={savingReqEdit} className="text-zinc-500 hover:text-zinc-700 transition-colors disabled:opacity-50" title="Cancel">
+                                      <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button onClick={() => beginEditRequirement(req)} className="text-zinc-500 hover:text-orange-600 transition-colors" title="Edit quantity / truck type">
+                                      <i className="fa-solid fa-pen-to-square"></i>
+                                    </button>
+                                    <button onClick={() => removeRequirement(req.id)} className="text-zinc-500 hover:text-red-500 transition-colors" title="Remove requirement">
+                                      <i className="fa-solid fa-trash"></i>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
 
                             {/* Results */}
@@ -2327,6 +2453,36 @@ export default function ContractorView({
             <div className="flex space-x-3">
               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-lg text-sm font-semibold border border-zinc-200 text-zinc-700 hover:bg-white transition-all">Cancel</button>
               <button onClick={deleteProject} disabled={isDeletingProject} className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white py-2 rounded-lg text-sm font-semibold transition-all">{isDeletingProject ? 'Deleting...' : 'Delete Project'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Erase saved pricing confirmation */}
+      {pendingReqEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm p-4" onClick={() => !savingReqEdit && setPendingReqEdit(null)}>
+          <div className="bg-white border border-zinc-200 rounded-xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                <i className="fa-solid fa-triangle-exclamation text-amber-600"></i>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-zinc-900">Erase saved pricing?</h3>
+                <p className="text-sm text-zinc-600 mt-1">
+                  This change {Number(editReqQty) !== Number(pendingReqEdit.req.quantity) ? 'shifts the quantity by more than 10%' : 'updates the truck type'}, so the {pendingReqEdit.affectedEstimateIds.length} saved estimate{pendingReqEdit.affectedEstimateIds.length === 1 ? '' : 's'} tied to this requirement will be erased. You can re-lock pricing after the next routing run.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => setPendingReqEdit(null)} disabled={savingReqEdit}
+                className="px-4 py-2 rounded-lg text-sm font-semibold border border-zinc-300 text-zinc-700 hover:bg-zinc-100 transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={() => commitRequirementEdit(pendingReqEdit.req, pendingReqEdit.newQty, pendingReqEdit.newTruckType, pendingReqEdit.affectedEstimateIds)}
+                disabled={savingReqEdit}
+                className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 active:scale-[0.97] text-white transition-all disabled:opacity-50">
+                {savingReqEdit ? 'Saving...' : 'Erase & Update'}
+              </button>
             </div>
           </div>
         </div>
